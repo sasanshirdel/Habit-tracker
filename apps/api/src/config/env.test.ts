@@ -107,6 +107,34 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...required, LOG_FORMAT: 'xml' })).toThrow(/LOG_FORMAT/);
   });
 
+  it('applies rate-limit and proxy defaults (P1-08)', () => {
+    const env = validateEnv(required);
+    expect(env.RATE_LIMIT_ENABLED).toBe(true);
+    expect(env.RATE_LIMIT_PREFIX).toBe('habit:rl');
+    expect(env.TRUST_PROXY).toBe(0);
+  });
+
+  it('parses rate-limit and proxy settings and rejects invalid ones (P1-08)', () => {
+    const env = validateEnv({
+      ...required,
+      RATE_LIMIT_ENABLED: 'false',
+      RATE_LIMIT_PREFIX: 'habit:it:x:rl',
+      TRUST_PROXY: '1',
+    });
+    expect(env.RATE_LIMIT_ENABLED).toBe(false);
+    expect(env.RATE_LIMIT_PREFIX).toBe('habit:it:x:rl');
+    expect(env.TRUST_PROXY).toBe(1);
+    expect(() => validateEnv({ ...required, RATE_LIMIT_ENABLED: 'maybe' })).toThrow(
+      /RATE_LIMIT_ENABLED/,
+    );
+    expect(() => validateEnv({ ...required, RATE_LIMIT_PREFIX: 'rl:' })).toThrow(
+      /RATE_LIMIT_PREFIX/,
+    );
+    for (const hops of ['-1', '6', '1.5', 'true']) {
+      expect(() => validateEnv({ ...required, TRUST_PROXY: hops })).toThrow(/TRUST_PROXY/);
+    }
+  });
+
   it('throws an EnvValidationError whose message is marked safe for logs', () => {
     let error: unknown;
     try {
@@ -126,6 +154,7 @@ describe('validateWorkerEnv', () => {
     expect(env.WORKER_SHUTDOWN_TIMEOUT_MS).toBe(25_000);
     expect(env.QUEUE_PREFIX).toBe('habit:q');
     expect(env).not.toHaveProperty('API_PORT');
+    expect(env).not.toHaveProperty('RATE_LIMIT_ENABLED');
   });
 
   it('coerces and bounds worker settings', () => {

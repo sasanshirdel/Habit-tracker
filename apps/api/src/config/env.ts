@@ -41,6 +41,20 @@ export const envSchema = baseEnvSchema.extend({
         .filter(Boolean),
     )
     .pipe(z.array(z.url())),
+  // Rate limiting (backlog P1-08, ADR-0011). Counters live in Redis under this namespace.
+  // `RATE_LIMIT_ENABLED=false` switches the limiter off entirely — local load tests only; never
+  // in staging/production.
+  RATE_LIMIT_ENABLED: z.stringbool().default(true),
+  RATE_LIMIT_PREFIX: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]+(:[A-Za-z0-9_-]+)*$/, 'letters, digits, "_", "-" separated by ":"')
+    .max(64)
+    .default('habit:rl'),
+  // Number of reverse proxies in front of the API whose `X-Forwarded-For` entry is trusted for
+  // the client address (Express `trust proxy`). 0 (default) trusts none: the socket address is
+  // the client. Set it to the real hop count behind a load balancer, or every client shares the
+  // proxy's address — and its rate limit; never higher, or clients can spoof their address.
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
 });
 
 export const workerEnvSchema = baseEnvSchema.extend({
