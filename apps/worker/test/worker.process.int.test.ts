@@ -44,6 +44,14 @@ function startWorker(env: Record<string, string> = {}): RunningWorker {
   return { child, output: () => output, exited };
 }
 
+/** Structured logging (P1-07): every line the worker prints is one JSON object. */
+function jsonLines(output: string): Array<Record<string, unknown>> {
+  return output
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
+}
+
 async function waitFor<T>(
   probe: () => Promise<T | undefined> | T | undefined,
   what: string,
@@ -93,7 +101,7 @@ describe('worker process (real Redis)', () => {
   });
 
   it('processes a job enqueued by a producer, then drains and exits 0 on SIGTERM', async () => {
-    const worker = startWorker();
+    const worker = startWorker({ LOG_LEVEL: 'debug' });
     try {
       await waitFor(
         () => (worker.output().includes('Worker started.') ? true : undefined),
@@ -120,6 +128,17 @@ describe('worker process (real Redis)', () => {
       expect(await jobState(slow.id)).toBe('completed');
       expect(worker.output()).toMatch(/Received SIGTERM; draining/);
       expect(worker.output()).toMatch(/All workers drained/);
+
+      // Structured logs: JSON lines from the worker; lines logged by a job handler carry the
+      // job's identity (never its payload).
+      const records = jsonLines(worker.output());
+      expect(records.every((r) => r.service === 'worker' && typeof r.msg === 'string')).toBe(true);
+      expect(records.find((r) => r.jobId === quick.id)).toMatchObject({
+        level: 'debug',
+        context: 'SystemNoopJobHandler',
+        jobName: 'system.noop',
+        attempt: 1,
+      });
     } finally {
       worker.child.kill('SIGKILL');
     }
@@ -173,5 +192,8 @@ describe('worker process (real Redis)', () => {
     expect(worker.output()).toContain('REDIS_URL');
     expect(worker.output()).not.toContain('sup3r-secret');
     expect(worker.output()).not.toContain('cache.internal');
+    // Reported as structured JSON too: the configuration error keeps its (safe) message.
+    const records = jsonLines(worker.output());
+    expect(records.some((r) => r.level === 'error' || r.level === 'fatal')).toBe(true);
   });
 });

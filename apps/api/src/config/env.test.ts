@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { validateEnv, validateWorkerEnv } from './env.js';
+import { SAFE_MESSAGE } from '../common/logging/redact.js';
+import { EnvValidationError, validateEnv, validateWorkerEnv } from './env.js';
 
 const DATABASE_URL = 'postgresql://user:pass@localhost:5432/db?schema=public';
 const REDIS_URL = 'redis://localhost:6379';
@@ -93,6 +94,28 @@ describe('validateEnv', () => {
       expect(message).not.toContain('sup3r-secret');
       expect(message).not.toContain('db.internal');
     }
+  });
+
+  it('accepts logging settings and rejects unknown levels/formats (P1-07)', () => {
+    const env = validateEnv({ ...required, LOG_LEVEL: 'warn', LOG_FORMAT: 'pretty' });
+    expect(env.LOG_LEVEL).toBe('warn');
+    expect(env.LOG_FORMAT).toBe('pretty');
+    const defaults = validateEnv(required);
+    expect(defaults.LOG_LEVEL).toBeUndefined(); // resolved from NODE_ENV by logSettingsFromEnv
+    expect(defaults.LOG_FORMAT).toBe('json');
+    expect(() => validateEnv({ ...required, LOG_LEVEL: 'loud' })).toThrow(/LOG_LEVEL/);
+    expect(() => validateEnv({ ...required, LOG_FORMAT: 'xml' })).toThrow(/LOG_FORMAT/);
+  });
+
+  it('throws an EnvValidationError whose message is marked safe for logs', () => {
+    let error: unknown;
+    try {
+      validateEnv({});
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(EnvValidationError);
+    expect((error as Record<symbol, unknown>)[SAFE_MESSAGE]).toBe(true);
   });
 });
 

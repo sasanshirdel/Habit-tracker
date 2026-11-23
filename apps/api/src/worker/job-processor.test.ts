@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { defineJob } from '../queue/job-definition.js';
 import { SYSTEM_NOOP_JOB } from '../queue/jobs/system-noop.job.js';
+import { currentJobContext } from '../common/logging/log-context.js';
 import type { JobHandler } from './job-handler.js';
 import { JOB_REJECTION, createJobProcessor, indexHandlers } from './job-processor.js';
 
@@ -36,6 +37,18 @@ describe('createJobProcessor', () => {
       { id, times: 1 },
       { jobId: '42', attempt: 2, maxAttempts: 3 },
     );
+  });
+
+  it('runs the handler inside a job log context (ids only, no payload) — P1-07', async () => {
+    let seen: unknown;
+    const handler = handlerFor(
+      vi.fn(async () => {
+        seen = currentJobContext();
+      }),
+    );
+    await createJobProcessor(indexHandlers([handler]))(job('test.echo', { id }, 1));
+    expect(seen).toEqual({ jobId: '42', jobName: 'test.echo', attempt: 2 });
+    expect(currentJobContext()).toBeUndefined();
   });
 
   it('fails unknown job names without retry', async () => {

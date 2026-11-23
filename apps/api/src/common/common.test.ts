@@ -77,6 +77,13 @@ describe('mapException', () => {
     },
   );
 
+  it('does not flag deliberate 5xx states (not ready, dependency down) as unexpected', () => {
+    for (const code of ['NOT_READY', 'SERVICE_UNAVAILABLE', 'QUEUE_UNAVAILABLE'] as const) {
+      expect(mapException(new ApiException(503, code, 'x')).unexpected).toBe(false);
+    }
+    expect(mapException(new ApiException(500, 'INTERNAL_ERROR', 'x')).unexpected).toBe(true);
+  });
+
   it('flags 5xx HttpExceptions as unexpected', () => {
     expect(mapException(new HttpException('x', 502)).unexpected).toBe(true);
   });
