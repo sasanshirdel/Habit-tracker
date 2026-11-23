@@ -16,4 +16,4 @@
 ## Consequences
 
 - `main` is always releasable once protection is enabled.
-- Planned additions (backlog): dependency review / `pnpm audit`, secret scanning, CodeQL, Playwright job, Postgres service container for integration tests.
+- Planned additions (backlog): dependency review / `pnpm audit`, secret scanning, CodeQL, Playwright job. (The PostgreSQL + Redis integration job landed in P1-01/P1-02.)
