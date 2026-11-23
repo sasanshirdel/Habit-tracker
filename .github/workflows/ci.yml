@@ -56,10 +56,11 @@ jobs:
       - name: Build
         run: pnpm build
 
-  # Database integration tests against a real PostgreSQL (backlog P1-01; generalised, incl. Redis,
-  # in P1-02). Ephemeral service container with throwaway credentials — no repository secrets.
-  integration-db:
-    name: integration · PostgreSQL
+  # Integration tests against real PostgreSQL + Redis (backlog P1-01, P1-02). Ephemeral service
+  # containers with throwaway credentials — no repository secrets. Independent of `verify`, so the
+  # unit job stays fast and never needs a database or Redis.
+  integration:
+    name: integration · PostgreSQL + Redis
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -76,8 +77,21 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        # Keep in sync with docker-compose.yml. Service containers cannot take a `command`, so the
+        # image default applies; its maxmemory-policy is `noeviction` (what BullMQ needs), and
+        # test/redis.int.test.ts asserts it.
+        image: redis:8.8.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://ci:ci-only-not-a-secret@localhost:5432/habit_ci?schema=public
+      REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v7
 
@@ -101,3 +115,16 @@ jobs:
 
       - name: Integration tests
         run: pnpm test:integration
+
+      - name: No leftover integration databases or Redis keys
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+          REDIS_CONTAINER: ${{ job.services.redis.id }}
+        run: |
+          dbs="$(docker exec "$PG_CONTAINER" psql -U ci -d habit_ci -Atc "SELECT datname FROM pg_database WHERE datname LIKE 'habit_it_%'")"
+          keys="$(docker exec "$REDIS_CONTAINER" redis-cli --scan --pattern 'habit:it:*')"
+          if [ -n "$dbs" ] || [ -n "$keys" ]; then
+            echo "::error::Integration teardown left resources behind: dbs=[$dbs] keys=[$keys]"
+            exit 1
+          fi
+          echo "Teardown clean: no throwaway databases or integration keys remain."

@@ -12,7 +12,7 @@ pnpm --filter @habit/api dev                  # watch mode (nest CLI), regenerat
 pnpm --filter @habit/api build                # prisma generate + tsc -> dist/
 pnpm --filter @habit/api start                # node dist/main.js
 pnpm --filter @habit/api test                 # vitest (unit + supertest e2e) — no database needed
-pnpm --filter @habit/api test:integration     # real PostgreSQL via DATABASE_URL (throwaway database)
+pnpm --filter @habit/api test:integration     # real PostgreSQL (DATABASE_URL, throwaway DB) + Redis (REDIS_URL, per-run key prefix)
 pnpm --filter @habit/api db:migrate:deploy    # apply migrations
 pnpm --filter @habit/api db:migrate:dev --name <change>   # create a migration (local only)
 DATABASE_URL=postgresql://... pnpm --filter @habit/api prisma:validate

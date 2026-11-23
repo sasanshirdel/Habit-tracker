@@ -61,16 +61,16 @@ Small, logical commits; no secrets; no generated artefacts (`dist`, `.next`).
 
 ## 6. Checks
 
-| Command                                    | What it does                                                                |
-| ------------------------------------------ | --------------------------------------------------------------------------- |
-| `pnpm format:check`                        | Prettier (PRD file excluded — kept verbatim)                                |
-| `pnpm lint`                                | ESLint 10 flat config (`@habit/config/eslint`, Next plugin for web)         |
-| `pnpm typecheck`                           | `tsc --noEmit` per package (web runs `next typegen` first)                  |
-| `pnpm test`                                | Vitest per package                                                          |
-| `pnpm build`                               | `tsc` (api, ui), `next build` (web)                                         |
-| `pnpm check`                               | all of the above                                                            |
-| `pnpm --filter @habit/api prisma:validate` | Prisma schema validation (needs `DATABASE_URL` set; no connection made)     |
-| `pnpm test:integration`                    | Integration tests against real PostgreSQL (needs `DATABASE_URL`, see below) |
+| Command                                    | What it does                                                                                        |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `pnpm format:check`                        | Prettier (PRD file excluded — kept verbatim)                                                        |
+| `pnpm lint`                                | ESLint 10 flat config (`@habit/config/eslint`, Next plugin for web)                                 |
+| `pnpm typecheck`                           | `tsc --noEmit` per package (web runs `next typegen` first)                                          |
+| `pnpm test`                                | Vitest per package                                                                                  |
+| `pnpm build`                               | `tsc` (api, ui), `next build` (web)                                                                 |
+| `pnpm check`                               | all of the above                                                                                    |
+| `pnpm --filter @habit/api prisma:validate` | Prisma schema validation (needs `DATABASE_URL` set; no connection made)                             |
+| `pnpm test:integration`                    | Integration tests against real PostgreSQL + Redis (needs `DATABASE_URL` and `REDIS_URL`, see below) |
 
 `pnpm test` never needs a database (the API's unit/HTTP tests point `DATABASE_URL` at a closed port
 and exercise readiness in its "down" state). The API's `build`/`typecheck`/`test`/`dev` scripts run
@@ -91,16 +91,23 @@ databases; destructive migrations need explicit owner approval (PRD §13.5).
 
 Integration tests (`apps/api/test/**/*.int.test.ts`) create a throwaway database next to the one in
 `DATABASE_URL`, apply migrations with `prisma migrate deploy`, run, and drop it — the database in
-`DATABASE_URL` itself is not modified. With docker-compose running:
+`DATABASE_URL` itself is not modified. They also need Redis (`REDIS_URL`): every key they write is
+under a per-run prefix `habit:it:<run>:` that global teardown deletes (SCAN + DEL — never
+`FLUSHDB`), so a shared dev Redis is safe. Redis must use `maxmemory-policy noeviction` (BullMQ
+requirement; docker-compose sets it, and it is the Redis default) — a test asserts this. Setup fails
+fast with a clear message if either variable is missing or Redis is unreachable. With docker-compose
+running:
 
 ```bash
-pnpm test:integration   # uses DATABASE_URL from the environment (CI) or export it from .env
+# uses DATABASE_URL / REDIS_URL from the environment (CI) or export them from .env
+pnpm test:integration
 ```
 
 Without Docker, any local PostgreSQL 18 works (e.g. PGDG packages); create a role with
-`LOGIN CREATEDB` and point `DATABASE_URL` at it.
+`LOGIN CREATEDB` and point `DATABASE_URL` at it. For Redis, any Redis ≥ 8 works (e.g. the distro
+`redis-server` package started on 127.0.0.1).
 
-CI (`.github/workflows/ci.yml`) runs install (frozen lockfile), format, lint, typecheck, Prisma validate, test and build on every PR and every push to `main` (job `verify`), and the PostgreSQL integration job (`integration-db`: Postgres 18.7 service container, `migrate deploy`, `migrate status`, `pnpm test:integration`).
+CI (`.github/workflows/ci.yml`) runs install (frozen lockfile), format, lint, typecheck, Prisma validate, test and build on every PR and every push to `main` (job `verify`), and the integration job (`integration`, check name `integration · PostgreSQL + Redis`: Postgres 18.7 and Redis 8.8.4 service containers with throwaway credentials, `migrate deploy`, `migrate status`, `pnpm test:integration`, then a check that no throwaway databases or `habit:it:*` keys were left behind). The two jobs are independent; `verify` never needs a database or Redis.
 
 ## 7. Coding standards
 
