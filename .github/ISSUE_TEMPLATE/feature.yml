@@ -1,0 +1,39 @@
+name: Feature / task
+description: A roadmap feature or engineering task
+labels: ['type:feature']
+body:
+  - type: input
+    id: phase
+    attributes:
+      label: Roadmap phase
+      placeholder: 'phase:3'
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope (in / out)
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: true
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing requirements
+  - type: textarea
+    id: security
+    attributes:
+      label: Security considerations

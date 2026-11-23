@@ -1,0 +1,33 @@
+/*
+ * Design tokens as CSS custom properties. Mirrors src/tokens.ts (enforced by tokens.test.ts).
+ * Dark is the default theme; light applies via [data-theme='light'].
+ */
+:root,
+[data-theme='dark'] {
+  --token-background: #101010;
+  --token-surface: #181818;
+  --token-surface-secondary: #222222;
+  --token-surface-elevated: #292929;
+  --token-text-primary: #f5f2ea;
+  --token-text-secondary: #a8a39a;
+  --token-accent: #d6b45b;
+  --token-border: #303030;
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --token-background: #fbf9f4;
+  --token-surface: #ffffff;
+  --token-surface-secondary: #f3f0e9;
+  --token-surface-elevated: #ffffff;
+  --token-text-primary: #28251f;
+  --token-text-secondary: #6b655a;
+  --token-accent: #a9802c;
+  --token-border: #e4ded2;
+  color-scheme: light;
+}
+
+:root {
+  --font-latin: 'Inter', system-ui, sans-serif;
+  --font-persian: 'Vazirmatn', Tahoma, system-ui, sans-serif;
+}

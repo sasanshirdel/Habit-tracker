@@ -1,0 +1,10 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Supply-chain guard: only dependencies whose install scripts we have reviewed may run them.
+# @swc/core: native binary check; prisma/@prisma/engines: engine download/setup.
+allowBuilds:
+  '@swc/core': true
+  '@prisma/engines': true
+  prisma: true

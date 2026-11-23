@@ -1,0 +1,15 @@
+// Prisma schema skeleton (Phase 0).
+//
+// Intentionally contains NO product tables. Models are added per roadmap phase
+// with version-controlled migrations (`prisma migrate dev`), starting in Phase 1/2.
+// See docs/ARCHITECTURE.md §Data and the conceptual entity list in
+// docs/PRODUCT_REQUIREMENTS.md §6.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

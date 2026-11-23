@@ -1,0 +1,24 @@
+@import 'tailwindcss';
+@import '@habit/ui/tokens.css';
+
+/* Expose design tokens to Tailwind utilities (bg-surface, text-accent, border-border, ...). */
+@theme inline {
+  --color-background: var(--token-background);
+  --color-surface: var(--token-surface);
+  --color-surface-secondary: var(--token-surface-secondary);
+  --color-surface-elevated: var(--token-surface-elevated);
+  --color-text-primary: var(--token-text-primary);
+  --color-text-secondary: var(--token-text-secondary);
+  --color-accent: var(--token-accent);
+  --color-border: var(--token-border);
+}
+
+html {
+  background: var(--token-background);
+  color: var(--token-text-primary);
+  font-family: var(--font-latin);
+}
+
+html[lang='fa'] {
+  font-family: var(--font-persian);
+}
