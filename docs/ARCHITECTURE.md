@@ -80,9 +80,10 @@ Rules: a module owns its tables; cross-module calls only through exported servic
 ## 5. API design
 
 - REST under `/api/v1`; OpenAPI generated from Nest decorators (Phase 1).
-- DTOs validated at the edge (zod or class-validator — decided in Phase 1 issue); never return Prisma entities directly.
-- Error shape: `{ error: { code, message, details?, requestId } }`; `code` is stable and localised by the client.
-- Cursor pagination, filtering, sorting conventions defined in Phase 1.
+- Input validated at the edge with zod: `ZodValidationPipe(schema)` per `@Body`/`@Query`/`@Param` → 400 `VALIDATION_FAILED` with `details.issues[{ field, code, message }]` (ADR-0009, P1-05); never return Prisma entities directly.
+- Error shape: `{ error: { code, message, details?, requestId } }`, rendered for every failure by the global `AllExceptionsFilter`; `code` is a stable `ApiErrorCode` localised by the client; no stack traces or framework/driver text in any environment.
+- Every response carries `x-request-id` (accepted from the caller when well-formed, else a UUID), also available in-process via `currentRequestId()`.
+- Lists: cursor (keyset) pagination `?limit=&cursor=` → `{ data, page: { nextCursor, hasMore, limit } }`; `?sort=-field,field` over whitelisted fields; explicit typed filter parameters (ADR-0009). Helpers in `apps/api/src/common/`.
 - Auth via secure session cookies (ADR-0005); CSRF protection on state-changing requests; rate limits per IP/user/route class.
 
 ## 6. Frontend architecture
