@@ -96,3 +96,14 @@ Re-verified against the npm registry on 2026-11-24 (UTC+03:30) before installing
 - **Not added: `@nestjs/bullmq` 12.0.2** (supports Nest 12 / BullMQ 6). It would add two packages (`@nestjs/bullmq`, `@nestjs/bull-shared`, the latter with a caret range) for decorators we do not need; our ~200-line `QueueModule`/`WorkerHost` gives explicit control over the things that matter here — fail-fast enqueueing, payload re-validation, log redaction and a bounded shutdown (BullMQ's own `close()`/`disconnect()` can wait indefinitely while Redis is unreachable; found while prototyping and covered by tests). Revisit if decorator-based processors become valuable.
 - `msgpackr-extract` (optional native add-on of `msgpackr`) is **denied** in `allowBuilds`; `msgpackr` falls back to its pure-JS implementation, so no new native install script runs.
 - `pg` appears in the lockfile as BullMQ's optional peer resolution; it was already present via `@prisma/adapter-pg` (8.23.1) and is not used by BullMQ here.
+
+## Addendum — Phase 1, P1-07 structured logging (2026-11-24)
+
+**No dependency added.** Evaluated with `npm view` on 2026-11-24 (UTC+03:30): `pino` **10.4.0**
+(last modified 2026-10-02, 11 runtime dependencies) with `nestjs-pino` **5.3.2** (2026-11-19, peers
+`pino ^10`, `pino-http ^11`, `@nestjs/common`/`@nestjs/core` `^11.0.8 || ^12.0.2` — compatible with
+our Nest 12.6.0). Both are maintained, but pino's path-based redaction does not cover key matching at
+any depth or credentials inside strings, so a custom redactor is needed regardless; the remaining
+value (JSON serialisation, stdout writer) did not justify three direct packages. The API and worker
+use an in-repo `JsonLogger` instead — rationale and the redaction rules in
+[ADR-0010](0010-structured-logging-and-redaction.md).

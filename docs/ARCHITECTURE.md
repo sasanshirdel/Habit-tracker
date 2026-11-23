@@ -116,7 +116,7 @@ Quick capture is a global action (keyboard shortcut / FAB), not a page.
 ## 8. Cross-cutting concerns
 
 - **Security:** see [`SECURITY.md`](SECURITY.md).
-- **Observability (PRD §10):** structured JSON logs with request IDs and redaction; error tracking; metrics for API latency, queues, payments, AI usage; health/readiness endpoints; uptime checks; alerting. Phase 1 lays the logging/request-ID foundation; Phase 12 completes monitoring.
+- **Observability (PRD §10):** structured JSON logs with request IDs and redaction; error tracking; metrics for API latency, queues, payments, AI usage; health/readiness endpoints; uptime checks; alerting. Phase 1 lays the logging/request-ID foundation (P1-07, ADR-0010: `JsonLogger` installed as Nest's logger in API and worker — JSON lines with `requestId`/`userId` or `jobId`/`jobName`/`attempt`, one access line per request, mandatory redaction, `LOG_LEVEL`/`LOG_FORMAT`); Phase 12 completes monitoring.
 - **Configuration:** zod-validated env at boot (`apps/api/src/config/env.ts`); fail fast; secrets only from the environment/secret manager.
 - **Feature flags & commercial config** (plans, prices, limits) live in the database with versioning — never hardcoded (PRD §3.14).
 - **Environments:** local → testing → staging → production (PRD §15). Deployment target is an open decision.

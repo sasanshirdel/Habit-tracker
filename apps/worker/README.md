@@ -12,8 +12,11 @@ separate process built from the same codebase (ARCHITECTURE §1, ADR-0006):
   immediately. Jobs cut off by a timeout or crash are recovered by BullMQ as stalled and retried.
 
 Configuration: `NODE_ENV`, `DATABASE_URL`, `REDIS_URL`, `QUEUE_PREFIX`, `WORKER_CONCURRENCY`,
-`WORKER_SHUTDOWN_TIMEOUT_MS` (see `.env.example` and docs/DEVELOPMENT_WORKFLOW.md). Invalid
+`WORKER_SHUTDOWN_TIMEOUT_MS`, `LOG_LEVEL`, `LOG_FORMAT` (see `.env.example` and docs/DEVELOPMENT_WORKFLOW.md). Invalid
 configuration stops the process with exit code 1, naming the variable but never its value.
+
+Logs are structured JSON lines on stdout (P1-07, ADR-0010), the same format as the API; lines
+logged while a job runs carry `jobId`, `jobName` and `attempt` (never the payload).
 
 The worker has no health endpoint yet; liveness is the process itself. Job/queue monitoring arrives
 with system management (P10-12) and observability (P12-05).

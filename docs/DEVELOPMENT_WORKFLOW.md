@@ -39,6 +39,8 @@ their env at boot (`apps/api/src/config/env.ts`) and exit on invalid config with
 | `QUEUE_PREFIX`                                                          | api, worker         | no (`habit:q`)                   | Namespace of all BullMQ keys                     |
 | `WORKER_CONCURRENCY`                                                    | worker              | no (`5`, 1–50)                   | Parallel jobs per queue per worker process       |
 | `WORKER_SHUTDOWN_TIMEOUT_MS`                                            | worker              | no (`25000`, 1000–600000)        | Graceful-shutdown wait for in-flight jobs        |
+| `LOG_LEVEL`                                                             | api, worker         | no (`debug` in dev, else `info`) | `trace`/`debug`/`info`/`warn`/`error`/`fatal`    |
+| `LOG_FORMAT`                                                            | api, worker         | no (`json`)                      | `json` (one object per line) or `pretty` (local) |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT` | docker-compose      | for `dev:services`               | Local dev database only                          |
 | `REDIS_PORT`                                                            | docker-compose      | no (`6379`)                      | Local Redis port                                 |
 | `NEXT_PUBLIC_API_BASE_URL`                                              | web                 | Phase 1+                         | Public API base URL (never a secret)             |
