@@ -67,7 +67,9 @@ Rules: a module owns its tables; cross-module calls only through exported servic
 
 ## 4. Data architecture
 
-- PostgreSQL is the system of record; Prisma 7 schema at `apps/api/prisma/schema.prisma` (Phase 0: no models). Conceptual entities: PRD §6.
+- PostgreSQL is the system of record; Prisma 7 schema at `apps/api/prisma/schema.prisma` (no product models yet; they arrive with their owning phase). Conceptual entities: PRD §6.
+- **Access (P1-01):** `DatabaseModule` (`apps/api/src/database/`) provides a single `PrismaService` (Prisma 7 + `@prisma/adapter-pg`, pool connect timeout 5 s). `DATABASE_URL` is required and validated at boot. The API starts even when the database is down; `GET /api/v1/health` (liveness) never touches the DB, `GET /api/v1/health/ready` (readiness) runs a bounded `SELECT 1` and answers 503 when it fails. Prisma `query` events and Prisma's own error lines are not logged (they can carry personal data).
+- **Migrations:** `apps/api/prisma/migrations/`, starting with an empty `…_baseline` migration that only establishes the history. `prisma migrate deploy` in CI/deployments, `prisma migrate dev` locally. CI job `integration · PostgreSQL` applies migrations to a Postgres 18.7 service container and runs `*.int.test.ts` against a throwaway database (incl. a schema-drift check).
 - Conventions (ADR-0006): UUIDv7 IDs, `timestamptz` UTC + user IANA timezone, occurrences keyed by local date + schedule version, money in integer minor units + currency, soft delete where restorable, `version` column for offline-editable entities, idempotency keys for retried writes, migrations only via `prisma migrate`.
 - **Habit engine (Phase 3)** is the riskiest domain logic: schedule versions with effective dates → occurrence generation (pure, deterministic function of schedule version + date range + timezone + pauses/vacations) → completions → streaks/consistency. Built as a pure library with exhaustive and property-based tests.
 - **Analytics (Phase 6):** metrics computed by deterministic SQL/TS; snapshots materialised by worker jobs; insights carry evidence, time range and confidence.
