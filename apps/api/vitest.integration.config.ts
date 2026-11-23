@@ -1,10 +1,11 @@
 import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
-// Integration tests against a real PostgreSQL (ADR-0007). Requires DATABASE_URL for a role that
-// may CREATE DATABASE (local docker-compose user, or the CI service container). The global setup
-// creates a throwaway database, applies migrations with `prisma migrate deploy`, and drops it
-// afterwards, so the database in DATABASE_URL itself is never modified.
+// Integration tests against a real PostgreSQL and Redis (ADR-0007). Requires DATABASE_URL for a
+// role that may CREATE DATABASE (local docker-compose user, or the CI service container) and
+// REDIS_URL. The global setup creates a throwaway database, applies migrations with
+// `prisma migrate deploy`, and drops it afterwards, so the database in DATABASE_URL itself is
+// never modified; Redis keys live under a per-run prefix that teardown deletes.
 export default defineConfig({
   plugins: [swc.vite({ module: { type: 'es6' } })],
   test: {
