@@ -18,8 +18,9 @@ export const envSchema = z.object({
         .filter(Boolean),
     )
     .pipe(z.array(z.url())),
-  // Required from Phase 1 when the database module is wired in.
-  DATABASE_URL: z.url().optional(),
+  // Required: the API cannot serve data without PostgreSQL (backlog P1-01). No default, so a
+  // missing value fails fast instead of silently pointing at some local database.
+  DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   REDIS_URL: z.url().optional(),
 });
 
