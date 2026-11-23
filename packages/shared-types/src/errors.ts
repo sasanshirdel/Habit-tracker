@@ -49,6 +49,14 @@ export interface ValidationIssue {
   message: string;
 }
 
+/** `details` of a `RATE_LIMITED` (429) error; the `Retry-After` header carries the same value. */
+export interface RateLimitErrorDetails {
+  /** Seconds until the request may be retried. */
+  retryAfterSeconds: number;
+  /** Name(s) of the exceeded policy class, comma-separated, e.g. `auth`. */
+  policy: string;
+}
+
 /** `details` of a `VALIDATION_FAILED` error. */
 export interface ValidationErrorDetails {
   issues: ValidationIssue[];
