@@ -40,9 +40,14 @@ describe('health endpoints (database and Redis unavailable)', () => {
   describe('GET /api/v1/health/ready (readiness)', () => {
     it('returns 503 and reports each dependency when they are down', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/health/ready').expect(503);
-      expect(res.body).toMatchObject({
-        status: 'error',
-        checks: { database: 'down', redis: 'down' },
+      // Standard error envelope (P1-05), with each dependency's status in details.
+      expect(res.body).toEqual({
+        error: {
+          code: 'NOT_READY',
+          message: 'Service not ready.',
+          details: { checks: { database: 'down', redis: 'down' } },
+          requestId: res.headers['x-request-id'],
+        },
       });
     });
 

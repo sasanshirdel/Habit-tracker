@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@habit/shared-types": "workspace:*",
+    "@habit/shared-validation": "workspace:*",
     "@nestjs/common": "12.6.0",
     "@nestjs/config": "12.1.1",
     "@nestjs/core": "12.6.0",

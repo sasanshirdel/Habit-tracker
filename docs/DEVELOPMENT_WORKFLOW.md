@@ -131,7 +131,7 @@ CI (`.github/workflows/ci.yml`) runs install (frozen lockfile), format, lint, ty
 - TypeScript strict, `noUncheckedIndexedAccess`; avoid `any`; prefer pure functions for domain logic.
 - ESM; API relative imports end in `.js`.
 - Pinned dependency versions; new dependencies need justification + ADR entry (version, date checked).
-- API: module boundaries (ADR-0006), DTO validation, error codes, no Prisma entities in responses.
+- API: module boundaries (ADR-0006), zod validation per parameter (`ZodValidationPipe`), errors via `ApiException` with an `ApiErrorCode`, cursor pagination for lists (ADR-0009), no Prisma entities in responses.
 - UI: design tokens only, logical CSS, dictionaries for all strings, accessible components.
 - Tests live next to code (`*.test.ts`) or in `apps/api/test/` for HTTP-level tests.
 - Comments explain _why_, not _what_.

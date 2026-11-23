@@ -9,10 +9,23 @@ export interface HealthResponse {
   timestamp: string;
 }
 
-/** `GET /api/v1/health/ready` — readiness (200 when every check is up, 503 otherwise). */
+export interface ReadinessChecks {
+  database: DependencyStatus;
+  redis: DependencyStatus;
+}
+
+/**
+ * `GET /api/v1/health/ready` — 200 body when every check is up. Otherwise 503 with the standard
+ * error envelope: `code` `NOT_READY` and `details` of type `ReadinessErrorDetails` (P1-05).
+ */
 export interface ReadinessResponse {
-  status: 'ok' | 'error';
-  checks: { database: DependencyStatus; redis: DependencyStatus };
+  status: 'ok';
+  checks: ReadinessChecks;
   /** ISO 8601 instant (UTC). */
   timestamp: string;
+}
+
+/** `details` of the 503 `NOT_READY` error. */
+export interface ReadinessErrorDetails {
+  checks: ReadinessChecks;
 }

@@ -16,3 +16,40 @@ export interface ApiErrorBody {
     requestId: string;
   };
 }
+
+/**
+ * Stable error codes the API emits (backlog P1-05). Clients switch on these and localise them;
+ * adding a code is backwards compatible, renaming or removing one is a breaking change.
+ */
+export type ApiErrorCode =
+  | 'BAD_REQUEST'
+  | 'VALIDATION_FAILED'
+  | 'INVALID_CURSOR'
+  | 'MALFORMED_REQUEST_BODY'
+  | 'UNAUTHENTICATED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'METHOD_NOT_ALLOWED'
+  | 'CONFLICT'
+  | 'PAYLOAD_TOO_LARGE'
+  | 'UNSUPPORTED_MEDIA_TYPE'
+  | 'RATE_LIMITED'
+  | 'INTERNAL_ERROR'
+  | 'NOT_READY'
+  | 'SERVICE_UNAVAILABLE'
+  | 'QUEUE_UNAVAILABLE';
+
+/** One field-level problem in a `VALIDATION_FAILED` error. Never contains the rejected value. */
+export interface ValidationIssue {
+  /** Where the problem is: `body`, `query` or `params`, then the dotted path, e.g. `body.name`. */
+  field: string;
+  /** Machine-readable reason (zod issue code), e.g. `too_small`, `invalid_type`, `unrecognized_keys`. */
+  code: string;
+  /** Developer-facing explanation (English); clients localise by `code`. */
+  message: string;
+}
+
+/** `details` of a `VALIDATION_FAILED` error. */
+export interface ValidationErrorDetails {
+  issues: ValidationIssue[];
+}

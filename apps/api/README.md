@@ -6,6 +6,7 @@ NestJS 12 (ESM) REST API — the modular monolith backend. Currently contains:
 - zod-validated environment configuration (`src/config/env.ts`) — the app fails fast on invalid config; `DATABASE_URL` and `REDIS_URL` are required (separate schema for the worker)
 - `DatabaseModule` / `PrismaService` (`src/database/`) — Prisma 7 with the `pg` driver adapter
 - Prisma schema (`prisma/schema.prisma`, `prisma.config.ts`) and migrations (`prisma/migrations/`, baseline only — **no product tables yet**)
+- API conventions (`src/common/`, P1-05, ADR-0009): `requestIdMiddleware` (`x-request-id` on every response, `currentRequestId()`), global `AllExceptionsFilter` (`{ error: { code, message, details?, requestId } }`, `ApiException`), `ZodValidationPipe` (400 `VALIDATION_FAILED` with field-level issues), cursor pagination helpers (`paginate`, `encodeCursor`/`decodeCursor`, `sortSchema`); JSON body limit 100 kB. `configureApp()` applies them in `createApp` and in tests.
 - `QueueModule` (`src/queue/`, P1-03) — shared ioredis connection, `QueueProducer.enqueue(definition, payload)` (validates the payload, fails fast with `QUEUE_UNAVAILABLE` when Redis is down, optional idempotent `jobId`), job definitions via `defineJob`, Redis readiness check. Example job: `system.noop`.
 - `WorkerModule` (`src/worker/`, P1-03) — consumers run by `apps/worker`: `JOB_HANDLERS`, payload re-validation (invalid/unknown jobs fail without retry), `WorkerHost` (one BullMQ worker per queue, graceful drain bounded by `WORKER_SHUTDOWN_TIMEOUT_MS`).
 

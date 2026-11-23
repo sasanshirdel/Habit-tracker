@@ -1,7 +1,13 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { z } from 'zod';
 import type { Locale } from '@habit/localization';
-import { localDateSchema, localeSchema, timeZoneSchema } from './index.js';
+import {
+  PAGE_LIMIT_DEFAULT,
+  localDateSchema,
+  localeSchema,
+  paginationQuerySchema,
+  timeZoneSchema,
+} from './index.js';
 
 describe('localeSchema', () => {
   it('accepts supported locales and infers the shared Locale type', () => {
@@ -66,5 +72,26 @@ describe('localDateSchema', () => {
     20261124,
   ])('rejects %j', (d) => {
     expect(localDateSchema.safeParse(d).success).toBe(false);
+  });
+});
+
+describe('paginationQuerySchema', () => {
+  it('defaults the limit and coerces query strings', () => {
+    expect(paginationQuerySchema.parse({})).toEqual({ limit: PAGE_LIMIT_DEFAULT });
+    expect(paginationQuerySchema.parse({ limit: '5', cursor: 'abc' })).toEqual({
+      limit: 5,
+      cursor: 'abc',
+    });
+  });
+
+  it.each([
+    { limit: '0' },
+    { limit: '101' },
+    { limit: '2.5' },
+    { limit: 'x' },
+    { cursor: '' },
+    { cursor: 'c'.repeat(513) },
+  ])('rejects %j', (query) => {
+    expect(paginationQuerySchema.safeParse(query).success).toBe(false);
   });
 });
