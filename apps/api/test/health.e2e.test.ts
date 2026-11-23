@@ -4,10 +4,10 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.factory.js';
 
-// No database runs for these tests: vitest.config.ts points DATABASE_URL at a closed port.
-// The "database up" path is covered by test/database.int.test.ts against real PostgreSQL.
+// No database or Redis runs for these tests: vitest.config.ts points DATABASE_URL and REDIS_URL at
+// closed ports. The "up" paths are covered by test/*.int.test.ts against real PostgreSQL + Redis.
 
-describe('health endpoints (database unavailable)', () => {
+describe('health endpoints (database and Redis unavailable)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -38,15 +38,25 @@ describe('health endpoints (database unavailable)', () => {
   });
 
   describe('GET /api/v1/health/ready (readiness)', () => {
-    it('returns 503 when the database is down', async () => {
+    it('returns 503 and reports each dependency when they are down', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/health/ready').expect(503);
-      expect(res.body).toMatchObject({ status: 'error', checks: { database: 'down' } });
+      expect(res.body).toMatchObject({
+        status: 'error',
+        checks: { database: 'down', redis: 'down' },
+      });
     });
 
     it('does not leak connection details or driver errors', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/health/ready');
       const body = JSON.stringify(res.body);
-      for (const fragment of ['unreachable', '127.0.0.1', 'ECONNREFUSED', 'postgresql', 'stack']) {
+      for (const fragment of [
+        'unreachable',
+        '127.0.0.1',
+        'ECONNREFUSED',
+        'postgresql',
+        'redis://',
+        'stack',
+      ]) {
         expect(body).not.toContain(fragment);
       }
     });

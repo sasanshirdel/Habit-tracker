@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { validateEnv } from './config/env.js';
 import { DatabaseModule } from './database/index.js';
 import { HealthModule } from './health/health.module.js';
+import { QueueModule } from './queue/queue.module.js';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { HealthModule } from './health/health.module.js';
       validate: validateEnv,
     }),
     DatabaseModule,
+    QueueModule,
     HealthModule,
   ],
 })

@@ -4,7 +4,10 @@ packages:
 
 # Supply-chain guard: only dependencies whose install scripts we have reviewed may run them.
 # @swc/core: native binary check; prisma/@prisma/engines: engine download/setup.
+# msgpackr-extract (via bullmq -> msgpackr): optional native speed-up; denied — msgpackr falls back
+# to its pure-JS implementation, so no third-party native build runs on install.
 allowBuilds:
   '@swc/core': true
   '@prisma/engines': true
   prisma: true
+  msgpackr-extract: false
