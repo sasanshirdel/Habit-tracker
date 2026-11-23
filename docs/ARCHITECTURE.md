@@ -84,7 +84,8 @@ Rules: a module owns its tables; cross-module calls only through exported servic
 - Error shape: `{ error: { code, message, details?, requestId } }`, rendered for every failure by the global `AllExceptionsFilter`; `code` is a stable `ApiErrorCode` localised by the client; no stack traces or framework/driver text in any environment.
 - Every response carries `x-request-id` (accepted from the caller when well-formed, else a UUID), also available in-process via `currentRequestId()`.
 - Lists: cursor (keyset) pagination `?limit=&cursor=` → `{ data, page: { nextCursor, hasMore, limit } }`; `?sort=-field,field` over whitelisted fields; explicit typed filter parameters (ADR-0009). Helpers in `apps/api/src/common/`.
-- Auth via secure session cookies (ADR-0005); CSRF protection on state-changing requests; rate limits per IP/user/route class.
+- Auth via secure session cookies (ADR-0005); CSRF protection on state-changing requests.
+- Security headers on every response, exact CORS allow-list, and rate limits per user-or-address and route class (`default` on every route; `@RateLimit('auth' | 'expensive')`; `@SkipRateLimit()` for probes only) with Redis counters → 429 `RATE_LIMITED` + `Retry-After` (ADR-0011, P1-08). The web app sets a per-request nonce CSP in `apps/web/proxy.ts`, so its pages render dynamically.
 
 ## 6. Frontend architecture
 

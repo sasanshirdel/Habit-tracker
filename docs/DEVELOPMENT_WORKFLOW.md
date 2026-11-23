@@ -34,6 +34,9 @@ their env at boot (`apps/api/src/config/env.ts`) and exit on invalid config with
 | `NODE_ENV`                                                              | api, worker         | no (`development`)               | `development` / `test` / `production`            |
 | `API_PORT`                                                              | api                 | no (`4000`)                      | HTTP port                                        |
 | `CORS_ORIGINS`                                                          | api                 | no (`http://localhost:3000`)     | Comma-separated allowed browser origins          |
+| `RATE_LIMIT_ENABLED`                                                    | api                 | no (`true`)                      | `false` only for local load tests (P1-08)        |
+| `RATE_LIMIT_PREFIX`                                                     | api                 | no (`habit:rl`)                  | Namespace of rate-limit counter keys in Redis    |
+| `TRUST_PROXY`                                                           | api                 | no (`0`, 0–5)                    | Trusted reverse-proxy hops for the client IP     |
 | `DATABASE_URL`                                                          | api, worker, prisma | **yes** (refuses to boot)        | PostgreSQL URL (`postgres://` / `postgresql://`) |
 | `REDIS_URL`                                                             | api, worker         | **yes** (refuses to boot, P1-03) | Redis URL (`redis://`, or `rediss://` for TLS)   |
 | `QUEUE_PREFIX`                                                          | api, worker         | no (`habit:q`)                   | Namespace of all BullMQ keys                     |
