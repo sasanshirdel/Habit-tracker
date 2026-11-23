@@ -14,7 +14,9 @@ cp .env.example .env
 pnpm install
 pnpm dev:services                    # postgres + redis on 127.0.0.1
 pnpm --filter @habit/api db:migrate:deploy   # apply migrations to the local database
+pnpm build:deps                      # build packages/* and the API library the worker imports
 pnpm --filter @habit/api dev         # :4000  GET /api/v1/health, /api/v1/health/ready
+pnpm --filter @habit/worker dev      # BullMQ consumers (rebuild the API with `pnpm --filter @habit/api build` after API changes)
 pnpm --filter @habit/web dev         # :3000  /en  /fa
 ```
 
@@ -24,19 +26,22 @@ with `ERR_PNPM_IGNORED_BUILDS`, review the package's script before adding it to 
 
 ## 2. Environment variables
 
-Documented in [`.env.example`](../.env.example) (placeholders only). The API validates its env at boot
-(`apps/api/src/config/env.ts`) and exits on invalid config without printing values.
+Documented in [`.env.example`](../.env.example) (placeholders only). The API and the worker validate
+their env at boot (`apps/api/src/config/env.ts`) and exit on invalid config without printing values.
 
-| Variable                                                                | Used by        | Required                      | Description                                      |
-| ----------------------------------------------------------------------- | -------------- | ----------------------------- | ------------------------------------------------ |
-| `NODE_ENV`                                                              | api            | no (`development`)            | `development` / `test` / `production`            |
-| `API_PORT`                                                              | api            | no (`4000`)                   | HTTP port                                        |
-| `CORS_ORIGINS`                                                          | api            | no (`http://localhost:3000`)  | Comma-separated allowed browser origins          |
-| `DATABASE_URL`                                                          | api, prisma    | **yes** (API refuses to boot) | PostgreSQL URL (`postgres://` / `postgresql://`) |
-| `REDIS_URL`                                                             | api, worker    | Phase 1+                      | Redis connection string                          |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT` | docker-compose | for `dev:services`            | Local dev database only                          |
-| `REDIS_PORT`                                                            | docker-compose | no (`6379`)                   | Local Redis port                                 |
-| `NEXT_PUBLIC_API_BASE_URL`                                              | web            | Phase 1+                      | Public API base URL (never a secret)             |
+| Variable                                                                | Used by             | Required                         | Description                                      |
+| ----------------------------------------------------------------------- | ------------------- | -------------------------------- | ------------------------------------------------ |
+| `NODE_ENV`                                                              | api, worker         | no (`development`)               | `development` / `test` / `production`            |
+| `API_PORT`                                                              | api                 | no (`4000`)                      | HTTP port                                        |
+| `CORS_ORIGINS`                                                          | api                 | no (`http://localhost:3000`)     | Comma-separated allowed browser origins          |
+| `DATABASE_URL`                                                          | api, worker, prisma | **yes** (refuses to boot)        | PostgreSQL URL (`postgres://` / `postgresql://`) |
+| `REDIS_URL`                                                             | api, worker         | **yes** (refuses to boot, P1-03) | Redis URL (`redis://`, or `rediss://` for TLS)   |
+| `QUEUE_PREFIX`                                                          | api, worker         | no (`habit:q`)                   | Namespace of all BullMQ keys                     |
+| `WORKER_CONCURRENCY`                                                    | worker              | no (`5`, 1–50)                   | Parallel jobs per queue per worker process       |
+| `WORKER_SHUTDOWN_TIMEOUT_MS`                                            | worker              | no (`25000`, 1000–600000)        | Graceful-shutdown wait for in-flight jobs        |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT` | docker-compose      | for `dev:services`               | Local dev database only                          |
+| `REDIS_PORT`                                                            | docker-compose      | no (`6379`)                      | Local Redis port                                 |
+| `NEXT_PUBLIC_API_BASE_URL`                                              | web                 | Phase 1+                         | Public API base URL (never a secret)             |
 
 Every new variable must be added to `.env.example`, this table, and the env schema in the same PR.
 
@@ -64,7 +69,8 @@ Small, logical commits; no secrets; no generated artefacts (`dist`, `.next`).
 | Command                                    | What it does                                                                                        |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
 | `pnpm format:check`                        | Prettier (PRD file excluded — kept verbatim)                                                        |
-| `pnpm build:packages`                      | Build `packages/*` in dependency order (run by `typecheck`/`test` automatically)                    |
+| `pnpm build:packages`                      | Build `packages/*` in dependency order                                                              |
+| `pnpm build:deps`                          | `build:packages` + build the API library imported by `apps/worker` (run by `typecheck`/`test`)      |
 | `pnpm lint`                                | ESLint 10 flat config (`@habit/config/eslint`, Next plugin for web)                                 |
 | `pnpm typecheck`                           | `tsc --noEmit` per package (web runs `next typegen` first)                                          |
 | `pnpm test`                                | Vitest per package                                                                                  |
@@ -74,11 +80,12 @@ Small, logical commits; no secrets; no generated artefacts (`dist`, `.next`).
 | `pnpm test:integration`                    | Integration tests against real PostgreSQL + Redis (needs `DATABASE_URL` and `REDIS_URL`, see below) |
 
 Shared packages are consumed through their built `dist/`; after a fresh clone or when editing
-a package, run `pnpm build:packages` (or any root `typecheck`/`test`) before starting an app in
-dev mode.
+a package, run `pnpm build:deps` (or any root `typecheck`/`test`) before starting an app in
+dev mode. The same holds for `apps/worker`, which imports the API through `@habit/api/worker` and
+`@habit/api/queue` (the API's `dist/`, ADR-0002 addendum).
 
-`pnpm test` never needs a database (the API's unit/HTTP tests point `DATABASE_URL` at a closed port
-and exercise readiness in its "down" state). The API's `build`/`typecheck`/`test`/`dev` scripts run
+`pnpm test` never needs a database or Redis (the API's unit/HTTP tests point `DATABASE_URL` and
+`REDIS_URL` at closed ports and exercise readiness and enqueueing in their "down" state). The API's `build`/`typecheck`/`test`/`dev` scripts run
 `prisma generate` first; the generated client (`apps/api/src/generated/`) is git-ignored.
 
 ### Database & migrations
@@ -100,8 +107,13 @@ Integration tests (`apps/api/test/**/*.int.test.ts`) create a throwaway database
 under a per-run prefix `habit:it:<run>:` that global teardown deletes (SCAN + DEL — never
 `FLUSHDB`), so a shared dev Redis is safe. Redis must use `maxmemory-policy noeviction` (BullMQ
 requirement; docker-compose sets it, and it is the Redis default) — a test asserts this. Setup fails
-fast with a clear message if either variable is missing or Redis is unreachable. With docker-compose
-running:
+fast with a clear message if either variable is missing or Redis is unreachable. Queue keys created
+by the apps the tests boot use `QUEUE_PREFIX=habit:it:<run>:q`, so they are removed with the rest.
+
+The worker's integration test (`apps/worker/test/*.int.test.ts`) builds the worker and runs
+`dist/main.js` as a real process: a producer enqueues `system.noop`, the worker completes it, and a
+SIGTERM during a slow job must let it finish and exit 0. It uses its own `habit:it:w<run>:` prefix
+and deletes it afterwards. With docker-compose running:
 
 ```bash
 # uses DATABASE_URL / REDIS_URL from the environment (CI) or export them from .env
