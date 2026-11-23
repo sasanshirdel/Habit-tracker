@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { logEnvSchema } from '../common/logging/log-settings.js';
+import { SAFE_MESSAGE } from '../common/logging/redact.js';
 
 /**
  * Environment schemas. Each process refuses to start when its configuration is invalid
@@ -9,7 +11,7 @@ import { z } from 'zod';
  * - `envSchema`: the HTTP API (`apps/api`).
  * - `workerEnvSchema`: the background worker (`apps/worker`, backlog P1-03).
  */
-export const baseEnvSchema = z.object({
+export const baseEnvSchema = logEnvSchema.extend({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   // Required: the API cannot serve data without PostgreSQL (backlog P1-01). No default, so a
   // missing value fails fast instead of silently pointing at some local database.
@@ -53,13 +55,22 @@ export type BaseEnv = z.infer<typeof baseEnvSchema>;
 export type Env = z.infer<typeof envSchema>;
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 
+/**
+ * Startup configuration error. Its message lists variable names and problems only (never values),
+ * so it is marked safe for logs (`SAFE_MESSAGE`) and stays readable in production logs.
+ */
+export class EnvValidationError extends Error {
+  override readonly name = 'EnvValidationError';
+  readonly [SAFE_MESSAGE] = true;
+}
+
 function validateWith<S extends z.ZodType>(schema: S, raw: Record<string, unknown>): z.infer<S> {
   const result = schema.safeParse(raw);
   if (!result.success) {
     const problems = result.error.issues
       .map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)
       .join('\n');
-    throw new Error(`Invalid environment configuration:\n${problems}`);
+    throw new EnvValidationError(`Invalid environment configuration:\n${problems}`);
   }
   return result.data;
 }

@@ -13,9 +13,12 @@ export {
   type SortDirection,
   type SortField,
 } from './pagination/pagination.js';
+export * from './logging/index.js';
 export {
   REQUEST_ID_HEADER,
+  currentRequestContext,
   currentRequestId,
+  setRequestUserId,
   resolveRequestId,
   runWithRequestContext,
   type RequestContext,
