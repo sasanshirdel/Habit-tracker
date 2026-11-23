@@ -1,7 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import type { DependencyStatus } from '@habit/shared-types';
 import { PrismaService, errorCode } from './prisma.service.js';
 
-export type DependencyStatus = 'up' | 'down';
+export type { DependencyStatus };
 
 /** How long a readiness probe waits for the database before reporting it down. */
 export const DB_PING_TIMEOUT_MS = 2_000;

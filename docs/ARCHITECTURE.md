@@ -34,16 +34,18 @@ Decisions referenced as ADR-NNNN live in [`decisions/`](decisions/).
 
 ## 2. Repository structure (current + planned)
 
-| Path                                                         | Phase | Purpose                                          |
-| ------------------------------------------------------------ | ----- | ------------------------------------------------ |
-| `apps/web`                                                   | 0     | Next.js App Router; `app/[locale]/…`, `lib/i18n` |
-| `apps/api`                                                   | 0     | NestJS; `src/modules/*`, `src/config`, `prisma/` |
-| `apps/worker`                                                | 1     | BullMQ consumers (shares API modules/services)   |
-| `apps/admin`                                                 | 10    | Admin frontend on a separate origin              |
-| `packages/config`                                            | 0     | tsconfig presets, ESLint config                  |
-| `packages/ui`                                                | 0→1   | Design tokens → shadcn/ui-based primitives       |
-| `packages/shared-types`, `shared-validation`, `localization` | 1     | API contracts, zod schemas, shared messages      |
-| `infrastructure/`                                            | 12    | Deployment, Docker images, scripts               |
+| Path                         | Phase | Purpose                                          |
+| ---------------------------- | ----- | ------------------------------------------------ |
+| `apps/web`                   | 0     | Next.js App Router; `app/[locale]/…`, `lib/i18n` |
+| `apps/api`                   | 0     | NestJS; `src/modules/*`, `src/config`, `prisma/` |
+| `apps/worker`                | 1     | BullMQ consumers (shares API modules/services)   |
+| `apps/admin`                 | 10    | Admin frontend on a separate origin              |
+| `packages/config`            | 0     | tsconfig presets, ESLint config                  |
+| `packages/ui`                | 0→1   | Design tokens → shadcn/ui-based primitives       |
+| `packages/shared-types`      | 1     | API contract types (responses, error envelope)   |
+| `packages/shared-validation` | 1     | zod 4 input schemas (locale, time zone, date)    |
+| `packages/localization`      | 1     | Locale metadata: locales, direction, Intl tags   |
+| `infrastructure/`            | 12    | Deployment, Docker images, scripts               |
 
 ## 3. Backend modules (PRD §5.4)
 

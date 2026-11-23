@@ -1,17 +1,9 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
-import { DatabaseHealthIndicator, type DependencyStatus } from '../database/index.js';
+import type { HealthResponse, ReadinessResponse } from '@habit/shared-types';
+import { DatabaseHealthIndicator } from '../database/index.js';
 
-export interface HealthResponse {
-  status: 'ok';
-  uptimeSeconds: number;
-  timestamp: string;
-}
-
-export interface ReadinessResponse {
-  status: 'ok' | 'error';
-  checks: { database: DependencyStatus };
-  timestamp: string;
-}
+// Response contracts live in @habit/shared-types so web and api share one definition (P1-04).
+export type { HealthResponse, ReadinessResponse };
 
 /**
  * Health probes. Must never expose secrets, connection details, versions of internal

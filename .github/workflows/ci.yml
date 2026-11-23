@@ -40,6 +40,12 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # Shared packages (packages/*) are consumed through their built dist/ (types + JS), so they
+      # are built — in dependency order — before anything that imports them (P1-04). The root
+      # typecheck/test scripts also do this, so local runs behave the same.
+      - name: Build shared packages
+        run: pnpm build:packages
+
       - name: Typecheck
         run: pnpm typecheck
 
@@ -104,6 +110,9 @@ jobs:
 
       - name: Install
         run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: pnpm build:packages
 
       - name: Apply migrations (prisma migrate deploy)
         working-directory: apps/api

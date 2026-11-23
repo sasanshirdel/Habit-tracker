@@ -38,6 +38,9 @@ apps/
 packages/
   config/         shared tsconfig presets + ESLint flat config
   ui/             design tokens (TS + CSS variables); shared UI from Phase 1
+  shared-types/   API contract types shared by web and api
+  shared-validation/  zod 4 input schemas shared by web and api
+  localization/   locale metadata (locales, RTL/LTR direction, Intl tags)
 docs/             PRD, architecture, roadmap, security, workflow, ADRs, backlog
 .github/          CI workflow, PR + issue templates, Copilot pointer
 docker-compose.yml  Postgres + Redis for local development only

@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { isLocale } from '@/lib/i18n/config';
+import { parseLocale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
-  if (!isLocale(locale)) notFound();
+  const locale = parseLocale((await params).locale);
+  if (!locale) notFound();
   const t = getDictionary(locale);
   const other = locale === 'fa' ? 'en' : 'fa';
 
