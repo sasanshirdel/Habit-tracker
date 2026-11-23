@@ -13,7 +13,8 @@ git clone git@github.com:sasanshirdel/Habit-tracker.git && cd Habit-tracker
 cp .env.example .env
 pnpm install
 pnpm dev:services                    # postgres + redis on 127.0.0.1
-pnpm --filter @habit/api dev         # :4000  GET /api/v1/health
+pnpm --filter @habit/api db:migrate:deploy   # apply migrations to the local database
+pnpm --filter @habit/api dev         # :4000  GET /api/v1/health, /api/v1/health/ready
 pnpm --filter @habit/web dev         # :3000  /en  /fa
 ```
 
@@ -26,16 +27,16 @@ with `ERR_PNPM_IGNORED_BUILDS`, review the package's script before adding it to 
 Documented in [`.env.example`](../.env.example) (placeholders only). The API validates its env at boot
 (`apps/api/src/config/env.ts`) and exits on invalid config without printing values.
 
-| Variable                                                                | Used by        | Required                     | Description                             |
-| ----------------------------------------------------------------------- | -------------- | ---------------------------- | --------------------------------------- |
-| `NODE_ENV`                                                              | api            | no (`development`)           | `development` / `test` / `production`   |
-| `API_PORT`                                                              | api            | no (`4000`)                  | HTTP port                               |
-| `CORS_ORIGINS`                                                          | api            | no (`http://localhost:3000`) | Comma-separated allowed browser origins |
-| `DATABASE_URL`                                                          | api, prisma    | Phase 1+                     | PostgreSQL connection string            |
-| `REDIS_URL`                                                             | api, worker    | Phase 1+                     | Redis connection string                 |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT` | docker-compose | for `dev:services`           | Local dev database only                 |
-| `REDIS_PORT`                                                            | docker-compose | no (`6379`)                  | Local Redis port                        |
-| `NEXT_PUBLIC_API_BASE_URL`                                              | web            | Phase 1+                     | Public API base URL (never a secret)    |
+| Variable                                                                | Used by        | Required                      | Description                                      |
+| ----------------------------------------------------------------------- | -------------- | ----------------------------- | ------------------------------------------------ |
+| `NODE_ENV`                                                              | api            | no (`development`)            | `development` / `test` / `production`            |
+| `API_PORT`                                                              | api            | no (`4000`)                   | HTTP port                                        |
+| `CORS_ORIGINS`                                                          | api            | no (`http://localhost:3000`)  | Comma-separated allowed browser origins          |
+| `DATABASE_URL`                                                          | api, prisma    | **yes** (API refuses to boot) | PostgreSQL URL (`postgres://` / `postgresql://`) |
+| `REDIS_URL`                                                             | api, worker    | Phase 1+                      | Redis connection string                          |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT` | docker-compose | for `dev:services`            | Local dev database only                          |
+| `REDIS_PORT`                                                            | docker-compose | no (`6379`)                   | Local Redis port                                 |
+| `NEXT_PUBLIC_API_BASE_URL`                                              | web            | Phase 1+                      | Public API base URL (never a secret)             |
 
 Every new variable must be added to `.env.example`, this table, and the env schema in the same PR.
 
@@ -60,17 +61,46 @@ Small, logical commits; no secrets; no generated artefacts (`dist`, `.next`).
 
 ## 6. Checks
 
-| Command                                    | What it does                                                            |
-| ------------------------------------------ | ----------------------------------------------------------------------- |
-| `pnpm format:check`                        | Prettier (PRD file excluded — kept verbatim)                            |
-| `pnpm lint`                                | ESLint 10 flat config (`@habit/config/eslint`, Next plugin for web)     |
-| `pnpm typecheck`                           | `tsc --noEmit` per package (web runs `next typegen` first)              |
-| `pnpm test`                                | Vitest per package                                                      |
-| `pnpm build`                               | `tsc` (api, ui), `next build` (web)                                     |
-| `pnpm check`                               | all of the above                                                        |
-| `pnpm --filter @habit/api prisma:validate` | Prisma schema validation (needs `DATABASE_URL` set; no connection made) |
+| Command                                    | What it does                                                                |
+| ------------------------------------------ | --------------------------------------------------------------------------- |
+| `pnpm format:check`                        | Prettier (PRD file excluded — kept verbatim)                                |
+| `pnpm lint`                                | ESLint 10 flat config (`@habit/config/eslint`, Next plugin for web)         |
+| `pnpm typecheck`                           | `tsc --noEmit` per package (web runs `next typegen` first)                  |
+| `pnpm test`                                | Vitest per package                                                          |
+| `pnpm build`                               | `tsc` (api, ui), `next build` (web)                                         |
+| `pnpm check`                               | all of the above                                                            |
+| `pnpm --filter @habit/api prisma:validate` | Prisma schema validation (needs `DATABASE_URL` set; no connection made)     |
+| `pnpm test:integration`                    | Integration tests against real PostgreSQL (needs `DATABASE_URL`, see below) |
 
-CI (`.github/workflows/ci.yml`) runs install (frozen lockfile), format, lint, typecheck, Prisma validate, test and build on every PR and every push to `main`.
+`pnpm test` never needs a database (the API's unit/HTTP tests point `DATABASE_URL` at a closed port
+and exercise readiness in its "down" state). The API's `build`/`typecheck`/`test`/`dev` scripts run
+`prisma generate` first; the generated client (`apps/api/src/generated/`) is git-ignored.
+
+### Database & migrations
+
+| Command (in `apps/api`, or `pnpm --filter @habit/api …`) | What it does                                                |
+| -------------------------------------------------------- | ----------------------------------------------------------- |
+| `pnpm db:migrate:dev --name <change>`                    | Create + apply a migration from schema changes (local only) |
+| `pnpm db:migrate:deploy`                                 | Apply pending migrations (CI, staging, production)          |
+| `pnpm db:migrate:status`                                 | Show applied/pending migrations                             |
+
+Prisma CLI commands and the API load the repository-root `.env` when `DATABASE_URL` is not already
+set in the environment. `migrate dev` needs a role that may create databases (shadow database); the
+docker-compose user can. Never run `migrate dev`/`migrate reset` against shared or production
+databases; destructive migrations need explicit owner approval (PRD §13.5).
+
+Integration tests (`apps/api/test/**/*.int.test.ts`) create a throwaway database next to the one in
+`DATABASE_URL`, apply migrations with `prisma migrate deploy`, run, and drop it — the database in
+`DATABASE_URL` itself is not modified. With docker-compose running:
+
+```bash
+pnpm test:integration   # uses DATABASE_URL from the environment (CI) or export it from .env
+```
+
+Without Docker, any local PostgreSQL 18 works (e.g. PGDG packages); create a role with
+`LOGIN CREATEDB` and point `DATABASE_URL` at it.
+
+CI (`.github/workflows/ci.yml`) runs install (frozen lockfile), format, lint, typecheck, Prisma validate, test and build on every PR and every push to `main` (job `verify`), and the PostgreSQL integration job (`integration-db`: Postgres 18.7 service container, `migrate deploy`, `migrate status`, `pnpm test:integration`).
 
 ## 7. Coding standards
 

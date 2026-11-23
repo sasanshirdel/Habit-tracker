@@ -75,6 +75,8 @@ no admin UI can edit or delete entries. Retention defined before launch.
 - Logs redact passwords, tokens, cookies, authorization headers, payment data and journal content.
 - Env validation fails fast and never echoes values (tested in `apps/api/src/config/env.test.ts`).
 - Agents and CI use sandbox credentials only; no production credentials in development.
+- **Database credentials** come only from `DATABASE_URL` (validated, never logged or returned; readiness responses carry no connection details or driver errors — tested). Prisma query/parameter logging is disabled.
+- **Database roles (least privilege):** the docker-compose and CI users are local/ephemeral superusers for convenience only. Staging/production must use two roles: a _migration_ role that owns the schema and runs `prisma migrate deploy`, and a _runtime_ role for the API/worker with only `CONNECT` + `USAGE` on the schema and `SELECT/INSERT/UPDATE/DELETE` on tables (no DDL, no `CREATE DATABASE`, not superuser). Append-only tables (audit logs, Phase 10) additionally revoke `UPDATE/DELETE` from the runtime role. To be implemented with deployment (P12-06).
 
 ## 8. Application security controls
 
@@ -83,7 +85,7 @@ no admin UI can edit or delete entries. Retention defined before launch.
 | Input validation at API edge (DTO schemas)                                       | Phase 1 (env validation done in Phase 0)                   |
 | Output encoding / XSS (React escaping, CSP)                                      | Phase 1 (CSP + security headers via helmet / Next headers) |
 | `X-Powered-By` removed                                                           | **Done (Phase 0)** — tested                                |
-| SQL injection (Prisma parameterisation; raw SQL reviewed)                        | Phase 1+                                                   |
+| SQL injection (Prisma parameterisation; raw SQL reviewed)                        | Phase 1+ (only raw SQL so far: readiness `SELECT 1`)       |
 | Rate limiting & brute-force protection (Redis-backed)                            | Phase 1–2                                                  |
 | CORS allow-list from env                                                         | **Done (Phase 0)**                                         |
 | Secure file uploads (type/size checks, private S3, signed URLs)                  | Phase 2 (avatar)                                           |
