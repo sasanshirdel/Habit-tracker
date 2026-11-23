@@ -1,26 +1,24 @@
 /**
- * Locale configuration (Phase 0 stub). Persian is a first-class locale, not a
- * translation layer: direction, fonts and formatting all derive from here.
- * Phase 1 replaces the dictionary loader with next-intl (see ADR-0004).
+ * Web-side locale configuration. Locale metadata (supported locales, direction, Intl tags) is
+ * shared with the API through `@habit/localization`; route params are validated with the
+ * shared `localeSchema` (`@habit/shared-validation`) so web and api accept exactly the same
+ * values. Phase 1 replaces the dictionary loader with next-intl (P1-10, ADR-0004).
  */
-export const locales = ['en', 'fa'] as const;
-export type Locale = (typeof locales)[number];
+import { type Locale } from '@habit/localization';
+import { localeSchema } from '@habit/shared-validation';
 
-export const defaultLocale: Locale = 'en';
+export {
+  defaultLocale,
+  getDirection,
+  getIntlLocale,
+  isLocale,
+  locales,
+  type Direction,
+  type Locale,
+} from '@habit/localization';
 
-export type Direction = 'ltr' | 'rtl';
-
-const directions: Record<Locale, Direction> = { en: 'ltr', fa: 'rtl' };
-
-export function isLocale(value: string): value is Locale {
-  return (locales as readonly string[]).includes(value);
-}
-
-export function getDirection(locale: Locale): Direction {
-  return directions[locale];
-}
-
-/** BCP 47 tag used for Intl formatting. fa-IR uses Persian digits and the Persian calendar where requested. */
-export function getIntlLocale(locale: Locale): string {
-  return locale === 'fa' ? 'fa-IR' : 'en-US';
+/** Validates a `[locale]` route segment; `null` means "not a supported locale" (→ 404). */
+export function parseLocale(segment: string): Locale | null {
+  const result = localeSchema.safeParse(segment);
+  return result.success ? result.data : null;
 }
