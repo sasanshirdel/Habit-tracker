@@ -39,6 +39,7 @@ Redis/BullMQ for background work, pnpm monorepo.
 ```bash
 pnpm install --frozen-lockfile
 pnpm format:check   # prettier
+pnpm build:packages # build packages/* (dist) in dependency order; typecheck/test run it first
 pnpm lint           # eslint, all packages
 pnpm typecheck      # tsc --noEmit, all packages
 pnpm test           # vitest, all packages

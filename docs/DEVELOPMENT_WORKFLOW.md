@@ -64,6 +64,7 @@ Small, logical commits; no secrets; no generated artefacts (`dist`, `.next`).
 | Command                                    | What it does                                                                                        |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
 | `pnpm format:check`                        | Prettier (PRD file excluded — kept verbatim)                                                        |
+| `pnpm build:packages`                      | Build `packages/*` in dependency order (run by `typecheck`/`test` automatically)                    |
 | `pnpm lint`                                | ESLint 10 flat config (`@habit/config/eslint`, Next plugin for web)                                 |
 | `pnpm typecheck`                           | `tsc --noEmit` per package (web runs `next typegen` first)                                          |
 | `pnpm test`                                | Vitest per package                                                                                  |
@@ -71,6 +72,10 @@ Small, logical commits; no secrets; no generated artefacts (`dist`, `.next`).
 | `pnpm check`                               | all of the above                                                                                    |
 | `pnpm --filter @habit/api prisma:validate` | Prisma schema validation (needs `DATABASE_URL` set; no connection made)                             |
 | `pnpm test:integration`                    | Integration tests against real PostgreSQL + Redis (needs `DATABASE_URL` and `REDIS_URL`, see below) |
+
+Shared packages are consumed through their built `dist/`; after a fresh clone or when editing
+a package, run `pnpm build:packages` (or any root `typecheck`/`test`) before starting an app in
+dev mode.
 
 `pnpm test` never needs a database (the API's unit/HTTP tests point `DATABASE_URL` at a closed port
 and exercise readiness in its "down" state). The API's `build`/`typecheck`/`test`/`dev` scripts run
