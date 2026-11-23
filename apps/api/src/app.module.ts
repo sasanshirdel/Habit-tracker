@@ -4,6 +4,7 @@ import { validateEnv } from './config/env.js';
 import { DatabaseModule } from './database/index.js';
 import { HealthModule } from './health/health.module.js';
 import { QueueModule } from './queue/queue.module.js';
+import { RateLimitModule } from './rate-limit/rate-limit.module.js';
 
 @Module({
   imports: [
@@ -17,6 +18,9 @@ import { QueueModule } from './queue/queue.module.js';
     }),
     DatabaseModule,
     QueueModule,
+    // Registers the global rate-limit guard. Keep it before modules that add authentication
+    // guards (P2-03): global guards run in registration order, and the limiter must run first.
+    RateLimitModule,
     HealthModule,
   ],
 })
