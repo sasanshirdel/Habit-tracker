@@ -1,0 +1,1521 @@
+[
+  {
+    "id": "P0-01",
+    "title": "Phase 0: repository foundation (monorepo, docs, ADRs, CI)",
+    "labels": [
+      "phase:0",
+      "area:infra",
+      "type:chore"
+    ],
+    "dependencies": [],
+    "body": "**Backlog ID:** `P0-01` · **Phase:** 0\n\n## Description\nEstablish the monorepo scaffold, documentation set, ADRs, baseline CI and the full backlog (PRD §11 Phase 0, §21).\n\n## Scope\n- pnpm workspace: apps/web, apps/api, packages/config, packages/ui\n- Docs: README, AGENTS, PRD, ARCHITECTURE, ROADMAP, SECURITY, DEVELOPMENT_WORKFLOW, DEFINITION_OF_DONE, ADRs 0001–0008\n- docker-compose (Postgres, Redis), .env.example\n- CI workflow, PR + issue templates\n- Out: any product feature\n\n## Dependencies\n- None\n\n## Acceptance criteria\n- [ ] `pnpm install && pnpm check` passes\n- [ ] CI `verify` passes on the PR\n- [ ] No secrets committed\n- [ ] Docker dev services start (verify on a machine with Docker)\n\n## Testing requirements\n- Trivial-but-real tests per package (env validation, health e2e, i18n, tokens)\n\n## Security considerations\n- No default credentials; .env.example placeholders only; pnpm allowBuilds allow-list\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P0-02",
+    "title": "Configure GitHub repository settings: branch protection, labels, visibility",
+    "labels": [
+      "phase:0",
+      "area:infra",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P0-01"
+    ],
+    "body": "**Backlog ID:** `P0-02` · **Phase:** 0\n\n## Description\nApply ADR-0008 on GitHub: protect `main`, require the `CI / verify` check and owner review, create the label set used by the backlog, confirm private visibility (PRD §13.2).\n\n## Scope\n- Branch protection / ruleset on main (PR required, CI required, 1 approval, no force-push, linear history)\n- Labels: phase:0–12, area:*, type:*, priority:*\n- Enable private vulnerability reporting, Dependabot alerts, secret scanning (if plan allows)\n\n## Dependencies\n- `P0-01` — Phase 0: repository foundation (monorepo, docs, ADRs, CI)\n\n## Acceptance criteria\n- [ ] Direct pushes to main are rejected\n- [ ] A PR cannot merge with failing CI\n- [ ] All backlog labels exist\n\n## Testing requirements\n- Open a test PR and confirm required checks block merge\n\n## Security considerations\n- Least-privilege tokens for any automation; agents never get admin on the repo\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P0-03",
+    "title": "Verify Docker dev environment on a Docker-capable machine",
+    "labels": [
+      "phase:0",
+      "area:infra",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P0-01"
+    ],
+    "body": "**Backlog ID:** `P0-03` · **Phase:** 0\n\n## Description\nThe Phase 0 sandbox had no Docker. Verify `docker compose up` brings up Postgres 18.7 and Redis 8.8.4 healthy with the documented .env.\n\n## Scope\n- Run `cp .env.example .env && pnpm dev:services`\n- Confirm healthchecks, loopback-only ports, persistent volumes\n- Fix compose issues if any\n\n## Dependencies\n- `P0-01` — Phase 0: repository foundation (monorepo, docs, ADRs, CI)\n\n## Acceptance criteria\n- [ ] Both services report healthy\n- [ ] `psql` and `redis-cli ping` succeed from host\n- [ ] README instructions confirmed accurate\n\n## Testing requirements\n- Manual verification recorded in the issue\n\n## Security considerations\n- Ports bound to 127.0.0.1 only; dev credentials never reused elsewhere\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-01",
+    "title": "Database foundation: Prisma client, first migration, DB health check",
+    "labels": [
+      "phase:1",
+      "area:db",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P0-03"
+    ],
+    "body": "**Backlog ID:** `P1-01` · **Phase:** 1\n\n## Description\nWire Prisma 7 (`@prisma/client` + `@prisma/adapter-pg`) into the API as a PrismaModule, create the initial migration and readiness check.\n\n## Scope\n- PrismaService with lifecycle hooks\n- DATABASE_URL required by env schema\n- Initial migration (extensions, e.g. citext if needed; no product tables yet unless needed)\n- `/api/v1/health/ready` checks DB\n- Re-verify Prisma version/maintenance before install (ADR-0001)\n\n## Dependencies\n- `P0-03` — Verify Docker dev environment on a Docker-capable machine\n\n## Acceptance criteria\n- [ ] `prisma migrate dev` and `migrate deploy` work against docker Postgres\n- [ ] Readiness returns 503 when DB is down\n- [ ] ADR-0001 updated with installed versions\n\n## Testing requirements\n- Integration test against real Postgres (CI service container)\n- Unit test for readiness logic\n\n## Security considerations\n- DB credentials only from env; app DB role least-privilege; no query logging of parameters with PII\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-02",
+    "title": "CI: Postgres + Redis service containers for integration tests",
+    "labels": [
+      "phase:1",
+      "area:infra",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P1-01"
+    ],
+    "body": "**Backlog ID:** `P1-02` · **Phase:** 1\n\n## Description\nExtend CI with service containers and a separate integration test job so DB/queue tests run on every PR.\n\n## Scope\n- Postgres 18 and Redis 8 services in GitHub Actions\n- `pnpm test:integration` script convention\n- Migrations applied before tests\n\n## Dependencies\n- `P1-01` — Database foundation: Prisma client, first migration, DB health check\n\n## Acceptance criteria\n- [ ] Integration job runs and passes on PRs\n- [ ] Unit job remains fast and independent\n\n## Testing requirements\n- Sample integration test hitting the DB\n\n## Security considerations\n- Only ephemeral CI credentials; no repository secrets needed\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-03",
+    "title": "Redis, BullMQ and the worker application",
+    "labels": [
+      "phase:1",
+      "area:infra",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-01"
+    ],
+    "body": "**Backlog ID:** `P1-03` · **Phase:** 1\n\n## Description\nAdd Redis connectivity, BullMQ queue infrastructure and an `apps/worker` process sharing API modules (ADR-0002/0006).\n\n## Scope\n- QueueModule (producers) in API\n- apps/worker bootstraps Nest application context and consumers\n- Example no-op job with retries/backoff\n- Redis readiness check\n- Re-verify bullmq/ioredis versions\n\n## Dependencies\n- `P1-01` — Database foundation: Prisma client, first migration, DB health check\n\n## Acceptance criteria\n- [ ] Job enqueued by API is processed by worker locally and in CI\n- [ ] Failed jobs retry with backoff and land in a failed set\n- [ ] Graceful shutdown drains jobs\n\n## Testing requirements\n- Integration test with real Redis\n\n## Security considerations\n- Redis not exposed publicly; job payloads contain IDs, not sensitive content\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-04",
+    "title": "Shared packages: shared-types, shared-validation, localization",
+    "labels": [
+      "phase:1",
+      "area:shared",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P0-01"
+    ],
+    "body": "**Backlog ID:** `P1-04` · **Phase:** 1\n\n## Description\nCreate shared packages for API contracts and zod schemas used by web and api, plus shared localization resources.\n\n## Scope\n- packages/shared-types, packages/shared-validation (zod 4), packages/localization\n- Build + typecheck + tests\n- Consumed by web and api\n\n## Dependencies\n- `P0-01` — Phase 0: repository foundation (monorepo, docs, ADRs, CI)\n\n## Acceptance criteria\n- [ ] Both apps import a shared schema and compile\n- [ ] CI builds packages before dependents\n\n## Testing requirements\n- Unit tests for schemas\n\n## Security considerations\n- Validation schemas are the single source of input rules (server still validates)\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-05",
+    "title": "API conventions: error format, validation pipe, pagination, request IDs",
+    "labels": [
+      "phase:1",
+      "area:api",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-04"
+    ],
+    "body": "**Backlog ID:** `P1-05` · **Phase:** 1\n\n## Description\nEstablish consistent API behaviour per ARCHITECTURE §5.\n\n## Scope\n- Global exception filter → `{error:{code,message,details,requestId}}`\n- Validation pipe for DTOs (decide zod vs class-validator, record ADR)\n- Cursor pagination/sort/filter helpers\n- Request ID middleware + propagation to logs\n\n## Dependencies\n- `P1-04` — Shared packages: shared-types, shared-validation, localization\n\n## Acceptance criteria\n- [ ] All errors follow the shape with stable codes\n- [ ] Invalid input → 400 with field-level details\n- [ ] Every response carries `x-request-id`\n\n## Testing requirements\n- e2e tests for error/validation/pagination behaviour\n\n## Security considerations\n- No stack traces or internals in production error responses\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-06",
+    "title": "OpenAPI / Swagger documentation",
+    "labels": [
+      "phase:1",
+      "area:api",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-05"
+    ],
+    "body": "**Backlog ID:** `P1-06` · **Phase:** 1\n\n## Description\nGenerate OpenAPI from the Nest app and publish it in non-production environments.\n\n## Scope\n- @nestjs/swagger (verify version)\n- Docs at /api/docs in dev/staging only\n- Export openapi.json in CI as artifact\n\n## Dependencies\n- `P1-05` — API conventions: error format, validation pipe, pagination, request IDs\n\n## Acceptance criteria\n- [ ] OpenAPI spec generated and valid\n- [ ] Docs disabled in production by config\n\n## Testing requirements\n- Test that spec builds and contains health endpoints\n\n## Security considerations\n- Do not expose admin endpoint docs publicly\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-07",
+    "title": "Structured logging with redaction",
+    "labels": [
+      "phase:1",
+      "area:observability",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-05"
+    ],
+    "body": "**Backlog ID:** `P1-07` · **Phase:** 1\n\n## Description\nJSON structured logging for API and worker with request context and mandatory redaction (PRD §10).\n\n## Scope\n- Logger (e.g. pino via nestjs-pino — verify)\n- Redaction list: passwords, tokens, cookies, auth headers, payment data, journal content\n- Log levels by env\n\n## Dependencies\n- `P1-05` — API conventions: error format, validation pipe, pagination, request IDs\n\n## Acceptance criteria\n- [ ] Logs are JSON with requestId, userId (when known)\n- [ ] Redaction verified by test\n\n## Testing requirements\n- Unit test asserting redacted fields\n\n## Security considerations\n- Never log secrets or sensitive content\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-08",
+    "title": "Security headers, CORS hardening and rate limiting baseline",
+    "labels": [
+      "phase:1",
+      "area:security",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-03"
+    ],
+    "body": "**Backlog ID:** `P1-08` · **Phase:** 1\n\n## Description\nAdd helmet/CSP for API, Next.js security headers, Redis-backed rate limiting.\n\n## Scope\n- helmet on API; CSP, HSTS, frame-ancestors etc. via next.config headers\n- Rate limiting (global + per-route classes) backed by Redis\n- CORS allow-list (exists) reviewed\n\n## Dependencies\n- `P1-03` — Redis, BullMQ and the worker application\n\n## Acceptance criteria\n- [ ] Security headers present on web and API responses\n- [ ] Exceeding limits returns 429 with Retry-After\n\n## Testing requirements\n- e2e tests for headers and 429\n\n## Security considerations\n- CSP strict enough to block inline scripts except Next nonces\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-09",
+    "title": "Design system: shadcn/ui primitives, themes, fonts",
+    "labels": [
+      "phase:1",
+      "area:ui",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P0-01"
+    ],
+    "body": "**Backlog ID:** `P1-09` · **Phase:** 1\n\n## Description\nInitialise shadcn/ui in packages/ui, wire tokens, dark/light theme switching, self-hosted Inter + Vazirmatn (PRD §2.2).\n\n## Scope\n- shadcn init (verify CLI version), core primitives (button, input, dialog, dropdown, toast, skeleton)\n- Theme switcher persisted (cookie) without flash\n- Self-hosted fonts per locale\n- Validate contrast of provisional tokens (light accent #A9802C on #FBF9F4 is ~3:1)\n\n## Dependencies\n- `P0-01` — Phase 0: repository foundation (monorepo, docs, ADRs, CI)\n\n## Acceptance criteria\n- [ ] Primitives render correctly in dark/light and RTL/LTR\n- [ ] No raw hex colours outside tokens\n- [ ] WCAG AA contrast for text tokens\n\n## Testing requirements\n- Component tests (RTL + jsdom)\n- Visual check in /en and /fa\n\n## Security considerations\n- No third-party font CDN at runtime\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-10",
+    "title": "next-intl integration: locale negotiation, ICU messages, RTL/LTR",
+    "labels": [
+      "phase:1",
+      "area:i18n",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-04"
+    ],
+    "body": "**Backlog ID:** `P1-10` · **Phase:** 1\n\n## Description\nReplace the Phase 0 i18n stub with next-intl (ADR-0004) including locale detection and formatting.\n\n## Scope\n- Re-verify next-intl version\n- Accept-Language/cookie negotiation for `/`\n- ICU plurals, date/number formatting, Persian digits\n- Lint rule/guard against physical left/right utilities\n- Decide default locale (owner)\n\n## Dependencies\n- `P1-04` — Shared packages: shared-types, shared-validation, localization\n\n## Acceptance criteria\n- [ ] Both locales render all shell strings from messages\n- [ ] Missing keys fail CI\n- [ ] `dir` correct on every route\n\n## Testing requirements\n- Unit tests for formatting; Playwright check of dir/lang\n\n## Security considerations\n- Locale input validated; no open redirects in locale redirects\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-11",
+    "title": "Responsive application shell and navigation",
+    "labels": [
+      "phase:1",
+      "area:web",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-09",
+      "P1-10"
+    ],
+    "body": "**Backlog ID:** `P1-11` · **Phase:** 1\n\n## Description\nImplement the information architecture (ARCHITECTURE §7): desktop sidebar, mobile bottom navigation, placeholder pages.\n\n## Scope\n- Layout with sidebar (desktop) and bottom bar (mobile)\n- Routes for all primary sections with empty states\n- Keyboard navigation and focus management\n- RTL mirroring\n\n## Dependencies\n- `P1-09` — Design system: shadcn/ui primitives, themes, fonts\n- `P1-10` — next-intl integration: locale negotiation, ICU messages, RTL/LTR\n\n## Acceptance criteria\n- [ ] Shell works on mobile/tablet/desktop in both locales\n- [ ] Accessible landmarks and skip link\n\n## Testing requirements\n- Component + Playwright tests at 3 viewports × 2 locales\n\n## Security considerations\n- None beyond standard (no data yet)\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-12",
+    "title": "Frontend data layer: API client, TanStack Query, error handling",
+    "labels": [
+      "phase:1",
+      "area:web",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-05",
+      "P1-04"
+    ],
+    "body": "**Backlog ID:** `P1-12` · **Phase:** 1\n\n## Description\nTyped API client using shared types, TanStack Query provider, standard loading/error/empty patterns.\n\n## Scope\n- API client with credentials: include, CSRF header support\n- Query client defaults\n- Error → localized message mapping by error code\n\n## Dependencies\n- `P1-05` — API conventions: error format, validation pipe, pagination, request IDs\n- `P1-04` — Shared packages: shared-types, shared-validation, localization\n\n## Acceptance criteria\n- [ ] Health status demo page uses the client\n- [ ] Errors localised in both languages\n\n## Testing requirements\n- Unit tests for client and error mapping\n\n## Security considerations\n- Never store tokens in localStorage\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-13",
+    "title": "Playwright E2E harness and smoke tests in CI",
+    "labels": [
+      "phase:1",
+      "area:testing",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P1-11"
+    ],
+    "body": "**Backlog ID:** `P1-13` · **Phase:** 1\n\n## Description\nIntroduce Playwright (verify version) with smoke tests for both apps.\n\n## Scope\n- Playwright config, CI job with browsers cache\n- Smoke: /en and /fa render with correct dir; API health\n\n## Dependencies\n- `P1-11` — Responsive application shell and navigation\n\n## Acceptance criteria\n- [ ] E2E job green on PRs\n- [ ] Traces uploaded on failure\n\n## Testing requirements\n- The smoke suite itself\n\n## Security considerations\n- No real credentials in E2E fixtures\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-14",
+    "title": "Supply-chain and code scanning in CI",
+    "labels": [
+      "phase:1",
+      "area:security",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P0-02"
+    ],
+    "body": "**Backlog ID:** `P1-14` · **Phase:** 1\n\n## Description\nAdd dependency review / `pnpm audit`, secret scanning (e.g. gitleaks), CodeQL, and Renovate/Dependabot for pinned versions.\n\n## Scope\n- Audit job with documented severity policy\n- Secret scanning on PRs\n- CodeQL for JS/TS\n- Automated dependency update PRs respecting pins\n\n## Dependencies\n- `P0-02` — Configure GitHub repository settings: branch protection, labels, visibility\n\n## Acceptance criteria\n- [ ] Scans run on PRs; high/critical block merge unless risk-accepted\n\n## Testing requirements\n- Introduce a test fake secret on a branch to confirm detection (then remove)\n\n## Security considerations\n- Core supply-chain control\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-15",
+    "title": "Architecture test enforcing module boundaries",
+    "labels": [
+      "phase:1",
+      "area:api",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P1-05"
+    ],
+    "body": "**Backlog ID:** `P1-15` · **Phase:** 1\n\n## Description\nEnforce ADR-0006: modules import other modules only via their public index.\n\n## Scope\n- dependency-cruiser or ESLint boundaries rule (verify tool)\n- CI enforcement\n\n## Dependencies\n- `P1-05` — API conventions: error format, validation pipe, pagination, request IDs\n\n## Acceptance criteria\n- [ ] Violating import fails lint/CI\n\n## Testing requirements\n- Rule fixtures\n\n## Security considerations\n- Prevents bypassing authz layers through internal imports\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P1-16",
+    "title": "Tooling upgrade watch: TypeScript 7, Prisma 8, ESLint React plugins",
+    "labels": [
+      "phase:1",
+      "area:infra",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P0-01"
+    ],
+    "body": "**Backlog ID:** `P1-16` · **Phase:** 1\n\n## Description\nTrack the deferred upgrades from ADR-0001 and adopt when the ecosystem supports them.\n\n## Scope\n- TS 7 once typescript-eslint/Nest CLI support it\n- Prisma 8 once stable\n- eslint-plugin-react/jsx-a11y once ESLint 10 is supported (restore a11y lint)\n\n## Dependencies\n- `P0-01` — Phase 0: repository foundation (monorepo, docs, ADRs, CI)\n\n## Acceptance criteria\n- [ ] Each upgrade done in its own PR with ADR addendum and green CI\n\n## Testing requirements\n- Full check suite\n\n## Security considerations\n- Review changelogs for security-relevant changes\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P2-01",
+    "title": "Identity data model: users, credentials, sessions",
+    "labels": [
+      "phase:2",
+      "area:auth",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-01"
+    ],
+    "body": "**Backlog ID:** `P2-01` · **Phase:** 2\n\n## Description\nPrisma models and migrations for User, UserProfile, UserPreference, UserSession, verification/reset tokens (ADR-0005).\n\n## Scope\n- UUIDv7 ids, citext email unique, soft-delete fields\n- Hashed session and token storage\n- Indexes and constraints\n\n## Dependencies\n- `P1-01` — Database foundation: Prisma client, first migration, DB health check\n\n## Acceptance criteria\n- [ ] Migration applies cleanly; constraints prevent duplicates\n\n## Testing requirements\n- Integration tests on constraints\n\n## Security considerations\n- Token/session IDs stored hashed; no plaintext secrets in DB\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P2-02",
+    "title": "Registration and login with email/password (Argon2id)",
+    "labels": [
+      "phase:2",
+      "area:auth",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-01",
+      "P1-08"
+    ],
+    "body": "**Backlog ID:** `P2-02` · **Phase:** 2\n\n## Description\nEmail/password registration and login creating secure server-side sessions.\n\n## Scope\n- Argon2id hashing (verify library)\n- Password policy (length, breached-check optional)\n- `__Host-session` cookie, rotation on login\n- Logout and sign-out-everywhere\n- Generic errors (no enumeration)\n\n## Dependencies\n- `P2-01` — Identity data model: users, credentials, sessions\n- `P1-08` — Security headers, CORS hardening and rate limiting baseline\n\n## Acceptance criteria\n- [ ] User can register, log in, log out\n- [ ] Session cookie flags correct\n- [ ] Brute-force protection triggers lockout/backoff\n\n## Testing requirements\n- Unit + integration + e2e auth tests\n\n## Security considerations\n- Rate limits, CSRF on state-changing routes, constant-time comparisons\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P2-03",
+    "title": "CSRF protection and authentication guards",
+    "labels": [
+      "phase:2",
+      "area:auth",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-02"
+    ],
+    "body": "**Backlog ID:** `P2-03` · **Phase:** 2\n\n## Description\nGlobal CSRF strategy for cookie-authenticated requests and a customer AuthGuard with owner-scoping helpers.\n\n## Scope\n- CSRF token or Origin/Sec-Fetch-Site checks\n- `@CurrentUser()` decorator\n- Default-deny: routes are protected unless marked public\n\n## Dependencies\n- `P2-02` — Registration and login with email/password (Argon2id)\n\n## Acceptance criteria\n- [ ] Requests without valid CSRF are rejected\n- [ ] Unauthenticated access to protected routes → 401\n\n## Testing requirements\n- Authz test matrix scaffold\n\n## Security considerations\n- Default-deny posture\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P2-04",
+    "title": "Email verification and transactional email foundation",
+    "labels": [
+      "phase:2",
+      "area:auth",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-02",
+      "P1-03"
+    ],
+    "body": "**Backlog ID:** `P2-04` · **Phase:** 2\n\n## Description\nEmail provider adapter (dev: local mail catcher) and verification flow with localized templates.\n\n## Scope\n- Email adapter interface + dev implementation\n- Verification tokens (single-use, expiring)\n- fa/en templates\n\n## Dependencies\n- `P2-02` — Registration and login with email/password (Argon2id)\n- `P1-03` — Redis, BullMQ and the worker application\n\n## Acceptance criteria\n- [ ] Unverified users are limited per policy\n- [ ] Verification link works once and expires\n\n## Testing requirements\n- Integration tests with fake transport\n\n## Security considerations\n- Tokens hashed; links over HTTPS; no PII in URLs beyond token\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P2-05",
+    "title": "Password recovery",
+    "labels": [
+      "phase:2",
+      "area:auth",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-04"
+    ],
+    "body": "**Backlog ID:** `P2-05` · **Phase:** 2\n\n## Description\nForgot/reset password with single-use expiring tokens and session revocation.\n\n## Scope\n- Request reset (no enumeration)\n- Reset with token, revoke other sessions\n- Notification email of password change\n\n## Dependencies\n- `P2-04` — Email verification and transactional email foundation\n\n## Acceptance criteria\n- [ ] Reset works once; old sessions revoked\n\n## Testing requirements\n- e2e reset flow\n\n## Security considerations\n- Rate-limited; tokens hashed\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P2-06",
+    "title": "Google sign-in (OIDC)",
+    "labels": [
+      "phase:2",
+      "area:auth",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-02"
+    ],
+    "body": "**Backlog ID:** `P2-06` · **Phase:** 2\n\n## Description\nSign in with Google using OIDC with PKCE; link/unlink to existing accounts safely.\n\n## Scope\n- Minimal scopes (openid email profile)\n- Account linking requires verified email match + confirmation\n- State/nonce validation\n\n## Dependencies\n- `P2-02` — Registration and login with email/password (Argon2id)\n\n## Acceptance criteria\n- [ ] New and existing users can sign in with Google\n- [ ] Linking cannot hijack another account\n\n## Testing requirements\n- Integration tests with mocked IdP\n\n## Security considerations\n- Validate id_token signature, audience, issuer; no excessive scopes\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P2-07",
+    "title": "Profile, avatar and preferences (language, timezone, theme)",
+    "labels": [
+      "phase:2",
+      "area:users",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-03"
+    ],
+    "body": "**Backlog ID:** `P2-07` · **Phase:** 2\n\n## Description\nProfile editing, avatar upload to S3-compatible storage, and preferences used across the app.\n\n## Scope\n- Profile CRUD\n- Avatar upload (type/size validation, private bucket, signed URLs)\n- Language, IANA timezone, theme, calendar display preference\n\n## Dependencies\n- `P2-03` — CSRF protection and authentication guards\n\n## Acceptance criteria\n- [ ] Preferences persist and drive UI locale/theme/timezone\n\n## Testing requirements\n- Integration + component tests\n\n## Security considerations\n- File type sniffing, size limits, no public bucket listing\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P2-08",
+    "title": "Session management UI and security events",
+    "labels": [
+      "phase:2",
+      "area:users",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-02"
+    ],
+    "body": "**Backlog ID:** `P2-08` · **Phase:** 2\n\n## Description\nUsers can see active sessions/devices and revoke them; security events are recorded.\n\n## Scope\n- List sessions (device, last active, approx location)\n- Revoke one / all others\n- Security event log for user\n\n## Dependencies\n- `P2-02` — Registration and login with email/password (Argon2id)\n\n## Acceptance criteria\n- [ ] Revoked sessions stop working immediately\n\n## Testing requirements\n- e2e revoke test\n\n## Security considerations\n- Audit login, password change, revoke\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P2-09",
+    "title": "Auth UI: register, login, verify, reset, settings pages (fa/en)",
+    "labels": [
+      "phase:2",
+      "area:web",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-02",
+      "P1-11"
+    ],
+    "body": "**Backlog ID:** `P2-09` · **Phase:** 2\n\n## Description\nAccessible, localized authentication screens and account settings.\n\n## Scope\n- Forms with React Hook Form + shared zod schemas\n- All states (loading/error/success)\n- RTL layouts\n\n## Dependencies\n- `P2-02` — Registration and login with email/password (Argon2id)\n- `P1-11` — Responsive application shell and navigation\n\n## Acceptance criteria\n- [ ] All auth journeys work in both locales on mobile and desktop\n\n## Testing requirements\n- Playwright journeys: register → verify → login\n\n## Security considerations\n- No credentials in client storage; autocomplete attributes correct\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P2-10",
+    "title": "Data export and account deletion",
+    "labels": [
+      "phase:2",
+      "area:privacy",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-07",
+      "P1-03"
+    ],
+    "body": "**Backlog ID:** `P2-10` · **Phase:** 2\n\n## Description\nUser-initiated export (JSON/CSV via background job) and account deletion with grace period (PRD §3.11, §17).\n\n## Scope\n- Export job producing downloadable archive (expiring link)\n- Deletion request, re-auth, grace period, hard delete job\n- Retention rules documented\n\n## Dependencies\n- `P2-07` — Profile, avatar and preferences (language, timezone, theme)\n- `P1-03` — Redis, BullMQ and the worker application\n\n## Acceptance criteria\n- [ ] Export contains all user-owned data present so far\n- [ ] Deleted accounts cannot log in and data is purged after grace\n\n## Testing requirements\n- Integration tests for export completeness and deletion\n\n## Security considerations\n- Re-authentication required; export links short-lived and private\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P3-01",
+    "title": "Habit domain model: habits, categories, types, schedule versions, occurrences",
+    "labels": [
+      "phase:3",
+      "area:habits",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-01"
+    ],
+    "body": "**Backlog ID:** `P3-01` · **Phase:** 3\n\n## Description\nPrisma models for Habit, HabitCategory, HabitScheduleVersion, HabitOccurrence/Completion, HabitNote with integrity constraints (PRD §3.1, §6).\n\n## Scope\n- Six habit types with target fields\n- Schedule versions with effectiveFrom/effectiveTo\n- Unique (habit, localDate) occurrence constraint\n- version column for offline edits\n\n## Dependencies\n- `P2-01` — Identity data model: users, credentials, sessions\n\n## Acceptance criteria\n- [ ] Migrations apply; duplicate occurrences impossible at DB level\n\n## Testing requirements\n- Constraint integration tests\n\n## Security considerations\n- All rows owner-scoped by userId\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P3-02",
+    "title": "Schedule engine (pure library)",
+    "labels": [
+      "phase:3",
+      "area:habits",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P3-01"
+    ],
+    "body": "**Backlog ID:** `P3-02` · **Phase:** 3\n\n## Description\nDeterministic function computing scheduled local dates from a schedule version: daily, weekdays, weekly frequency, monthly, custom intervals, pauses, vacations, grace days.\n\n## Scope\n- Pure TS package/module, no I/O\n- Timezone- and DST-safe local-date arithmetic\n- Handles start/end dates and version boundaries\n\n## Dependencies\n- `P3-01` — Habit domain model: habits, categories, types, schedule versions, occurrences\n\n## Acceptance criteria\n- [ ] Given the same inputs, output is identical\n- [ ] All PRD schedule types covered\n\n## Testing requirements\n- Exhaustive unit tests + property-based tests (e.g. fast-check)\n- DST and timezone-change cases (Asia/Tehran, America/*)\n\n## Security considerations\n- N/A (pure logic)\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P3-03",
+    "title": "Schedule versioning: edits create new versions, history preserved",
+    "labels": [
+      "phase:3",
+      "area:habits",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P3-02"
+    ],
+    "body": "**Backlog ID:** `P3-03` · **Phase:** 3\n\n## Description\nChanging a schedule closes the current version and opens a new one; past occurrences keep their original rules.\n\n## Scope\n- Version transition service in a transaction\n- Authorized historical corrections recorded with audit metadata\n\n## Dependencies\n- `P3-02` — Schedule engine (pure library)\n\n## Acceptance criteria\n- [ ] Editing a schedule never changes past statuses\n- [ ] Corrections are traceable\n\n## Testing requirements\n- Integration tests across version boundaries\n\n## Security considerations\n- Corrections permission-checked and logged\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P3-04",
+    "title": "Occurrence status and completion logic for all habit types",
+    "labels": [
+      "phase:3",
+      "area:habits",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P3-02"
+    ],
+    "body": "**Backlog ID:** `P3-04` · **Phase:** 3\n\n## Description\nCompleted/Missed/Due/Skipped/Paused/NotScheduled semantics; binary/numeric/duration/frequency/negative/custom completion rules.\n\n## Scope\n- Distinguish unscheduled vs uncompleted\n- Numeric/duration targets and partial progress\n- Idempotent check-in endpoint (client op id)\n\n## Dependencies\n- `P3-02` — Schedule engine (pure library)\n\n## Acceptance criteria\n- [ ] Every habit type has correct completion semantics\n- [ ] Repeated check-in requests are idempotent\n\n## Testing requirements\n- Table-driven unit tests per type; integration tests for endpoint\n\n## Security considerations\n- Owner-scoped writes; validation of numeric ranges\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P3-05",
+    "title": "Streaks and consistency metrics",
+    "labels": [
+      "phase:3",
+      "area:habits",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P3-04"
+    ],
+    "body": "**Backlog ID:** `P3-05` · **Phase:** 3\n\n## Description\nCurrent/longest/historical streaks, completion rate, weekly/monthly consistency with grace days and paused periods.\n\n## Scope\n- Pure calculation functions over occurrences\n- Consistent definitions documented in docs\n\n## Dependencies\n- `P3-04` — Occurrence status and completion logic for all habit types\n\n## Acceptance criteria\n- [ ] Metrics match documented definitions on fixture datasets\n\n## Testing requirements\n- Property-based + golden fixture tests\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P3-06",
+    "title": "Habits API: CRUD, archive/restore, reorder, categories",
+    "labels": [
+      "phase:3",
+      "area:habits",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P3-01",
+      "P1-05"
+    ],
+    "body": "**Backlog ID:** `P3-06` · **Phase:** 3\n\n## Description\nREST endpoints for habit management (PRD §3.1 Habit Management).\n\n## Scope\n- Create/edit/archive/restore/delete/reorder\n- Categories, icons, colours (token-based palette), descriptions, dates, targets, preferred times\n- Link to goal (nullable until Phase 4)\n\n## Dependencies\n- `P3-01` — Habit domain model: habits, categories, types, schedule versions, occurrences\n- `P1-05` — API conventions: error format, validation pipe, pagination, request IDs\n\n## Acceptance criteria\n- [ ] All operations available and validated\n- [ ] Archived habits excluded from active views\n\n## Testing requirements\n- e2e + authz matrix (cross-user access denied)\n\n## Security considerations\n- Owner scoping on every query\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P3-07",
+    "title": "Weekly habit matrix (desktop)",
+    "labels": [
+      "phase:3",
+      "area:web",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P3-06",
+      "P3-05",
+      "P1-12"
+    ],
+    "body": "**Backlog ID:** `P3-07` · **Phase:** 3\n\n## Description\nPrimary habit UI: rows = habits, columns = weekdays, one-tap completion, quick status, numeric/duration input, week navigation, per-habit streak and %, weekly summary (PRD §3.1.1).\n\n## Scope\n- Optimistic updates with rollback\n- Keyboard operable grid\n- Filters/categories\n\n## Dependencies\n- `P3-06` — Habits API: CRUD, archive/restore, reorder, categories\n- `P3-05` — Streaks and consistency metrics\n- `P1-12` — Frontend data layer: API client, TanStack Query, error handling\n\n## Acceptance criteria\n- [ ] All required interactions work in fa and en\n- [ ] Matrix stays fast with 30+ habits\n\n## Testing requirements\n- Component tests + Playwright journey: create habit → complete → navigate weeks\n\n## Security considerations\n- Historical edits only when permitted\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P3-08",
+    "title": "Mobile habit experience (week strip, cards, touch targets)",
+    "labels": [
+      "phase:3",
+      "area:web",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P3-07"
+    ],
+    "body": "**Backlog ID:** `P3-08` · **Phase:** 3\n\n## Description\nMobile-first alternative to the matrix: compact week strip, habit cards, horizontal scroll, large touch targets.\n\n## Scope\n- Responsive switch from matrix\n- RTL-correct swipe/scroll direction\n\n## Dependencies\n- `P3-07` — Weekly habit matrix (desktop)\n\n## Acceptance criteria\n- [ ] Usable on 360px wide screens in both directions\n\n## Testing requirements\n- Playwright mobile viewport tests\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P3-09",
+    "title": "Habit detail page: calendar, heatmap, trends, notes, activity",
+    "labels": [
+      "phase:3",
+      "area:web",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P3-07"
+    ],
+    "body": "**Backlog ID:** `P3-09` · **Phase:** 3\n\n## Description\nDedicated habit page with history calendar, heatmap, streaks, completion %, notes and related goal.\n\n## Scope\n- Calendar respects user calendar preference (Solar Hijri/Gregorian)\n- Accessible heatmap\n\n## Dependencies\n- `P3-07` — Weekly habit matrix (desktop)\n\n## Acceptance criteria\n- [ ] All PRD detail elements present\n\n## Testing requirements\n- Component + e2e tests\n\n## Security considerations\n- Notes are private to owner\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P3-10",
+    "title": "Habit templates library and guided onboarding",
+    "labels": [
+      "phase:3",
+      "area:habits",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P3-06"
+    ],
+    "body": "**Backlog ID:** `P3-10` · **Phase:** 3\n\n## Description\nTemplate categories (Health, Fitness, Learning, …) customizable before adding; optional short onboarding questionnaire.\n\n## Scope\n- Template model + seed data (localized)\n- Onboarding flow creating a realistic starter routine\n- Skippable, minimal steps\n\n## Dependencies\n- `P3-06` — Habits API: CRUD, archive/restore, reorder, categories\n\n## Acceptance criteria\n- [ ] User can add customized templates; onboarding creates habits\n\n## Testing requirements\n- e2e onboarding journey\n\n## Security considerations\n- Seeds contain no personal data\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P4-01",
+    "title": "Goals: model, CRUD, types, priority, status, archiving",
+    "labels": [
+      "phase:4",
+      "area:goals",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-03"
+    ],
+    "body": "**Backlog ID:** `P4-01` · **Phase:** 4\n\n## Description\nGoal management per PRD §3.2.\n\n## Scope\n- Goal types, dates, priority, status, success criteria, categories\n\n## Dependencies\n- `P2-03` — CSRF protection and authentication guards\n\n## Acceptance criteria\n- [ ] Users can manage goals end-to-end\n\n## Testing requirements\n- Unit + integration + authz tests\n\n## Security considerations\n- Private goals never shared by default\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P4-02",
+    "title": "Milestones, measurable progress and progress history",
+    "labels": [
+      "phase:4",
+      "area:goals",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P4-01"
+    ],
+    "body": "**Backlog ID:** `P4-02` · **Phase:** 4\n\n## Description\nMilestones and numeric/outcome progress tracking with history and visualization.\n\n## Scope\n- GoalMilestone, GoalProgress\n- Progress charts\n\n## Dependencies\n- `P4-01` — Goals: model, CRUD, types, priority, status, archiving\n\n## Acceptance criteria\n- [ ] Progress history is append-only and accurate\n\n## Testing requirements\n- Unit tests for progress calc\n\n## Security considerations\n- Owner scoping\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P4-03",
+    "title": "Goal ↔ habit ↔ task relationships",
+    "labels": [
+      "phase:4",
+      "area:goals",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P4-01",
+      "P3-06",
+      "P4-04"
+    ],
+    "body": "**Backlog ID:** `P4-03` · **Phase:** 4\n\n## Description\nLink habits and tasks to goals; show contributions on goal pages.\n\n## Scope\n- Relationship tables/constraints\n- UI linking\n\n## Dependencies\n- `P4-01` — Goals: model, CRUD, types, priority, status, archiving\n- `P3-06` — Habits API: CRUD, archive/restore, reorder, categories\n- `P4-04` — Tasks: model and API (subtasks, checklists, tags, priority, dates, durations)\n\n## Acceptance criteria\n- [ ] Links visible both ways; deleting rules defined\n\n## Testing requirements\n- Integration tests\n\n## Security considerations\n- Cannot link another user's entities\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P4-04",
+    "title": "Tasks: model and API (subtasks, checklists, tags, priority, dates, durations)",
+    "labels": [
+      "phase:4",
+      "area:tasks",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-03"
+    ],
+    "body": "**Backlog ID:** `P4-04` · **Phase:** 4\n\n## Description\nComplete task module backend (PRD §3.3).\n\n## Scope\n- Statuses Todo/In Progress/Completed/Cancelled/Archived\n- Subtasks, checklists, categories, tags, estimates, actual duration, notes\n\n## Dependencies\n- `P2-03` — CSRF protection and authentication guards\n\n## Acceptance criteria\n- [ ] All fields/operations supported with validation\n\n## Testing requirements\n- Unit + integration + authz\n\n## Security considerations\n- Owner scoping\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P4-05",
+    "title": "Recurring tasks and task reminders data",
+    "labels": [
+      "phase:4",
+      "area:tasks",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P4-04"
+    ],
+    "body": "**Backlog ID:** `P4-05` · **Phase:** 4\n\n## Description\nRecurrence rules (RRULE subset) generating instances; reminder definitions consumed in Phase 8.\n\n## Scope\n- Recurrence engine (pure)\n- Reminder fields\n\n## Dependencies\n- `P4-04` — Tasks: model and API (subtasks, checklists, tags, priority, dates, durations)\n\n## Acceptance criteria\n- [ ] Recurring tasks generate correctly across timezones\n\n## Testing requirements\n- Property/unit tests\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P4-06",
+    "title": "Task views: list, calendar, kanban; search and filtering",
+    "labels": [
+      "phase:4",
+      "area:web",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P4-04",
+      "P1-12"
+    ],
+    "body": "**Backlog ID:** `P4-06` · **Phase:** 4\n\n## Description\nTask UI with three views, drag-and-drop, filters and search.\n\n## Scope\n- Accessible DnD with keyboard alternative\n- RTL-correct kanban\n\n## Dependencies\n- `P4-04` — Tasks: model and API (subtasks, checklists, tags, priority, dates, durations)\n- `P1-12` — Frontend data layer: API client, TanStack Query, error handling\n\n## Acceptance criteria\n- [ ] All views functional in both locales and on mobile\n\n## Testing requirements\n- Component + Playwright task journey\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P4-07",
+    "title": "Daily and weekly planner with time blocking",
+    "labels": [
+      "phase:4",
+      "area:planning",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P4-04"
+    ],
+    "body": "**Backlog ID:** `P4-07` · **Phase:** 4\n\n## Description\nPlanner blocks, drag-and-drop scheduling, available-time awareness, buffers, conflict detection (PRD §3.4).\n\n## Scope\n- PlannerBlock model\n- Conflict detection logic\n- Day/week views\n\n## Dependencies\n- `P4-04` — Tasks: model and API (subtasks, checklists, tags, priority, dates, durations)\n\n## Acceptance criteria\n- [ ] Users can plan day/week; conflicts flagged\n\n## Testing requirements\n- Unit tests for conflict logic; e2e\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P4-08",
+    "title": "Eisenhower matrix view",
+    "labels": [
+      "phase:4",
+      "area:planning",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P4-06"
+    ],
+    "body": "**Backlog ID:** `P4-08` · **Phase:** 4\n\n## Description\nUrgent/important matrix over tasks.\n\n## Scope\n- Matrix UI and classification fields\n\n## Dependencies\n- `P4-06` — Task views: list, calendar, kanban; search and filtering\n\n## Acceptance criteria\n- [ ] Tasks can be classified and moved between quadrants\n\n## Testing requirements\n- Component tests\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P4-09",
+    "title": "Daily/weekly review and planned-vs-actual",
+    "labels": [
+      "phase:4",
+      "area:planning",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P4-07"
+    ],
+    "body": "**Backlog ID:** `P4-09` · **Phase:** 4\n\n## Description\nGuided reviews comparing planned blocks to actual completion.\n\n## Scope\n- Review records\n- Planned vs actual metrics (deterministic)\n\n## Dependencies\n- `P4-07` — Daily and weekly planner with time blocking\n\n## Acceptance criteria\n- [ ] Review flow completes and stores results\n\n## Testing requirements\n- Unit tests for metrics\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P4-10",
+    "title": "Smart planning suggestions (rule-based)",
+    "labels": [
+      "phase:4",
+      "area:planning",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P4-07",
+      "P4-09"
+    ],
+    "body": "**Backlog ID:** `P4-10` · **Phase:** 4\n\n## Description\nEditable recommended daily schedule from priorities, deadlines, durations, availability and history; never auto-applied.\n\n## Scope\n- Deterministic heuristic engine\n- User confirms before applying\n\n## Dependencies\n- `P4-07` — Daily and weekly planner with time blocking\n- `P4-09` — Daily/weekly review and planned-vs-actual\n\n## Acceptance criteria\n- [ ] Suggestions never overbook available time\n- [ ] Nothing changes without confirmation\n\n## Testing requirements\n- Unit tests with fixtures\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P5-01",
+    "title": "Focus sessions and Pomodoro timer",
+    "labels": [
+      "phase:5",
+      "area:focus",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P4-04"
+    ],
+    "body": "**Backlog ID:** `P5-01` · **Phase:** 5\n\n## Description\nPomodoro with custom focus/break/long-break durations, distraction-free mode, task/goal linking, daily targets (PRD §3.5).\n\n## Scope\n- FocusSession, FocusSettings models\n- Timer robust to tab sleep (timestamps, not intervals)\n- Session history\n\n## Dependencies\n- `P4-04` — Tasks: model and API (subtasks, checklists, tags, priority, dates, durations)\n\n## Acceptance criteria\n- [ ] Sessions recorded accurately even if tab is backgrounded\n\n## Testing requirements\n- Unit tests for timer state machine; e2e\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P5-02",
+    "title": "Focus analytics",
+    "labels": [
+      "phase:5",
+      "area:focus",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P5-01"
+    ],
+    "body": "**Backlog ID:** `P5-02` · **Phase:** 5\n\n## Description\nTotal focus time, sessions, average duration, trends, planned vs completed.\n\n## Scope\n- Deterministic aggregation queries\n- Charts\n\n## Dependencies\n- `P5-01` — Focus sessions and Pomodoro timer\n\n## Acceptance criteria\n- [ ] Metrics match fixtures\n\n## Testing requirements\n- Unit tests\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P5-03",
+    "title": "Journal entries, tags, search and calendar history",
+    "labels": [
+      "phase:5",
+      "area:journal",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-03"
+    ],
+    "body": "**Backlog ID:** `P5-03` · **Phase:** 5\n\n## Description\nPrivate-by-default journal with tags, full-text search (Persian-aware), calendar-based history (PRD §3.6).\n\n## Scope\n- JournalEntry, JournalTag models\n- Postgres full-text search config for fa/en\n- Versioning for offline edits\n\n## Dependencies\n- `P2-03` — CSRF protection and authentication guards\n\n## Acceptance criteria\n- [ ] Users can write, tag, search and browse entries\n\n## Testing requirements\n- Integration tests incl. Persian search\n\n## Security considerations\n- Journal content excluded from logs/analytics/admin by default; consider encryption at rest for content\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P5-04",
+    "title": "Quick capture (global)",
+    "labels": [
+      "phase:5",
+      "area:journal",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P5-03",
+      "P4-04"
+    ],
+    "body": "**Backlog ID:** `P5-04` · **Phase:** 5\n\n## Description\nFast capture of notes/tasks from anywhere (shortcut / FAB) with later triage.\n\n## Scope\n- Capture inbox\n- Convert to task/journal\n\n## Dependencies\n- `P5-03` — Journal entries, tags, search and calendar history\n- `P4-04` — Tasks: model and API (subtasks, checklists, tags, priority, dates, durations)\n\n## Acceptance criteria\n- [ ] Capture in ≤2 interactions from any page\n\n## Testing requirements\n- e2e\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P5-05",
+    "title": "Optional mood, energy and stress tracking",
+    "labels": [
+      "phase:5",
+      "area:journal",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P5-03"
+    ],
+    "body": "**Backlog ID:** `P5-05` · **Phase:** 5\n\n## Description\nOptional, off-by-default wellbeing records.\n\n## Scope\n- MoodRecord model\n- Settings toggle\n\n## Dependencies\n- `P5-03` — Journal entries, tags, search and calendar history\n\n## Acceptance criteria\n- [ ] Feature off by default; data deletable\n\n## Testing requirements\n- Integration tests\n\n## Security considerations\n- Sensitive data: explicit opt-in\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P5-06",
+    "title": "Voice-to-text capture",
+    "labels": [
+      "phase:5",
+      "area:integrations",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P5-04"
+    ],
+    "body": "**Backlog ID:** `P5-06` · **Phase:** 5\n\n## Description\nSpeech-to-text for journal/quick capture via browser API or provider adapter, supporting Persian.\n\n## Scope\n- Provider abstraction\n- Persian support evaluation\n\n## Dependencies\n- `P5-04` — Quick capture (global)\n\n## Acceptance criteria\n- [ ] Dictation works in fa and en where supported; graceful fallback\n\n## Testing requirements\n- Adapter unit tests\n\n## Security considerations\n- Audio not retained unless user consents; provider data-processing reviewed\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P6-01",
+    "title": "Deterministic metrics engine and analytics snapshots",
+    "labels": [
+      "phase:6",
+      "area:analytics",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P3-05",
+      "P1-03"
+    ],
+    "body": "**Backlog ID:** `P6-01` · **Phase:** 6\n\n## Description\nCentral, documented metric definitions computed by backend code with periodic snapshots (PRD §3.7).\n\n## Scope\n- Metric registry with definitions\n- Worker jobs materialising AnalyticsSnapshot\n- Recompute on corrections\n\n## Dependencies\n- `P3-05` — Streaks and consistency metrics\n- `P1-03` — Redis, BullMQ and the worker application\n\n## Acceptance criteria\n- [ ] Every dashboard metric has a written definition and test\n\n## Testing requirements\n- Golden dataset tests\n\n## Security considerations\n- Aggregates per user only\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P6-02",
+    "title": "Performance dashboard and visualizations",
+    "labels": [
+      "phase:6",
+      "area:web",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P6-01"
+    ],
+    "body": "**Backlog ID:** `P6-02` · **Phase:** 6\n\n## Description\nOverview dashboard: completion, consistency, streaks, goals, tasks, focus, trends, heatmaps, weekday comparison.\n\n## Scope\n- Chart library (verify Recharts or alternative) with RTL support\n- Accessible chart alternatives (tables)\n\n## Dependencies\n- `P6-01` — Deterministic metrics engine and analytics snapshots\n\n## Acceptance criteria\n- [ ] All PRD dashboard metrics shown with empty states for new users\n\n## Testing requirements\n- Component tests\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P6-03",
+    "title": "Insight detection with evidence and confidence",
+    "labels": [
+      "phase:6",
+      "area:insights",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P6-01"
+    ],
+    "body": "**Backlog ID:** `P6-03` · **Phase:** 6\n\n## Description\nRule-based detectors (strong/weak habits, trends, missed patterns, overload) producing evidence-backed insights.\n\n## Scope\n- Insight schema: description, metric, evidence, range, confidence, suggested action, success measure\n- Minimum-data thresholds for confidence\n\n## Dependencies\n- `P6-01` — Deterministic metrics engine and analytics snapshots\n\n## Acceptance criteria\n- [ ] No high-confidence insight from insufficient data\n- [ ] No moral judgments; no causal claims\n\n## Testing requirements\n- Unit tests per detector\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P6-04",
+    "title": "Recommendation lifecycle and feedback",
+    "labels": [
+      "phase:6",
+      "area:insights",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P6-03"
+    ],
+    "body": "**Backlog ID:** `P6-04` · **Phase:** 6\n\n## Description\nDetected → presented → accepted/rejected → experiment → evaluated → archived, with user feedback.\n\n## Scope\n- State machine + persistence\n\n## Dependencies\n- `P6-03` — Insight detection with evidence and confidence\n\n## Acceptance criteria\n- [ ] Invalid transitions rejected\n\n## Testing requirements\n- State machine unit tests\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P6-05",
+    "title": "Improvement experiments",
+    "labels": [
+      "phase:6",
+      "area:insights",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P6-04"
+    ],
+    "body": "**Backlog ID:** `P6-05` · **Phase:** 6\n\n## Description\nHypothesis/baseline/change/dates/metric/results/conclusion experiments with deterministic evaluation.\n\n## Scope\n- Experiment model and evaluation\n\n## Dependencies\n- `P6-04` — Recommendation lifecycle and feedback\n\n## Acceptance criteria\n- [ ] Experiments evaluate against baseline correctly\n\n## Testing requirements\n- Unit tests\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P6-06",
+    "title": "Weekly and monthly reviews",
+    "labels": [
+      "phase:6",
+      "area:insights",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P6-01",
+      "P6-03"
+    ],
+    "body": "**Backlog ID:** `P6-06` · **Phase:** 6\n\n## Description\nGenerated structured reviews (achievements, consistency, challenges, goal progress, next actions) from deterministic data.\n\n## Scope\n- Review generation job\n- Localized rendering\n\n## Dependencies\n- `P6-01` — Deterministic metrics engine and analytics snapshots\n- `P6-03` — Insight detection with evidence and confidence\n\n## Acceptance criteria\n- [ ] Reviews generated on schedule per user timezone\n\n## Testing requirements\n- Integration tests\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P7-01",
+    "title": "AI provider abstraction and configuration",
+    "labels": [
+      "phase:7",
+      "area:ai",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-03"
+    ],
+    "body": "**Backlog ID:** `P7-01` · **Phase:** 7\n\n## Description\nProvider-agnostic interface (chat, structured output, tool calling), model/provider config, retries, timeouts, error handling (PRD §3.8).\n\n## Scope\n- Adapter interface + first provider (owner decision)\n- Config stored server-side; keys from secret manager\n- Prompt versioning (AIPromptVersion)\n\n## Dependencies\n- `P1-03` — Redis, BullMQ and the worker application\n\n## Acceptance criteria\n- [ ] Providers swappable by config\n- [ ] Keys never reach clients\n\n## Testing requirements\n- Adapter contract tests with mocks\n\n## Security considerations\n- Secrets server-side only\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P7-02",
+    "title": "AI usage tracking, quotas, rate limits and cost controls",
+    "labels": [
+      "phase:7",
+      "area:ai",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P7-01"
+    ],
+    "body": "**Backlog ID:** `P7-02` · **Phase:** 7\n\n## Description\nToken/cost tracking per request, plan quotas, per-user rate limits.\n\n## Scope\n- AIUsageRecord\n- Quota checks via entitlements (stub until Phase 9)\n\n## Dependencies\n- `P7-01` — AI provider abstraction and configuration\n\n## Acceptance criteria\n- [ ] Requests over quota are refused with clear errors\n\n## Testing requirements\n- Unit + integration tests\n\n## Security considerations\n- Abuse prevention\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P7-03",
+    "title": "AI coach conversations and context retrieval with privacy controls",
+    "labels": [
+      "phase:7",
+      "area:ai",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P7-01",
+      "P6-01"
+    ],
+    "body": "**Backlog ID:** `P7-03` · **Phase:** 7\n\n## Description\nConversation management and context building from habits, goals, tasks, focus, analytics; journal only with opt-in.\n\n## Scope\n- AIConversation/AIMessage\n- Privacy settings UI\n- Explain what data is used\n\n## Dependencies\n- `P7-01` — AI provider abstraction and configuration\n- `P6-01` — Deterministic metrics engine and analytics snapshots\n\n## Acceptance criteria\n- [ ] Journal never included without explicit permission\n\n## Testing requirements\n- Tests asserting context contents per permission\n\n## Security considerations\n- Data minimisation in prompts\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P7-04",
+    "title": "Controlled AI tools with authorization and confirmation workflow",
+    "labels": [
+      "phase:7",
+      "area:ai",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P7-03"
+    ],
+    "body": "**Backlog ID:** `P7-04` · **Phase:** 7\n\n## Description\nRead tools (analytics, habits, goals, tasks) and suggest tools (habits, tasks, schedule changes, plans, experiments); writes require confirmation.\n\n## Scope\n- Tool registry with authz + validation\n- Pending-change proposals the user confirms\n\n## Dependencies\n- `P7-03` — AI coach conversations and context retrieval with privacy controls\n\n## Acceptance criteria\n- [ ] No data changes without user confirmation (or explicit limited automation permission)\n\n## Testing requirements\n- AI tool authorization unit tests\n\n## Security considerations\n- Tools enforce same authz as API\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P7-05",
+    "title": "AI coach UI (fa/en)",
+    "labels": [
+      "phase:7",
+      "area:web",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P7-04"
+    ],
+    "body": "**Backlog ID:** `P7-05` · **Phase:** 7\n\n## Description\nChat UI with suggested questions, structured answer cards, confirmation dialogs, usage display.\n\n## Scope\n- Streaming responses\n- RTL rendering of mixed text\n\n## Dependencies\n- `P7-04` — Controlled AI tools with authorization and confirmation workflow\n\n## Acceptance criteria\n- [ ] Coach usable in both languages; confirmations clear\n\n## Testing requirements\n- Component + e2e with mocked provider\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P7-06",
+    "title": "AI goal breakdown and weekly planning assistance",
+    "labels": [
+      "phase:7",
+      "area:ai",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P7-04",
+      "P4-02"
+    ],
+    "body": "**Backlog ID:** `P7-06` · **Phase:** 7\n\n## Description\nUse tools to break goals into milestones/habits/tasks and propose weekly plans; metrics come from backend.\n\n## Scope\n- Structured output schemas\n\n## Dependencies\n- `P7-04` — Controlled AI tools with authorization and confirmation workflow\n- `P4-02` — Milestones, measurable progress and progress history\n\n## Acceptance criteria\n- [ ] Proposals validated against schemas before showing\n\n## Testing requirements\n- Contract tests\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P8-01",
+    "title": "Web app manifest, service worker and install experience",
+    "labels": [
+      "phase:8",
+      "area:pwa",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-11"
+    ],
+    "body": "**Backlog ID:** `P8-01` · **Phase:** 8\n\n## Description\nInstallable PWA with offline fallback page; localized manifest.\n\n## Scope\n- Manifest per locale\n- Service worker (verify tooling, e.g. Serwist)\n- Install prompt UX; iOS instructions\n\n## Dependencies\n- `P1-11` — Responsive application shell and navigation\n\n## Acceptance criteria\n- [ ] Installable on Android/desktop; iOS add-to-home documented\n\n## Testing requirements\n- Lighthouse PWA checks in CI\n\n## Security considerations\n- SW scope restricted; no caching of authenticated API responses without policy\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P8-02",
+    "title": "Offline storage and operation queue (IndexedDB)",
+    "labels": [
+      "phase:8",
+      "area:sync",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P8-01",
+      "P3-04",
+      "P4-04"
+    ],
+    "body": "**Backlog ID:** `P8-02` · **Phase:** 8\n\n## Description\nLocal persistence and queued operations with client-generated IDs for habit check-ins and task updates.\n\n## Scope\n- IndexedDB schema\n- Queue with retry/backoff\n- Sync state UI\n\n## Dependencies\n- `P8-01` — Web app manifest, service worker and install experience\n- `P3-04` — Occurrence status and completion logic for all habit types\n- `P4-04` — Tasks: model and API (subtasks, checklists, tags, priority, dates, durations)\n\n## Acceptance criteria\n- [ ] Check-ins made offline sync when online\n\n## Testing requirements\n- Unit tests for queue; Playwright offline tests\n\n## Security considerations\n- Encrypt or minimise sensitive data stored locally\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P8-03",
+    "title": "Server sync endpoint: idempotency, versions, conflict detection and resolution",
+    "labels": [
+      "phase:8",
+      "area:sync",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P8-02"
+    ],
+    "body": "**Backlog ID:** `P8-03` · **Phase:** 8\n\n## Description\nExplicit sync API with idempotent ops, checkpoints and per-entity conflict rules (PRD §8).\n\n## Scope\n- Rules for habit completion, task updates, journal edits, schedule changes\n- Conflicts surfaced to user, never silently discarded\n\n## Dependencies\n- `P8-02` — Offline storage and operation queue (IndexedDB)\n\n## Acceptance criteria\n- [ ] Stale clients cannot overwrite newer data\n\n## Testing requirements\n- Integration tests for conflict matrix\n\n## Security considerations\n- Sensitive/admin/payment ops rejected via sync\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P8-04",
+    "title": "Notification infrastructure, in-app notifications and preferences",
+    "labels": [
+      "phase:8",
+      "area:notifications",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-03",
+      "P2-07"
+    ],
+    "body": "**Backlog ID:** `P8-04` · **Phase:** 8\n\n## Description\nNotification model, scheduler jobs, in-app center, preferences (quiet hours, timezone, frequency, categories, channels).\n\n## Scope\n- Notification, NotificationPreference models\n- Timezone-aware scheduling\n\n## Dependencies\n- `P1-03` — Redis, BullMQ and the worker application\n- `P2-07` — Profile, avatar and preferences (language, timezone, theme)\n\n## Acceptance criteria\n- [ ] Quiet hours respected\n\n## Testing requirements\n- Unit tests for scheduling\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P8-05",
+    "title": "Web Push notifications",
+    "labels": [
+      "phase:8",
+      "area:notifications",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P8-04",
+      "P8-01"
+    ],
+    "body": "**Backlog ID:** `P8-05` · **Phase:** 8\n\n## Description\nVAPID web push with subscription management; document iOS PWA requirements.\n\n## Scope\n- PushSubscription model\n- VAPID keys in secret manager\n\n## Dependencies\n- `P8-04` — Notification infrastructure, in-app notifications and preferences\n- `P8-01` — Web app manifest, service worker and install experience\n\n## Acceptance criteria\n- [ ] Push received on supported platforms; graceful fallback\n\n## Testing requirements\n- Integration tests with mocked push service\n\n## Security considerations\n- VAPID private key server-side only\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P8-06",
+    "title": "Email notifications and localized templates",
+    "labels": [
+      "phase:8",
+      "area:notifications",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P8-04",
+      "P2-04"
+    ],
+    "body": "**Backlog ID:** `P8-06` · **Phase:** 8\n\n## Description\nReminder, weekly/monthly report and milestone emails in fa/en with delivery records.\n\n## Scope\n- EmailDeliveryRecord\n- Unsubscribe links\n\n## Dependencies\n- `P8-04` — Notification infrastructure, in-app notifications and preferences\n- `P2-04` — Email verification and transactional email foundation\n\n## Acceptance criteria\n- [ ] Emails localized and respect preferences\n\n## Testing requirements\n- Template snapshot tests\n\n## Security considerations\n- Signed unsubscribe tokens\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P8-07",
+    "title": "Habit, task, goal, focus, inactivity reminders",
+    "labels": [
+      "phase:8",
+      "area:notifications",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P8-04",
+      "P3-06",
+      "P4-05"
+    ],
+    "body": "**Backlog ID:** `P8-07` · **Phase:** 8\n\n## Description\nReminder producers for each domain using preferences.\n\n## Scope\n- Jobs per reminder type\n\n## Dependencies\n- `P8-04` — Notification infrastructure, in-app notifications and preferences\n- `P3-06` — Habits API: CRUD, archive/restore, reorder, categories\n- `P4-05` — Recurring tasks and task reminders data\n\n## Acceptance criteria\n- [ ] Reminders fire at the right local time across DST\n\n## Testing requirements\n- Time-based unit tests\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P8-08",
+    "title": "Document offline capabilities and platform limitations",
+    "labels": [
+      "phase:8",
+      "area:docs",
+      "type:docs"
+    ],
+    "dependencies": [
+      "P8-03",
+      "P8-05"
+    ],
+    "body": "**Backlog ID:** `P8-08` · **Phase:** 8\n\n## Description\nUser and developer docs for what works offline, sync behaviour and iOS/Android push limitations (PRD §3.13, §3.9).\n\n## Scope\n- docs/pwa-offline.md, help content\n\n## Dependencies\n- `P8-03` — Server sync endpoint: idempotency, versions, conflict detection and resolution\n- `P8-05` — Web Push notifications\n\n## Acceptance criteria\n- [ ] Docs reviewed and linked from settings/help\n\n## Testing requirements\n- N/A\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P9-01",
+    "title": "Plans, plan versions, prices and entitlements model",
+    "labels": [
+      "phase:9",
+      "area:billing",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-01"
+    ],
+    "body": "**Backlog ID:** `P9-01` · **Phase:** 9\n\n## Description\nConfigurable, versioned plans (Free, Pro Monthly, Pro Annual, optional Lifetime) with per-currency prices and entitlements (PRD §3.14).\n\n## Scope\n- Plan, PlanVersion, PlanPrice, PlanEntitlement\n- Money in minor units + currency\n- Seeds for Free/Pro (values configurable)\n\n## Dependencies\n- `P2-01` — Identity data model: users, credentials, sessions\n\n## Acceptance criteria\n- [ ] Changing a plan creates a new version without affecting existing subscribers unexpectedly\n\n## Testing requirements\n- Integration tests\n\n## Security considerations\n- Only admins with plans.write can change\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P9-02",
+    "title": "Centralized entitlement service enforced server-side",
+    "labels": [
+      "phase:9",
+      "area:billing",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P9-01"
+    ],
+    "body": "**Backlog ID:** `P9-02` · **Phase:** 9\n\n## Description\nSingle service answering \"can user X do Y / how much quota left\"; guards/decorators on protected features.\n\n## Scope\n- Max habits/goals, analytics, AI quota, journal, planning, integrations, export, accountability\n\n## Dependencies\n- `P9-01` — Plans, plan versions, prices and entitlements model\n\n## Acceptance criteria\n- [ ] All gated features check entitlements server-side\n\n## Testing requirements\n- Unit tests for entitlement calculation; e2e for gating\n\n## Security considerations\n- Frontend never authoritative\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P9-03",
+    "title": "Subscription lifecycle state machine",
+    "labels": [
+      "phase:9",
+      "area:billing",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P9-01"
+    ],
+    "body": "**Backlog ID:** `P9-03` · **Phase:** 9\n\n## Description\nTrial, Active, Past Due, Cancelled, Expired, Suspended, Refunded, Grace Period with renewals and entitlement changes.\n\n## Scope\n- UserSubscription model\n- Scheduled transitions in worker\n\n## Dependencies\n- `P9-01` — Plans, plan versions, prices and entitlements model\n\n## Acceptance criteria\n- [ ] Only valid transitions possible; entitlements follow state\n\n## Testing requirements\n- Exhaustive state transition tests\n\n## Security considerations\n- State changes audited\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P9-04",
+    "title": "Payment adapter interface with explicit capability model",
+    "labels": [
+      "phase:9",
+      "area:payments",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P9-03"
+    ],
+    "body": "**Backlog ID:** `P9-04` · **Phase:** 9\n\n## Description\nProvider-agnostic adapter (initiate, verify, lookup, refund, webhook, renewal) with capabilities flags.\n\n## Scope\n- Payment, PaymentEvent models\n- Idempotency keys\n\n## Dependencies\n- `P9-03` — Subscription lifecycle state machine\n\n## Acceptance criteria\n- [ ] Business logic depends only on the interface\n\n## Testing requirements\n- Contract test suite for adapters\n\n## Security considerations\n- Never trust client redirects\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P9-05",
+    "title": "Iranian payment gateway adapter (sandbox)",
+    "labels": [
+      "phase:9",
+      "area:payments",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P9-04"
+    ],
+    "body": "**Backlog ID:** `P9-05` · **Phase:** 9\n\n## Description\nImplement the chosen Iranian gateway (owner decision) with server-side verification; IRR minor units, Toman presentation.\n\n## Scope\n- Manual renewal flow if no recurring support\n- Eligibility checklist completed before activation\n\n## Dependencies\n- `P9-04` — Payment adapter interface with explicit capability model\n\n## Acceptance criteria\n- [ ] Sandbox purchase → verified → entitlement granted\n\n## Testing requirements\n- Integration tests with sandbox/mocks\n\n## Security considerations\n- Credentials in secret manager; activation requires human approval\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P9-06",
+    "title": "International payment provider adapter (sandbox)",
+    "labels": [
+      "phase:9",
+      "area:payments",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P9-04"
+    ],
+    "body": "**Backlog ID:** `P9-06` · **Phase:** 9\n\n## Description\nImplement the chosen international provider (eligibility verified) with subscriptions where supported, USD pricing.\n\n## Scope\n- Hosted checkout/portal where available\n\n## Dependencies\n- `P9-04` — Payment adapter interface with explicit capability model\n\n## Acceptance criteria\n- [ ] Sandbox subscribe/renew/cancel work end-to-end\n\n## Testing requirements\n- Integration tests with provider test mode\n\n## Security considerations\n- Do not bypass provider restrictions; activation requires approval\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P9-07",
+    "title": "Webhook verification, idempotency and reconciliation",
+    "labels": [
+      "phase:9",
+      "area:payments",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P9-05",
+      "P9-06"
+    ],
+    "body": "**Backlog ID:** `P9-07` · **Phase:** 9\n\n## Description\nSignature verification, dedup, ordered processing and periodic reconciliation against provider records.\n\n## Scope\n- Webhook endpoints per provider\n- Reconciliation job and report\n\n## Dependencies\n- `P9-05` — Iranian payment gateway adapter (sandbox)\n- `P9-06` — International payment provider adapter (sandbox)\n\n## Acceptance criteria\n- [ ] Duplicate/forged webhooks have no effect\n- [ ] Mismatches reported\n\n## Testing requirements\n- Tests with replayed and tampered payloads\n\n## Security considerations\n- Core payment security\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P9-08",
+    "title": "Pricing page, checkout flow and customer billing portal",
+    "labels": [
+      "phase:9",
+      "area:web",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P9-02",
+      "P9-07"
+    ],
+    "body": "**Backlog ID:** `P9-08` · **Phase:** 9\n\n## Description\nLocalized pricing, checkout initiation, plan/status view, receipts, cancellation, billing history.\n\n## Scope\n- Currency by channel; never mix currencies\n\n## Dependencies\n- `P9-02` — Centralized entitlement service enforced server-side\n- `P9-07` — Webhook verification, idempotency and reconciliation\n\n## Acceptance criteria\n- [ ] User can subscribe and cancel in sandbox in both locales\n\n## Testing requirements\n- Playwright sandbox journey (PRD journeys 12–14)\n\n## Security considerations\n- Payment actions require online connection\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P9-09",
+    "title": "Coupons and redemptions",
+    "labels": [
+      "phase:9",
+      "area:billing",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P9-01"
+    ],
+    "body": "**Backlog ID:** `P9-09` · **Phase:** 9\n\n## Description\nConfigurable coupons with limits and audit.\n\n## Scope\n- Coupon, CouponRedemption\n\n## Dependencies\n- `P9-01` — Plans, plan versions, prices and entitlements model\n\n## Acceptance criteria\n- [ ] Coupons apply correctly and cannot be over-redeemed\n\n## Testing requirements\n- Concurrency tests\n\n## Security considerations\n- Rate limit redemption attempts\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P9-10",
+    "title": "Refund workflows and invoices/receipts",
+    "labels": [
+      "phase:9",
+      "area:billing",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P9-07",
+      "P10-04"
+    ],
+    "body": "**Backlog ID:** `P9-10` · **Phase:** 9\n\n## Description\nAuthorized refunds via adapters, refund history, invoices/receipts where applicable.\n\n## Scope\n- Refund, Invoice models\n- Step-up for high-value refunds\n\n## Dependencies\n- `P9-07` — Webhook verification, idempotency and reconciliation\n- `P10-04` — RBAC permissions, guards and step-up authentication\n\n## Acceptance criteria\n- [ ] Refunds reconcile with provider and update subscription state\n\n## Testing requirements\n- Integration tests\n\n## Security considerations\n- Permission + step-up + audit\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-01",
+    "title": "Admin identity foundation: separate model, auth flow and sessions",
+    "labels": [
+      "phase:10",
+      "area:admin",
+      "type:feature",
+      "priority:high"
+    ],
+    "dependencies": [
+      "P2-02"
+    ],
+    "body": "**Backlog ID:** `P10-01` · **Phase:** 10\n\n## Description\nAdminIdentity, admin sessions, admin login on separate origin/API namespace (ADR-0005). Needed before Phase 9 admin endpoints.\n\n## Scope\n- Separate tables, cookies, guards\n- Short idle/absolute session timeouts\n\n## Dependencies\n- `P2-02` — Registration and login with email/password (Argon2id)\n\n## Acceptance criteria\n- [ ] Customer sessions cannot access admin API and vice versa\n\n## Testing requirements\n- Cross-domain authz tests\n\n## Security considerations\n- Core of PRD §4.1\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-02",
+    "title": "Secure documented owner bootstrap (CLI, single-use enrolment)",
+    "labels": [
+      "phase:10",
+      "area:admin",
+      "type:feature",
+      "priority:high"
+    ],
+    "dependencies": [
+      "P10-01",
+      "P10-03"
+    ],
+    "body": "**Backlog ID:** `P10-02` · **Phase:** 10\n\n## Description\nImplement SECURITY.md §2: CLI refuses if an Owner exists, single-use expiring enrolment, forced MFA enrolment, audit record. No default credentials.\n\n## Scope\n- CLI command\n- Enrolment flow\n- Break-glass recovery procedure documented\n\n## Dependencies\n- `P10-01` — Admin identity foundation: separate model, auth flow and sessions\n- `P10-03` — Admin MFA: passkeys/WebAuthn, TOTP, recovery codes\n\n## Acceptance criteria\n- [ ] No code path creates an admin with a known password\n- [ ] Second bootstrap attempt fails and is audited\n\n## Testing requirements\n- Integration tests for bootstrap and refusal\n\n## Security considerations\n- Highest sensitivity\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-03",
+    "title": "Admin MFA: passkeys/WebAuthn, TOTP, recovery codes",
+    "labels": [
+      "phase:10",
+      "area:admin",
+      "type:feature",
+      "priority:high"
+    ],
+    "dependencies": [
+      "P10-01"
+    ],
+    "body": "**Backlog ID:** `P10-03` · **Phase:** 10\n\n## Description\nMandatory MFA for admins; passkey required for Owner.\n\n## Scope\n- WebAuthn library (verify)\n- TOTP + hashed recovery codes\n\n## Dependencies\n- `P10-01` — Admin identity foundation: separate model, auth flow and sessions\n\n## Acceptance criteria\n- [ ] Admins cannot reach any admin endpoint without MFA\n\n## Testing requirements\n- Integration tests with virtual authenticators\n\n## Security considerations\n- Phishing-resistant for owner\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-04",
+    "title": "RBAC permissions, guards and step-up authentication",
+    "labels": [
+      "phase:10",
+      "area:admin",
+      "type:feature",
+      "priority:high"
+    ],
+    "dependencies": [
+      "P10-03"
+    ],
+    "body": "**Backlog ID:** `P10-04` · **Phase:** 10\n\n## Description\nRoles → permissions, PermissionGuard on every admin route, step-up for sensitive operations (PRD §4.3–4.5).\n\n## Scope\n- Permission catalogue\n- Role × endpoint test matrix\n\n## Dependencies\n- `P10-03` — Admin MFA: passkeys/WebAuthn, TOTP, recovery codes\n\n## Acceptance criteria\n- [ ] Every admin endpoint declares a permission (enforced by test)\n- [ ] Sensitive ops require fresh step-up\n\n## Testing requirements\n- Authorization matrix tests\n\n## Security considerations\n- Least privilege\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-05",
+    "title": "Append-only admin audit log",
+    "labels": [
+      "phase:10",
+      "area:audit",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P10-01"
+    ],
+    "body": "**Backlog ID:** `P10-05` · **Phase:** 10\n\n## Description\nAudit records for all admin and security-sensitive actions; protected from modification.\n\n## Scope\n- AdminAuditLog\n- DB grants prevent UPDATE/DELETE\n- Audit viewer with filters\n\n## Dependencies\n- `P10-01` — Admin identity foundation: separate model, auth flow and sessions\n\n## Acceptance criteria\n- [ ] All admin mutations produce audit entries\n\n## Testing requirements\n- Tests asserting audit on each mutation\n\n## Security considerations\n- Redact secrets in before/after\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-06",
+    "title": "Admin app shell and owner dashboard metrics",
+    "labels": [
+      "phase:10",
+      "area:admin",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P10-04",
+      "P6-01",
+      "P9-03"
+    ],
+    "body": "**Backlog ID:** `P10-06` · **Phase:** 10\n\n## Description\napps/admin on separate origin; overview metrics (users, actives, registrations, paying, MRR/ARR, churn, conversion, payment success, AI usage/cost, health) with explicit definitions.\n\n## Scope\n- Metric definitions doc\n- No fabricated data\n\n## Dependencies\n- `P10-04` — RBAC permissions, guards and step-up authentication\n- `P6-01` — Deterministic metrics engine and analytics snapshots\n- `P9-03` — Subscription lifecycle state machine\n\n## Acceptance criteria\n- [ ] Metrics match definitions on fixtures\n\n## Testing requirements\n- Unit tests for financial metrics\n\n## Security considerations\n- Read permissions enforced\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-07",
+    "title": "User management and audited support access",
+    "labels": [
+      "phase:10",
+      "area:admin",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P10-04",
+      "P10-05"
+    ],
+    "body": "**Backlog ID:** `P10-07` · **Phase:** 10\n\n## Description\nSearch/filter users, view status/subscription, suspend/restore, roles; purpose-based time-limited access to sensitive content.\n\n## Scope\n- Support access grants with expiry and audit\n\n## Dependencies\n- `P10-04` — RBAC permissions, guards and step-up authentication\n- `P10-05` — Append-only admin audit log\n\n## Acceptance criteria\n- [ ] Sensitive content not visible without a grant\n\n## Testing requirements\n- Authz tests\n\n## Security considerations\n- PRD §3.15 privacy rules\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-08",
+    "title": "Subscription, plan and payment administration",
+    "labels": [
+      "phase:10",
+      "area:admin",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P10-04",
+      "P9-07"
+    ],
+    "body": "**Backlog ID:** `P10-08` · **Phase:** 10\n\n## Description\nAdmin UIs for plans/prices/entitlements, subscriptions, payment providers (no plaintext secrets), transactions, failed payments, webhooks, reconciliation, refunds.\n\n## Scope\n- Versioned plan edits\n- Manual adjustments with audit\n\n## Dependencies\n- `P10-04` — RBAC permissions, guards and step-up authentication\n- `P9-07` — Webhook verification, idempotency and reconciliation\n\n## Acceptance criteria\n- [ ] Billing Admin can act within permissions only\n\n## Testing requirements\n- e2e admin journeys\n\n## Security considerations\n- Step-up for critical billing config\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-09",
+    "title": "AI management console",
+    "labels": [
+      "phase:10",
+      "area:admin",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P10-04",
+      "P7-02"
+    ],
+    "body": "**Backlog ID:** `P10-09` · **Phase:** 10\n\n## Description\nConfigure providers, models, defaults, fallbacks, quotas; view usage, tokens, costs, errors; disable providers.\n\n## Scope\n- Secrets write-only in UI\n\n## Dependencies\n- `P10-04` — RBAC permissions, guards and step-up authentication\n- `P7-02` — AI usage tracking, quotas, rate limits and cost controls\n\n## Acceptance criteria\n- [ ] Changes take effect without redeploy and are audited\n\n## Testing requirements\n- Integration tests\n\n## Security considerations\n- API keys never displayed\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-10",
+    "title": "Content management: templates, categories, translations, help/FAQ, notification/email templates",
+    "labels": [
+      "phase:10",
+      "area:admin",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P10-04"
+    ],
+    "body": "**Backlog ID:** `P10-10` · **Phase:** 10\n\n## Description\nContent Admin tools for localized content.\n\n## Scope\n- Versioned content\n- Preview in fa/en\n\n## Dependencies\n- `P10-04` — RBAC permissions, guards and step-up authentication\n\n## Acceptance criteria\n- [ ] Content edits appear in app after publish\n\n## Testing requirements\n- Integration tests\n\n## Security considerations\n- Sanitize rich text\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-11",
+    "title": "Support ticketing",
+    "labels": [
+      "phase:10",
+      "area:admin",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P10-04"
+    ],
+    "body": "**Backlog ID:** `P10-11` · **Phase:** 10\n\n## Description\nSupportTicket/SupportMessage with status, priority, internal notes, responses; user-facing support form.\n\n## Scope\n- Email notifications\n\n## Dependencies\n- `P10-04` — RBAC permissions, guards and step-up authentication\n\n## Acceptance criteria\n- [ ] Tickets flow from user to admin and back\n\n## Testing requirements\n- e2e\n\n## Security considerations\n- Internal notes never exposed to users\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-12",
+    "title": "System management: health, jobs, errors, feature flags, maintenance mode",
+    "labels": [
+      "phase:10",
+      "area:admin",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P10-04",
+      "P1-03"
+    ],
+    "body": "**Backlog ID:** `P10-12` · **Phase:** 10\n\n## Description\nOperational views and controls (PRD §3.15 System Management).\n\n## Scope\n- Queue dashboards\n- FeatureFlag + SystemConfiguration\n- Maintenance mode\n\n## Dependencies\n- `P10-04` — RBAC permissions, guards and step-up authentication\n- `P1-03` — Redis, BullMQ and the worker application\n\n## Acceptance criteria\n- [ ] Flags toggle features without deploy; maintenance mode blocks customer writes\n\n## Testing requirements\n- Integration tests\n\n## Security considerations\n- Changes audited; step-up for security settings\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P10-13",
+    "title": "Security monitoring and pre-production authorization review",
+    "labels": [
+      "phase:10",
+      "area:security",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P10-04",
+      "P10-05"
+    ],
+    "body": "**Backlog ID:** `P10-13` · **Phase:** 10\n\n## Description\nAlerting on auth anomalies, admin activity, payment anomalies; explicit endpoint-by-endpoint authz review (PRD §11 Phase 10).\n\n## Scope\n- Review checklist and report\n\n## Dependencies\n- `P10-04` — RBAC permissions, guards and step-up authentication\n- `P10-05` — Append-only admin audit log\n\n## Acceptance criteria\n- [ ] Review report filed; all findings resolved or risk-accepted\n\n## Testing requirements\n- Automated authz matrix covers 100% of routes\n\n## Security considerations\n- Gate for production\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P11-01",
+    "title": "Accountability invitations and partner relationships",
+    "labels": [
+      "phase:11",
+      "area:accountability",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P2-03"
+    ],
+    "body": "**Backlog ID:** `P11-01` · **Phase:** 11\n\n## Description\nInvite, accept/reject, revoke trusted partners (PRD §3.10).\n\n## Scope\n- AccountabilityInvitation/Relationship\n- Expiring invite tokens\n\n## Dependencies\n- `P2-03` — CSRF protection and authentication guards\n\n## Acceptance criteria\n- [ ] Partners can be added and removed; revocation immediate\n\n## Testing requirements\n- Integration + e2e\n\n## Security considerations\n- No public leaderboards by default\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P11-02",
+    "title": "Shared-progress permissions and encouragement",
+    "labels": [
+      "phase:11",
+      "area:accountability",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P11-01",
+      "P8-04"
+    ],
+    "body": "**Backlog ID:** `P11-02` · **Phase:** 11\n\n## Description\nGranular sharing of selected habits/progress and encouragement messages.\n\n## Scope\n- SharedProgressPermission\n- Notifications for encouragement\n\n## Dependencies\n- `P11-01` — Accountability invitations and partner relationships\n- `P8-04` — Notification infrastructure, in-app notifications and preferences\n\n## Acceptance criteria\n- [ ] Only explicitly shared items are visible; journal/private goals never shared by default\n\n## Testing requirements\n- Authz tests\n\n## Security considerations\n- Least-exposure defaults\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P11-03",
+    "title": "Integration framework: connection lifecycle, token protection, sync logs",
+    "labels": [
+      "phase:11",
+      "area:integrations",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-03",
+      "P2-03"
+    ],
+    "body": "**Backlog ID:** `P11-03` · **Phase:** 11\n\n## Description\nGeneric adapter framework for third-party integrations (PRD §9).\n\n## Scope\n- IntegrationConnection, IntegrationSyncLog\n- Encrypted tokens, refresh, revocation, retries\n\n## Dependencies\n- `P1-03` — Redis, BullMQ and the worker application\n- `P2-03` — CSRF protection and authentication guards\n\n## Acceptance criteria\n- [ ] Connect/disconnect lifecycle works; tokens encrypted\n\n## Testing requirements\n- Adapter tests\n\n## Security considerations\n- Minimal OAuth scopes\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P11-04",
+    "title": "Google Calendar integration",
+    "labels": [
+      "phase:11",
+      "area:integrations",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P11-03",
+      "P4-07"
+    ],
+    "body": "**Backlog ID:** `P11-04` · **Phase:** 11\n\n## Description\nRead events for planning availability; optional block export.\n\n## Scope\n- Incremental sync\n- Minimal scopes\n\n## Dependencies\n- `P11-03` — Integration framework: connection lifecycle, token protection, sync logs\n- `P4-07` — Daily and weekly planner with time blocking\n\n## Acceptance criteria\n- [ ] Calendar events appear in planner; disconnect removes data\n\n## Testing requirements\n- Integration tests with mocks\n\n## Security considerations\n- Scopes reviewed; data retention defined\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P11-05",
+    "title": "Google Tasks integration",
+    "labels": [
+      "phase:11",
+      "area:integrations",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P11-03",
+      "P4-04"
+    ],
+    "body": "**Backlog ID:** `P11-05` · **Phase:** 11\n\n## Description\nTwo-way or import sync with Google Tasks (decide scope).\n\n## Scope\n- Conflict rules\n\n## Dependencies\n- `P11-03` — Integration framework: connection lifecycle, token protection, sync logs\n- `P4-04` — Tasks: model and API (subtasks, checklists, tags, priority, dates, durations)\n\n## Acceptance criteria\n- [ ] Tasks sync per chosen direction\n\n## Testing requirements\n- Integration tests\n\n## Security considerations\n- Minimal scopes\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P11-06",
+    "title": "Advanced reporting",
+    "labels": [
+      "phase:11",
+      "area:analytics",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P6-02"
+    ],
+    "body": "**Backlog ID:** `P11-06` · **Phase:** 11\n\n## Description\nExtended reports (annual trends, category performance, exports) per PRD §11 Phase 11.\n\n## Scope\n- Report definitions\n\n## Dependencies\n- `P6-02` — Performance dashboard and visualizations\n\n## Acceptance criteria\n- [ ] Reports accurate vs fixtures\n\n## Testing requirements\n- Unit tests\n\n## Security considerations\n- Owner scoping\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P12-01",
+    "title": "E2E coverage of all 15 critical PRD user journeys",
+    "labels": [
+      "phase:12",
+      "area:testing",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P9-08",
+      "P10-06"
+    ],
+    "body": "**Backlog ID:** `P12-01` · **Phase:** 12\n\n## Description\nPlaywright suite covering PRD §12 journeys 1–15 in both locales.\n\n## Scope\n- Sandbox payments\n- Admin with dedicated owner account\n\n## Dependencies\n- `P9-08` — Pricing page, checkout flow and customer billing portal\n- `P10-06` — Admin app shell and owner dashboard metrics\n\n## Acceptance criteria\n- [ ] All 15 journeys green in CI\n\n## Testing requirements\n- The suite\n\n## Security considerations\n- Test accounts isolated\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P12-02",
+    "title": "Accessibility and localization QA",
+    "labels": [
+      "phase:12",
+      "area:testing",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P12-01"
+    ],
+    "body": "**Backlog ID:** `P12-02` · **Phase:** 12\n\n## Description\naxe automated checks + manual screen reader and keyboard testing; Persian typography and bidi review.\n\n## Scope\n- WCAG 2.2 AA target\n\n## Dependencies\n- `P12-01` — E2E coverage of all 15 critical PRD user journeys\n\n## Acceptance criteria\n- [ ] No critical a11y violations; RTL review signed off\n\n## Testing requirements\n- axe in CI\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P12-03",
+    "title": "Performance and load testing",
+    "labels": [
+      "phase:12",
+      "area:testing",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P12-01"
+    ],
+    "body": "**Backlog ID:** `P12-03` · **Phase:** 12\n\n## Description\nAPI latency budgets, matrix rendering performance, DB query plans, load tests.\n\n## Scope\n- k6 or similar (verify)\n\n## Dependencies\n- `P12-01` — E2E coverage of all 15 critical PRD user journeys\n\n## Acceptance criteria\n- [ ] Budgets met at target load\n\n## Testing requirements\n- Load test reports\n\n## Security considerations\n- N/A\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P12-04",
+    "title": "Security testing (DAST/pen test) and dependency audit",
+    "labels": [
+      "phase:12",
+      "area:security",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P10-13"
+    ],
+    "body": "**Backlog ID:** `P12-04` · **Phase:** 12\n\n## Description\nOWASP-focused testing of auth, admin, payments, AI tools, sync.\n\n## Scope\n- External or structured internal pen test\n\n## Dependencies\n- `P10-13` — Security monitoring and pre-production authorization review\n\n## Acceptance criteria\n- [ ] No open high/critical findings\n\n## Testing requirements\n- Report\n\n## Security considerations\n- Gate for launch\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P12-05",
+    "title": "Production observability: error tracking, metrics, uptime, alerting",
+    "labels": [
+      "phase:12",
+      "area:observability",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P1-07"
+    ],
+    "body": "**Backlog ID:** `P12-05` · **Phase:** 12\n\n## Description\nError tracking, APM/latency, queue/payment/AI monitoring, uptime checks and alert routing (PRD §10).\n\n## Scope\n- Provider choice (verify)\n\n## Dependencies\n- `P1-07` — Structured logging with redaction\n\n## Acceptance criteria\n- [ ] Alerts fire in staging drills\n\n## Testing requirements\n- Alert drill\n\n## Security considerations\n- No sensitive data sent to vendors\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P12-06",
+    "title": "Staging and production environments, deployment pipeline",
+    "labels": [
+      "phase:12",
+      "area:infra",
+      "type:feature"
+    ],
+    "dependencies": [
+      "P12-05"
+    ],
+    "body": "**Backlog ID:** `P12-06` · **Phase:** 12\n\n## Description\nContainerised deploys, environment promotion (staging → production with approval), migration strategy, secret manager.\n\n## Scope\n- Owner decides hosting\n\n## Dependencies\n- `P12-05` — Production observability: error tracking, metrics, uptime, alerting\n\n## Acceptance criteria\n- [ ] Repeatable deploys; production requires human approval\n\n## Testing requirements\n- Deployment rehearsal\n\n## Security considerations\n- Least-privilege deploy credentials; TLS everywhere\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P12-07",
+    "title": "Backups and tested restoration",
+    "labels": [
+      "phase:12",
+      "area:infra",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P12-06"
+    ],
+    "body": "**Backlog ID:** `P12-07` · **Phase:** 12\n\n## Description\nAutomated encrypted backups, documented restore runbook, restore drill (PRD §10).\n\n## Scope\n- PITR where available\n\n## Dependencies\n- `P12-06` — Staging and production environments, deployment pipeline\n\n## Acceptance criteria\n- [ ] Restore drill succeeds within RTO/RPO targets\n\n## Testing requirements\n- Drill record\n\n## Security considerations\n- Backups encrypted and access-restricted\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P12-08",
+    "title": "Legal, privacy, tax and payment compliance review for launch jurisdictions",
+    "labels": [
+      "phase:12",
+      "area:privacy",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P9-05",
+      "P9-06"
+    ],
+    "body": "**Backlog ID:** `P12-08` · **Phase:** 12\n\n## Description\nAssess privacy, consumer protection, payment and tax obligations; privacy policy and terms (PRD §17).\n\n## Scope\n- Owner + advisers\n\n## Dependencies\n- `P9-05` — Iranian payment gateway adapter (sandbox)\n- `P9-06` — International payment provider adapter (sandbox)\n\n## Acceptance criteria\n- [ ] Sign-off recorded\n\n## Testing requirements\n- N/A\n\n## Security considerations\n- Required before commercial launch\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  },
+  {
+    "id": "P12-09",
+    "title": "Launch checklist and go/no-go",
+    "labels": [
+      "phase:12",
+      "area:release",
+      "type:chore"
+    ],
+    "dependencies": [
+      "P12-01",
+      "P12-02",
+      "P12-03",
+      "P12-04",
+      "P12-07",
+      "P12-08"
+    ],
+    "body": "**Backlog ID:** `P12-09` · **Phase:** 12\n\n## Description\nConsolidated production readiness checklist (PRD §14 \"Prepare for production\") and launch decision.\n\n## Scope\n- Checklist doc\n\n## Dependencies\n- `P12-01` — E2E coverage of all 15 critical PRD user journeys\n- `P12-02` — Accessibility and localization QA\n- `P12-03` — Performance and load testing\n- `P12-04` — Security testing (DAST/pen test) and dependency audit\n- `P12-07` — Backups and tested restoration\n- `P12-08` — Legal, privacy, tax and payment compliance review for launch jurisdictions\n\n## Acceptance criteria\n- [ ] All critical acceptance criteria pass; owner approves\n\n## Testing requirements\n- N/A\n\n## Security considerations\n- No deploy without approval\n\n_Definition of Done: docs/DEFINITION_OF_DONE.md. Spec: docs/PRODUCT_REQUIREMENTS.md._"
+  }
+]
