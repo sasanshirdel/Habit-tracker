@@ -4,6 +4,16 @@
   "private": true,
   "description": "NestJS REST API (modular monolith).",
   "type": "module",
+  "exports": {
+    "./queue": {
+      "types": "./dist/queue/index.d.ts",
+      "default": "./dist/queue/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker/index.d.ts",
+      "default": "./dist/worker/index.js"
+    }
+  },
   "scripts": {
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
@@ -27,6 +37,8 @@
     "@nestjs/platform-express": "12.6.0",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
+    "bullmq": "6.7.8",
+    "ioredis": "6.0.0",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "zod": "4.6.7"
