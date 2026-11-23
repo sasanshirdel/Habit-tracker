@@ -1,0 +1,28 @@
+name: Bug report
+description: Something is broken
+labels: ['type:bug']
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: input
+    id: locale
+    attributes:
+      label: Locale / direction / browser / device
+      placeholder: 'fa (RTL), Safari iOS 19 PWA'
+  - type: textarea
+    id: security
+    attributes:
+      label: Security or data-loss impact?
+      description: Do NOT post exploit details for vulnerabilities here — see docs/SECURITY.md.
