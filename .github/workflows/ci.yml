@@ -55,3 +55,49 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  # Database integration tests against a real PostgreSQL (backlog P1-01; generalised, incl. Redis,
+  # in P1-02). Ephemeral service container with throwaway credentials — no repository secrets.
+  integration-db:
+    name: integration · PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18.7-alpine # keep in sync with docker-compose.yml
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-only-not-a-secret
+          POSTGRES_DB: habit_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d habit_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci-only-not-a-secret@localhost:5432/habit_ci?schema=public
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations (prisma migrate deploy)
+        working-directory: apps/api
+        run: pnpm db:migrate:deploy
+
+      - name: Migration status
+        working-directory: apps/api
+        run: pnpm db:migrate:status
+
+      - name: Integration tests
+        run: pnpm test:integration
