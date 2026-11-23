@@ -41,10 +41,11 @@ jobs:
         run: pnpm lint
 
       # Shared packages (packages/*) are consumed through their built dist/ (types + JS), so they
-      # are built — in dependency order — before anything that imports them (P1-04). The root
-      # typecheck/test scripts also do this, so local runs behave the same.
-      - name: Build shared packages
-        run: pnpm build:packages
+      # are built — in dependency order — before anything that imports them (P1-04). apps/worker
+      # consumes the API the same way (`@habit/api/worker`, P1-03), so the API is built too. The
+      # root typecheck/test scripts also run `build:deps`, so local runs behave the same.
+      - name: Build shared packages and the API library
+        run: pnpm build:deps
 
       - name: Typecheck
         run: pnpm typecheck
@@ -111,8 +112,8 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Build shared packages
-        run: pnpm build:packages
+      - name: Build shared packages and the API library
+        run: pnpm build:deps
 
       - name: Apply migrations (prisma migrate deploy)
         working-directory: apps/api
@@ -122,6 +123,8 @@ jobs:
         working-directory: apps/api
         run: pnpm db:migrate:status
 
+      # API: PostgreSQL + Redis + queue/worker contexts in-process. Worker: builds itself and runs
+      # the real worker process (enqueue → process → SIGTERM drain) — backlog P1-03.
       - name: Integration tests
         run: pnpm test:integration
 
