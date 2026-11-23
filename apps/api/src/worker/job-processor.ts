@@ -1,4 +1,5 @@
 import { UnrecoverableError, type Job } from 'bullmq';
+import { runWithJobContext } from '../common/logging/log-context.js';
 import type { JobHandler } from './job-handler.js';
 
 /** Reasons a job is failed without retry (stored as the job's `failedReason`). */
@@ -25,6 +26,8 @@ type ProcessableJob = Pick<Job, 'id' | 'name' | 'data' | 'attemptsMade' | 'opts'
  * BullMQ processor for one queue: routes a job to its handler after re-validating the payload.
  * Unknown job names and invalid payloads fail immediately (`UnrecoverableError`, no retries) —
  * retrying cannot fix them. Errors thrown by handlers propagate so BullMQ retries with backoff.
+ * Handlers run inside a job log context, so their log lines carry `jobId`, `jobName` and
+ * `attempt` (P1-07) — never the payload.
  */
 export function createJobProcessor(handlers: ReadonlyMap<string, JobHandler>) {
   return async (job: ProcessableJob): Promise<void> => {
@@ -32,10 +35,14 @@ export function createJobProcessor(handlers: ReadonlyMap<string, JobHandler>) {
     if (!handler) throw new UnrecoverableError(JOB_REJECTION.unknownJob);
     const parsed = handler.definition.schema.safeParse(job.data);
     if (!parsed.success) throw new UnrecoverableError(JOB_REJECTION.invalidPayload);
-    await handler.handle(parsed.data, {
+    const context = {
       jobId: job.id ?? '',
       attempt: job.attemptsMade + 1,
       maxAttempts: job.opts.attempts ?? 1,
-    });
+    };
+    await runWithJobContext(
+      { jobId: context.jobId, jobName: job.name, attempt: context.attempt },
+      () => handler.handle(parsed.data, context),
+    );
   };
 }

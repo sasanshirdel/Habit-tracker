@@ -15,6 +15,8 @@ export default defineConfig({
       NODE_ENV: 'test',
       DATABASE_URL: 'postgresql://unreachable:unreachable@127.0.0.1:1/unreachable',
       REDIS_URL: 'redis://127.0.0.1:1',
+      // Keep test output readable; tests that assert log lines install a capturing logger.
+      LOG_LEVEL: 'warn',
     },
   },
 });

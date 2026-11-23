@@ -41,6 +41,17 @@ const BODY_PARSER_ERRORS: Record<string, { status: number; code: ApiErrorCode }>
   'request.aborted': { status: 400, code: 'BAD_REQUEST' },
 };
 
+/**
+ * 5xx codes the API raises on purpose for a known state (dependency down, instance not ready).
+ * They are not bugs, so they are not logged as unexpected errors — a failing readiness probe would
+ * otherwise write an error with a stack trace every few seconds (P1-07).
+ */
+const EXPECTED_SERVER_CODES: ReadonlySet<ApiErrorCode> = new Set([
+  'NOT_READY',
+  'SERVICE_UNAVAILABLE',
+  'QUEUE_UNAVAILABLE',
+]);
+
 export interface MappedError {
   status: number;
   error: Omit<ApiErrorBody['error'], 'requestId'>;
@@ -61,7 +72,8 @@ export function mapException(exception: unknown): MappedError {
   if (exception instanceof ApiException) {
     const error: MappedError['error'] = { code: exception.code, message: exception.message };
     if (exception.details !== undefined) error.details = exception.details;
-    return { status: exception.getStatus(), error, unexpected: exception.getStatus() >= 500 };
+    const unexpected = exception.getStatus() >= 500 && !EXPECTED_SERVER_CODES.has(exception.code);
+    return { status: exception.getStatus(), error, unexpected };
   }
   // Domain errors with a known code (e.g. QueueUnavailableError from the queue module).
   if (hasStringProp(exception, 'code') && exception.code === 'QUEUE_UNAVAILABLE') {
@@ -100,8 +112,9 @@ export function mapException(exception: unknown): MappedError {
 /**
  * Global exception filter: every failing request answers with
  * `{ error: { code, message, details?, requestId } }` and the `x-request-id` header.
- * Unexpected errors are logged server-side with the request id (structured, redacted logging
- * arrives with backlog P1-07); the response never contains internals, in any environment.
+ * Unexpected errors are logged server-side as one structured line with the request id, the error
+ * code and the error's name/code/stack frames — its message only in development, because
+ * messages can echo input or driver details (P1-07). The response never contains internals.
  */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -122,9 +135,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
     const mapped = mapException(exception);
     if (mapped.unexpected) {
-      const name = exception instanceof Error ? exception.name : typeof exception;
-      const stack = exception instanceof Error ? exception.stack : undefined;
-      this.logger.error(`[${requestId}] ${mapped.error.code} (${name})`, stack);
+      this.logger.error({
+        msg: 'request failed with an unexpected error',
+        // Ambient request context wins; this covers errors raised before the context existed.
+        requestId,
+        code: mapped.error.code,
+        status: mapped.status,
+        err: exception instanceof Error ? exception : { type: typeof exception },
+      });
     }
     if (httpAdapter.isHeadersSent(res)) return;
     const body: ApiErrorBody = { error: { ...mapped.error, requestId } };

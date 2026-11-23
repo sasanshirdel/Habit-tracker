@@ -1,13 +1,15 @@
-import type { INestApplicationContext } from '@nestjs/common';
+import type { INestApplicationContext, LoggerService } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { createLogger } from '../common/logging/json-logger.js';
 import { WorkerHost, type DrainResult } from './worker-host.service.js';
 import { WorkerModule } from './worker.module.js';
 
 /** Boots the worker: a Nest application context (no HTTP server) whose consumers start at once. */
-export async function createWorkerContext(): Promise<INestApplicationContext> {
-  return NestFactory.createApplicationContext(WorkerModule, {
-    logger: ['error', 'warn', 'log'],
-  });
+export async function createWorkerContext(
+  logger: LoggerService = createLogger('worker'),
+): Promise<INestApplicationContext> {
+  // Structured, redacted JSON logs (P1-07), the same format as the API.
+  return NestFactory.createApplicationContext(WorkerModule, { logger });
 }
 
 /**
