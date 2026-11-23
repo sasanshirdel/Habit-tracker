@@ -5,7 +5,10 @@ import type { ApiErrorBody, DependencyStatus, HealthResponse, ReadinessResponse 
 describe('@habit/shared-types', () => {
   it('readiness response shape', () => {
     expectTypeOf<ReadinessResponse['status']>().toEqualTypeOf<'ok' | 'error'>();
-    expectTypeOf<ReadinessResponse['checks']['database']>().toEqualTypeOf<DependencyStatus>();
+    expectTypeOf<ReadinessResponse['checks']>().toEqualTypeOf<{
+      database: DependencyStatus;
+      redis: DependencyStatus;
+    }>();
     expectTypeOf<DependencyStatus>().toEqualTypeOf<'up' | 'down'>();
   });
 

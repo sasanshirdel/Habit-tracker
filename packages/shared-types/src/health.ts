@@ -12,7 +12,7 @@ export interface HealthResponse {
 /** `GET /api/v1/health/ready` — readiness (200 when every check is up, 503 otherwise). */
 export interface ReadinessResponse {
   status: 'ok' | 'error';
-  checks: { database: DependencyStatus };
+  checks: { database: DependencyStatus; redis: DependencyStatus };
   /** ISO 8601 instant (UTC). */
   timestamp: string;
 }

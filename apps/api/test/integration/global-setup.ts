@@ -59,6 +59,10 @@ export default async function setup(project: TestProject): Promise<() => Promise
   project.provide('integrationDatabaseName', name);
   project.provide('integrationRedisUrl', redisUrl);
   project.provide('integrationRedisKeyPrefix', redisKeyPrefix);
+  // Any app/worker a test boots writes its BullMQ keys under the run prefix too (P1-03), so the
+  // default `habit:q` namespace of a shared dev Redis is never touched and teardown removes them.
+  // Test workers are spawned after global setup and inherit this environment.
+  process.env.QUEUE_PREFIX = `${redisKeyPrefix}q`;
 
   return async () => {
     try {

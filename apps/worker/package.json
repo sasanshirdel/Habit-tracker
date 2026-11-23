@@ -1,0 +1,28 @@
+{
+  "name": "@habit/worker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Background worker process: BullMQ consumers sharing the API's modules (backlog P1-03).",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "dev": "tsc -p tsconfig.build.json && node --watch-path=dist --watch-path=../api/dist dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:integration": "tsc -p tsconfig.build.json && vitest run -c vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@habit/api": "workspace:*",
+    "@nestjs/common": "12.6.0",
+    "reflect-metadata": "0.2.2"
+  },
+  "devDependencies": {
+    "@habit/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "eslint": "10.15.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.1"
+  }
+}
