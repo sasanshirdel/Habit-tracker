@@ -184,6 +184,9 @@ importers:
       '@habit/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
+      '@habit/shared-validation':
+        specifier: workspace:*
+        version: link:../../packages/shared-validation
       '@nestjs/common':
         specifier: 12.6.0
         version: 12.6.0(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)

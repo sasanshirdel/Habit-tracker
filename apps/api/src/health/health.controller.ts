@@ -1,5 +1,6 @@
-import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
-import type { HealthResponse, ReadinessResponse } from '@habit/shared-types';
+import { Controller, Get, HttpStatus } from '@nestjs/common';
+import type { HealthResponse, ReadinessErrorDetails, ReadinessResponse } from '@habit/shared-types';
+import { ApiException } from '../common/errors/api-exception.js';
 import { DatabaseHealthIndicator } from '../database/index.js';
 import { RedisHealthIndicator } from '../queue/redis.health.js';
 
@@ -35,16 +36,21 @@ export class HealthController {
   @Get('ready')
   async ready(): Promise<ReadinessResponse> {
     const [database, redis] = await Promise.all([this.database.check(), this.redis.check()]);
+    if (database !== 'up' || redis !== 'up') {
+      // Standard error envelope (P1-05); details name each dependency's status, nothing more.
+      const details: ReadinessErrorDetails = { checks: { database, redis } };
+      throw new ApiException(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'NOT_READY',
+        'Service not ready.',
+        details,
+      );
+    }
     const body: ReadinessResponse = {
-      status: database === 'up' && redis === 'up' ? 'ok' : 'error',
+      status: 'ok',
       checks: { database, redis },
       timestamp: new Date().toISOString(),
     };
-    if (body.status !== 'ok') {
-      // The global error format (backlog P1-05) will wrap this; the body stays code-like and
-      // free of internals.
-      throw new ServiceUnavailableException(body);
-    }
     return body;
   }
 }
