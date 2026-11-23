@@ -1,0 +1,25 @@
+{
+  "name": "habit-tracker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Bilingual (Persian RTL / English LTR) personal productivity & performance platform — monorepo root.",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=24.11.0 <25"
+  },
+  "scripts": {
+    "lint": "pnpm -r --if-present run lint",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "build": "pnpm -r --if-present run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "dev:services": "docker compose up -d postgres redis",
+    "dev:services:down": "docker compose down"
+  },
+  "devDependencies": {
+    "prettier": "3.10.1"
+  }
+}

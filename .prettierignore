@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+node_modules
+dist
+.next
+coverage
+# Canonical spec: preserved verbatim, never reformatted.
+docs/PRODUCT_REQUIREMENTS.md
+docs/backlog/issues.json
+apps/web/next-env.d.ts

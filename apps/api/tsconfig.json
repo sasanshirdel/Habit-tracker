@@ -1,0 +1,10 @@
+{
+  "extends": "@habit/config/tsconfig.node.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false
+  },
+  "include": ["src", "test", "*.ts"]
+}
