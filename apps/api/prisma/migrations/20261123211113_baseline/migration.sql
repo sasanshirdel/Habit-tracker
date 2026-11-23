@@ -1,0 +1,8 @@
+-- Baseline migration (backlog P1-01).
+--
+-- Establishes the migration history (`_prisma_migrations`) for the database. It intentionally
+-- creates no product tables and no extensions: models arrive with their owning roadmap phase
+-- (identity in Phase 2, habits in Phase 3, ...), each with its own migration.
+--
+-- Extensions are deliberately deferred to the migration that first needs them (for example a
+-- case-insensitive email column decided in Phase 2), so nothing here requires superuser rights.

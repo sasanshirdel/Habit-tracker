@@ -2,7 +2,7 @@
   "name": "habit-tracker",
   "version": "0.0.0",
   "private": true,
-  "description": "Bilingual (Persian RTL / English LTR) personal productivity & performance platform — monorepo root.",
+  "description": "Bilingual (Persian RTL / English LTR) personal productivity & performance platform \u2014 monorepo root.",
   "license": "UNLICENSED",
   "packageManager": "pnpm@12.21.0",
   "engines": {
@@ -12,6 +12,7 @@
     "lint": "pnpm -r --if-present run lint",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
+    "test:integration": "pnpm -r --if-present run test:integration",
     "build": "pnpm -r --if-present run build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
