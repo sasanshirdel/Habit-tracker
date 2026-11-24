@@ -16,7 +16,11 @@ Next.js 16 App Router frontend, bilingual from the first page:
 'percent')`). Persian gets Persian digits; dates use the locale's default calendar (Solar
     Hijri for `fa`) for now.
   - Unknown paths under a locale render the localized `app/[locale]/not-found.tsx`.
-- Tailwind CSS v4 wired to design tokens from `@habit/ui/tokens.css`.
+- **Design system** (P1-09, ADR-0013): Tailwind CSS v4 + `@habit/ui/styles.css` (tokens, themes,
+  primitives). The locale layout renders `<html data-theme>` from the `theme` cookie (dark default,
+  light, system — no flash), wraps the app in `UiProvider` (direction + CSP nonce) and mounts the
+  localized `Toaster`. `components/theme-switcher.tsx` sets the cookie. Fonts are self-hosted from
+  `@fontsource-variable/inter` and `@fontsource-variable/vazirmatn` (served from `/_next/static/media`).
 - Security headers (P1-08, ADR-0011): `proxy.ts` sets a per-request nonce Content-Security-Policy
   and then runs next-intl's locale routing with the nonce already on the request, so Next.js adds
   the nonce to its scripts on every page (pages render dynamically — the locale layout calls
@@ -26,7 +30,7 @@ Next.js 16 App Router frontend, bilingual from the first page:
 
 Use logical CSS properties/utilities (`ms-*`, `pe-*`, `start-*`, `text-start`) — never physical
 left/right; ESLint rejects physical utilities in class names and a test scans the stylesheets.
-Fonts (Inter, Vazirmatn) are self-hosted with the design system (P1-09).
+No raw colour values outside the tokens (`lib/design-guard.test.ts`).
 
 ## Tests
 

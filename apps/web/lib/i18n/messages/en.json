@@ -12,6 +12,12 @@
     "label": "Language",
     "switchTo": "فارسی"
   },
+  "theme": {
+    "label": "Theme",
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System"
+  },
   "notFound": {
     "title": "Page not found",
     "description": "The page you are looking for does not exist or has moved.",
@@ -20,5 +26,10 @@
   "common": {
     "days": "{count, plural, one {# day} other {# days}}",
     "percent": "{value, number, percent}"
+  },
+  "toast": {
+    "label": "Notification",
+    "region": "Notifications",
+    "close": "Close"
   }
 }

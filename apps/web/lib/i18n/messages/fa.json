@@ -12,6 +12,12 @@
     "label": "زبان",
     "switchTo": "English"
   },
+  "theme": {
+    "label": "پوسته",
+    "dark": "تیره",
+    "light": "روشن",
+    "system": "مطابق سیستم"
+  },
   "notFound": {
     "title": "صفحه پیدا نشد",
     "description": "صفحه‌ای که دنبالش هستید وجود ندارد یا جابه‌جا شده است.",
@@ -20,5 +26,10 @@
   "common": {
     "days": "{count, plural, other {# روز}}",
     "percent": "{value, number, percent}"
+  },
+  "toast": {
+    "label": "اعلان",
+    "region": "اعلان‌ها",
+    "close": "بستن"
   }
 }
