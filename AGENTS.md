@@ -46,7 +46,8 @@ pnpm test           # vitest, all packages
 pnpm build          # all packages
 pnpm check          # all of the above in order
 pnpm dev:services   # docker compose: postgres + redis (needs Docker)
-pnpm --filter @habit/web dev      # http://localhost:3000 -> /en, /fa
+pnpm --filter @habit/web dev      # http://localhost:3000 -> /en or /fa (negotiated)
+pnpm --filter @habit/web test:e2e # route tests against `next start` (after `pnpm build`)
 pnpm --filter @habit/api dev      # http://localhost:4000/api/v1/health
 pnpm --filter @habit/worker dev   # BullMQ consumers (apps/worker)
 ```
@@ -58,7 +59,7 @@ pnpm --filter @habit/worker dev   # BullMQ consumers (apps/worker)
 - **Module boundaries (API):** one Nest module per bounded area under `apps/api/src/modules/<name>/`; other modules use only its exported service interface (ADR-0006).
 - **API:** versioned REST under `/api/v1`, DTOs + validation at the edge, consistent error shape with error **codes** (UI localises), OpenAPI docs.
 - **Server is the authority** for authz, entitlements, metrics and payments. Frontend checks are UX only.
-- **i18n:** no hardcoded UI strings — dictionaries for `en` and `fa` with identical keys. Use logical CSS (`ms-/me-/ps-/pe-/start-/end-`), never `left/right`. Check every UI change in `/en` and `/fa` (ADR-0004).
+- **i18n:** no hardcoded UI strings — next-intl ICU messages in `apps/web/lib/i18n/messages/{en,fa}.json` with identical keys and arguments (CI parity test); internal links via `@/lib/i18n/navigation`. Use logical CSS (`ms-/me-/ps-/pe-/start-/end-`), never `left/right` (lint fails). Check every UI change in `/en` and `/fa` (ADR-0004).
 - **Design tokens only** — no raw hex colours in components (`packages/ui`).
 - **Data:** UTC `timestamptz` + user IANA timezone; habit occurrences by local date; money as integer minor units + currency; never rewrite history silently; Prisma migrations only.
 - **Numbers shown to users are computed by deterministic backend code**, never by an LLM.

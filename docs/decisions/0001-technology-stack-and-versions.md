@@ -129,3 +129,24 @@ generated in-repo from Nest's route metadata and the routes' zod schemas with zo
 `z.toJSONSchema` (JSON Schema 2020-12, the OpenAPI 3.1 dialect); no HTML UI is served. Rationale in
 [ADR-0012](0012-openapi-from-zod.md). CI uses `actions/upload-artifact@v7` (latest release v7.0.2,
 2026-10-07) for the exported document.
+
+## Addendum — Phase 1, P1-10 next-intl (2026-11-25)
+
+Re-verified against the npm registry on 2026-11-25 (UTC+03:30) before installing
+(`npm view next-intl version time dependencies peerDependencies license`), as ADR-0004 requires:
+
+| Package     | Installed  | Published  | Notes                                                                                                                                                                                                                                                                                                                                               |
+| ----------- | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `next-intl` | **4.16.0** | 2026-11-23 | MIT, single maintainer (amannn), actively released. Peers `next ^12 … ^16`, `react ^16.8 … ^19` — matches Next 16.4.6 / React 19.3.1. **Not 4.16.1** (npm `latest`): published 2026-11-24 13:01 (UTC+03:30), under 24 h before the install, so pnpm's minimum-release-age policy refuses it (same rule as `typescript-eslint` and `ioredis` above). |
+
+Transitive runtime packages, all from the next-intl repository unless noted: `use-intl` 4.15.1,
+`icu-minify` 4.15.3, `@formatjs/intl-localematcher` (formatjs), `negotiator` 1.1.0 (jshttp), and
+the message-extractor stack (`@eloqnt/*` 0.1.x, `next-intl-swc-plugin-extractor` 4.15.1,
+`@swc/core` 1.16 — already allowed). The extractor is **not enabled**; its file watcher
+`@parcel/watcher` 2.6.0 has an install script that compiles native code, so it is **denied** in
+`allowBuilds` (like `msgpackr-extract`) and never loaded. Usage and decisions: ADR-0004 "Phase 1
+implementation".
+
+Considered and not chosen: keeping the Phase 0 stub plus `intl-messageformat` and a hand-written
+negotiator — next-intl already brings ICU formatting, typed keys, server/client message loading and
+an open-redirect-hardened locale middleware, which is what ADR-0004 decided on.
