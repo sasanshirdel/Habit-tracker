@@ -8,7 +8,10 @@
     "./tsconfig.base.json": "./tsconfig.base.json",
     "./tsconfig.node.json": "./tsconfig.node.json",
     "./tsconfig.nextjs.json": "./tsconfig.nextjs.json",
-    "./eslint": "./eslint.base.js"
+    "./eslint": {
+      "types": "./eslint.base.d.ts",
+      "default": "./eslint.base.js"
+    }
   },
   "dependencies": {
     "@eslint/js": "10.0.1",
