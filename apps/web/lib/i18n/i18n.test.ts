@@ -52,7 +52,16 @@ function formatter(locale: Locale) {
 
 // A fixed instant: 2026-03-21T12:00:00Z (1 Farvardin, Nowruz 1405 in the Solar Hijri calendar).
 const NOWRUZ = new Date(Date.UTC(2026, 2, 21, 12));
-const SAMPLE_VALUES = { count: 3, value: 0.42, date: NOWRUZ };
+const SAMPLE_VALUES = {
+  count: 3,
+  value: 0.42,
+  date: NOWRUZ,
+  time: NOWRUZ,
+  seconds: 5,
+  hours: 2,
+  minutes: 7,
+  requestId: 'req-1',
+};
 
 describe('locale config', () => {
   it('maps Persian to RTL and English to LTR', () => {

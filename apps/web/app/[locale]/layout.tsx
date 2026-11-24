@@ -8,6 +8,7 @@ import { cookies, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
+import { QueryProvider } from '@/components/providers/query-provider';
 import { getDirection, locales, parseLocale } from '@/lib/i18n/config';
 import '../globals.css';
 
@@ -58,7 +59,7 @@ export default async function LocaleLayout({
       <body className="min-h-dvh antialiased">
         <NextIntlClientProvider>
           <UiProvider dir={dir} nonce={nonce}>
-            {children}
+            <QueryProvider>{children}</QueryProvider>
             <Toaster label={t('label')} regionLabel={t('region')} closeLabel={t('close')} />
           </UiProvider>
         </NextIntlClientProvider>
