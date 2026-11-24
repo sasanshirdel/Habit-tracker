@@ -63,3 +63,28 @@ pnpm --filter @habit/web test        # unit + component (jsdom): messages parity
 pnpm --filter @habit/web build
 pnpm --filter @habit/web test:e2e    # HTTP route tests against `next start` (lang/dir, redirects, nonce, shell)
 ```
+
+### Browser tests (Playwright, P1-13, ADR-0015)
+
+`e2e/browser/*.spec.ts` drive headless Chromium against the production build under `next start`
+(`127.0.0.1:3100`) and the built API (`127.0.0.1:4100`, `NODE_ENV=production`) on PostgreSQL and
+Redis — Playwright starts both (`playwright.config.ts`), or reuses ones already running locally.
+Covered: `<html lang dir>` and the computed direction, locale negotiation and the switcher; the
+shell at phone/tablet/desktop in `fa` and `en` (bottom bar / icon rail / sidebar, inline start,
+no horizontal overflow); the keyboard journey (skip link, "More" sheet focus trap, Escape, focus
+after navigation); CSP enforcement (injected inline script and handler blocked, foreign
+`connect-src` refused, menus and the sheet stay inside the policy); `/status` calling the API
+cross-origin. Every test also fails on any CSP violation, `console.error` or uncaught error.
+
+```bash
+# PostgreSQL + Redis running, migrations applied (pnpm --filter @habit/api db:migrate:deploy)
+export DATABASE_URL=postgresql://… REDIS_URL=redis://127.0.0.1:6379
+pnpm build:deps                                                # the API the suite starts
+pnpm --filter @habit/web exec playwright install --only-shell chromium   # once per Playwright version
+pnpm --filter @habit/web build:e2e                             # web build pointing at the suite's API
+pnpm --filter @habit/web test:browser                          # report: playwright-report/, traces: test-results/
+```
+
+`build:e2e` bakes `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:4100/api/v1` into the bundle; the
+route tests (`test:e2e`) pass on that build too. Behind an HTTP proxy, set
+`NO_PROXY=127.0.0.1,localhost`.

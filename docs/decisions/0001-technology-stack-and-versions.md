@@ -196,3 +196,19 @@ run the shell's component tests (`// @vitest-environment jsdom`); the app's othe
 
 `apps/web` now also depends on the workspace package `@habit/shared-types` (response types, error
 codes). No other new packages; the HTTP client is in-repo `fetch` (ADR-0014).
+
+## Addendum — Phase 1, P1-13 browser end-to-end tests (2026-11-25)
+
+Checked with `npm view <pkg> version dist-tags time dependencies engines license` on 2026-11-25
+(UTC+03:30); pinned exactly. Rationale and usage in [ADR-0015](0015-browser-end-to-end-tests.md).
+
+| Package            | Installed  | Published  | Where / notes                                                                                                                                                                                  |
+| ------------------ | ---------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@playwright/test` | **1.65.1** | 2026-11-14 | web (dev). Browser test runner. Apache-2.0, Microsoft; npm `latest` (1.66 is only in `alpha`/`next`); `engines.node >=20`; well past pnpm's minimum release age. Its only dependency is below. |
+| `playwright`       | 1.65.1     | 2026-11-14 | Transitive. Depends only on `playwright-core`.                                                                                                                                                 |
+| `playwright-core`  | 1.65.1     | 2026-11-14 | Transitive. No dependencies.                                                                                                                                                                   |
+
+No install scripts: browsers are **not** downloaded on `pnpm install`; they are installed explicitly
+(`pnpm --filter @habit/web exec playwright install --only-shell chromium`; CI caches them). This
+version drives Chrome Headless Shell 159.0.8154.6 (revision 1255). `next` lists `@playwright/test`
+as an optional peer, so the lockfile now records it on `next`'s peer set — no change to Next itself.

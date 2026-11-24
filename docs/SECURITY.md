@@ -92,6 +92,11 @@ no admin UI can edit or delete entries. Retention defined before launch.
   the socket address unless `TRUST_PROXY` hops are configured — set it exactly behind a load
   balancer, never higher (spoofable `X-Forwarded-For`). New credential/code endpoints must use
   `@RateLimit('auth')`.
+- **CSP enforced in a real browser (P1-13, ADR-0015):** the Playwright suite fails on any CSP
+  violation, `console.error` or uncaught error on every page it visits, and proves that an injected
+  inline script and inline event handler never run and that `fetch` to a foreign origin is refused,
+  while the app's nonce'd scripts hydrate and the API origin stays reachable (CORS with credentials).
+  E2E fixtures use no credentials; the CI job uses throwaway service-container passwords only.
 - **UI primitives and the CSP (P1-09, ADR-0013):** fonts are self-hosted (`font-src 'self'`, no font
   CDN at runtime or build time); primitives inject no `<style>` without the request's nonce
   (`UiProvider` hands it to the modal scroll lock; sonner was rejected for injecting un-nonced

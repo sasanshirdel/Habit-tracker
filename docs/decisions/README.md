@@ -19,5 +19,6 @@ new ADR that supersedes the old one (and mark the old one `Superseded by ADR-NNN
 | [0012](0012-openapi-from-zod.md)                             | OpenAPI generated from zod                                       | Accepted          |
 | [0013](0013-design-system.md)                                | Design system: shadcn/ui primitives on Radix, themes, fonts      | Accepted          |
 | [0014](0014-frontend-data-layer.md)                          | Frontend data layer: fetch client, TanStack Query, error codes   | Accepted          |
+| [0015](0015-browser-end-to-end-tests.md)                     | Browser end-to-end tests with Playwright                         | Accepted          |
 
 New ADRs: copy [`TEMPLATE.md`](TEMPLATE.md), use the next number, open it in the same PR as the change.
