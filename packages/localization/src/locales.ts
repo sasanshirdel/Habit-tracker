@@ -1,13 +1,17 @@
 /**
  * Locale metadata shared by web and api (ADR-0004). Persian is a first-class locale, not a
- * translation layer: direction, fonts and formatting all derive from here. UI message
- * dictionaries stay in `apps/web` (next-intl, P1-10); this package holds only what both the
- * frontend and the backend need to agree on.
+ * translation layer: direction, fonts and formatting all derive from here. UI messages stay in
+ * `apps/web/lib/i18n/messages` (next-intl, P1-10); this package holds only what both the frontend
+ * and the backend need to agree on.
  */
 export const locales = ['en', 'fa'] as const;
 export type Locale = (typeof locales)[number];
 
-/** Default locale for `/` and new users. Open owner decision (ROADMAP "Outstanding decisions" #1). */
+/**
+ * Default locale for new users and the last fallback of `/` negotiation (after the `NEXT_LOCALE`
+ * cookie and `Accept-Language`; apps/web next-intl routing). Interim value — open owner decision
+ * (ROADMAP "Outstanding decisions" #1). Change it here only; every consumer imports it from here.
+ */
 export const defaultLocale: Locale = 'en';
 
 export type Direction = 'ltr' | 'rtl';
