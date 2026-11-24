@@ -3,7 +3,13 @@ import type { HealthResponse, ReadinessErrorDetails, ReadinessResponse } from '@
 import { ApiException } from '../common/errors/api-exception.js';
 import { DatabaseHealthIndicator } from '../database/index.js';
 import { RedisHealthIndicator } from '../queue/redis.health.js';
+import { ApiDoc, ApiTag } from '../openapi/api-doc.decorator.js';
 import { SkipRateLimit } from '../rate-limit/rate-limit.guard.js';
+import {
+  healthResponseSchema,
+  notReadyErrorSchema,
+  readinessResponseSchema,
+} from './health.schemas.js';
 
 // Response contracts live in @habit/shared-types so web and api share one definition (P1-04).
 export type { HealthResponse, ReadinessResponse };
@@ -22,6 +28,7 @@ export type { HealthResponse, ReadinessResponse };
  * from a handful of addresses, and a throttled probe would take healthy instances out of service.
  * They read no user data and are cheap (the readiness checks are time-bounded).
  */
+@ApiTag('Health', 'Liveness and readiness probes for orchestrators and load balancers.')
 @SkipRateLimit()
 @Controller('health')
 export class HealthController {
@@ -30,6 +37,12 @@ export class HealthController {
     private readonly redis: RedisHealthIndicator,
   ) {}
 
+  @ApiDoc({
+    operationId: 'getLiveness',
+    summary: 'Liveness probe',
+    description: 'The process is up. Never touches dependencies. Not rate-limited.',
+    responses: { 200: { description: 'The process is up.', schema: healthResponseSchema } },
+  })
   @Get()
   check(): HealthResponse {
     return {
@@ -39,6 +52,20 @@ export class HealthController {
     };
   }
 
+  @ApiDoc({
+    operationId: 'getReadiness',
+    summary: 'Readiness probe',
+    description:
+      'Whether PostgreSQL and Redis are reachable (checked in parallel, time-bounded). ' +
+      'Reports only up/down per dependency. Not rate-limited.',
+    responses: {
+      200: { description: 'Every dependency is up.', schema: readinessResponseSchema },
+      503: {
+        description: 'At least one dependency is down (`NOT_READY`).',
+        schema: notReadyErrorSchema,
+      },
+    },
+  })
   @Get('ready')
   async ready(): Promise<ReadinessResponse> {
     const [database, redis] = await Promise.all([this.database.check(), this.redis.check()]);
