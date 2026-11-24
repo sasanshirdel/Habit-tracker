@@ -1,3 +1,4 @@
+import { API_ERROR_CODES } from '@habit/shared-types';
 import { z } from 'zod';
 import { component } from './schema-registry.js';
 
@@ -8,32 +9,12 @@ import { component } from './schema-registry.js';
  * cannot drift silently.
  */
 
-/** Every `ApiErrorCode`. Adding one is compatible; renaming or removing one is breaking. */
-export const apiErrorCodeSchema = component(
-  z.enum([
-    'BAD_REQUEST',
-    'VALIDATION_FAILED',
-    'INVALID_CURSOR',
-    'MALFORMED_REQUEST_BODY',
-    'UNAUTHENTICATED',
-    'FORBIDDEN',
-    'NOT_FOUND',
-    'METHOD_NOT_ALLOWED',
-    'CONFLICT',
-    'PAYLOAD_TOO_LARGE',
-    'UNSUPPORTED_MEDIA_TYPE',
-    'RATE_LIMITED',
-    'INTERNAL_ERROR',
-    'NOT_READY',
-    'SERVICE_UNAVAILABLE',
-    'QUEUE_UNAVAILABLE',
-  ]),
-  {
-    id: 'ApiErrorCode',
-    description:
-      'Stable machine-readable error code. Clients localise by code; `message` is developer-facing English.',
-  },
-);
+/** Every `ApiErrorCode` (the shared runtime list). Adding one is compatible; renaming or removing one is breaking. */
+export const apiErrorCodeSchema = component(z.enum(API_ERROR_CODES), {
+  id: 'ApiErrorCode',
+  description:
+    'Stable machine-readable error code. Clients localise by code; `message` is developer-facing English.',
+});
 
 /** Builds an error envelope schema `{ error: { code, message, details?, requestId } }`. */
 export function errorEnvelopeWith<C extends z.ZodType, D extends z.ZodType>(code: C, details: D) {

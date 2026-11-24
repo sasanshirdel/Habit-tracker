@@ -1,3 +1,4 @@
+export { API_ERROR_CODES, codeForStatus, isApiErrorCode } from './errors.js';
 export type {
   ApiErrorBody,
   ApiErrorCode,
