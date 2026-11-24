@@ -60,7 +60,7 @@ pnpm --filter @habit/worker dev   # BullMQ consumers (apps/worker)
 - **API:** versioned REST under `/api/v1`, DTOs + validation at the edge, consistent error shape with error **codes** (UI localises), OpenAPI docs.
 - **Server is the authority** for authz, entitlements, metrics and payments. Frontend checks are UX only.
 - **i18n:** no hardcoded UI strings — next-intl ICU messages in `apps/web/lib/i18n/messages/{en,fa}.json` with identical keys and arguments (CI parity test); internal links via `@/lib/i18n/navigation`. Use logical CSS (`ms-/me-/ps-/pe-/start-/end-`), never `left/right` (lint fails). Check every UI change in `/en` and `/fa` (ADR-0004).
-- **Design tokens only** — no raw hex colours in components (`packages/ui`).
+- **Design tokens only** — no raw colour values outside `packages/ui` tokens (a test scans web + ui). Build UI from `@habit/ui` primitives (shadcn/ui on Radix, ADR-0013); every user-visible string in a primitive is a prop the app fills from messages.
 - **Data:** UTC `timestamptz` + user IANA timezone; habit occurrences by local date; money as integer minor units + currency; never rewrite history silently; Prisma migrations only.
 - **Numbers shown to users are computed by deterministic backend code**, never by an LLM.
 

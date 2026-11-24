@@ -91,6 +91,11 @@ no admin UI can edit or delete entries. Retention defined before launch.
   the socket address unless `TRUST_PROXY` hops are configured — set it exactly behind a load
   balancer, never higher (spoofable `X-Forwarded-For`). New credential/code endpoints must use
   `@RateLimit('auth')`.
+- **UI primitives and the CSP (P1-09, ADR-0013):** fonts are self-hosted (`font-src 'self'`, no font
+  CDN at runtime or build time); primitives inject no `<style>` without the request's nonce
+  (`UiProvider` hands it to the modal scroll lock; sonner was rejected for injecting un-nonced
+  styles); themes need no inline script (server-rendered from the `theme` cookie, whose value is
+  validated against a fixed list).
 - **API documentation (P1-06, ADR-0012):** the OpenAPI document is JSON only at
   `/api/docs/openapi.json` (no HTML UI, which the API CSP would block anyway). It is **off when
   `NODE_ENV=production`** (production and staging) unless `API_DOCS_ENABLED=true` is set explicitly,
