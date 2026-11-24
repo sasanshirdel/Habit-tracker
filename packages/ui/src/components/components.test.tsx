@@ -19,6 +19,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from './dropdown-menu.js';
+import { EmptyState } from './empty-state.js';
 import { Input } from './input.js';
 import { Skeleton } from './skeleton.js';
 import { Toaster, dismissToast, toast } from './toast.js';
@@ -90,6 +91,32 @@ describe('Input and Skeleton', () => {
   it('hides the skeleton from assistive technology', () => {
     const { container } = render(<Skeleton className="h-4 w-24" />);
     expect(container.firstElementChild?.getAttribute('aria-hidden')).toBe('true');
+  });
+});
+
+describe('EmptyState', () => {
+  it('is a region named by its heading, with a decorative icon and an action', () => {
+    render(
+      <EmptyState
+        icon={<svg data-testid="icon" />}
+        title="هنوز عادتی ندارید"
+        description="Habits you create will appear here."
+        action={<Button>Create</Button>}
+      />,
+    );
+    const region = screen.getByRole('region', { name: 'هنوز عادتی ندارید' });
+    expect(within(region).getByRole('heading', { level: 2 }).textContent).toBe('هنوز عادتی ندارید');
+    expect(within(region).getByText('Habits you create will appear here.')).toBeTruthy();
+    expect(within(region).getByRole('button', { name: 'Create' })).toBeTruthy();
+    expect(screen.getByTestId('icon').parentElement?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('keeps the page outline with a configurable heading level and renders only what it gets', () => {
+    render(<EmptyState title="Nothing yet" headingLevel={3} />);
+    const region = screen.getByRole('region', { name: 'Nothing yet' });
+    expect(within(region).getByRole('heading', { level: 3 })).toBeTruthy();
+    expect(region.querySelector('p')).toBeNull();
+    expect(region.querySelector('[aria-hidden]')).toBeNull();
   });
 });
 
