@@ -63,6 +63,21 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # OpenAPI document generated from the routes' zod schemas (backlog P1-06, ADR-0012). The
+      # export scans the built app in Nest preview mode — no database, Redis or secret — and fails
+      # the job if any route is undocumented, an admin route is published, or the document is
+      # invalid. The spec is kept as a build artifact for review and client generation.
+      - name: Export OpenAPI document
+        run: pnpm --filter @habit/api openapi:export
+
+      - name: Upload OpenAPI document
+        uses: actions/upload-artifact@v7
+        with:
+          name: openapi
+          path: apps/api/dist/openapi.json
+          if-no-files-found: error
+          retention-days: 30
+
   # Integration tests against real PostgreSQL + Redis (backlog P1-01, P1-02). Ephemeral service
   # containers with throwaway credentials — no repository secrets. Independent of `verify`, so the
   # unit job stays fast and never needs a database or Redis.
