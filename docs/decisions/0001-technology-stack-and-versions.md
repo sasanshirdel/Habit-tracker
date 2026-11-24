@@ -117,3 +117,15 @@ our Nest 12.6.0), and `rate-limiter-flexible` **11.5.0** (2026-11-15). The API's
 list set by an in-repo middleware, and rate limiting is one atomic Lua script on the ioredis
 connection we already own (P1-03); the web CSP uses Next.js 16's built-in `proxy.ts` nonce support.
 Rationale and policy details in [ADR-0011](0011-security-headers-cors-and-rate-limiting.md).
+
+## Addendum — Phase 1, P1-06 OpenAPI (2026-11-25)
+
+**No dependency added.** Evaluated with `npm view` on 2026-11-25 (UTC+03:30): `@nestjs/swagger`
+**12.1.2** (last modified 2026-11-13, peers Nest `^12` plus `class-validator`/`class-transformer`;
+bundles `swagger-ui-dist` 5.34.1), `nestjs-zod` **5.6.0** (2026-11-08, peers Nest `^10 || ^11` — does
+not declare our Nest 12.6.0), `zod-openapi` **6.0.2** (2026-08-31) and
+`@asteasolutions/zod-to-openapi` **9.1.0** (2026-07-19), both peers `zod ^4`. The document is
+generated in-repo from Nest's route metadata and the routes' zod schemas with zod 4.6.7's built-in
+`z.toJSONSchema` (JSON Schema 2020-12, the OpenAPI 3.1 dialect); no HTML UI is served. Rationale in
+[ADR-0012](0012-openapi-from-zod.md). CI uses `actions/upload-artifact@v7` (latest release v7.0.2,
+2026-10-07) for the exported document.

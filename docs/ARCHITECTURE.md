@@ -79,7 +79,7 @@ Rules: a module owns its tables; cross-module calls only through exported servic
 
 ## 5. API design
 
-- REST under `/api/v1`; OpenAPI generated from Nest decorators (Phase 1).
+- REST under `/api/v1`; OpenAPI 3.1 generated from the routes' zod schemas (`ZodValidationPipe` inputs + `@ApiDoc` response schemas, no `@nestjs/swagger`), served as JSON at `/api/docs/openapi.json` outside production (`API_DOCS_ENABLED`) and exported by CI as an artifact; admin routes must be `@ApiExclude()`d (ADR-0012, P1-06).
 - Input validated at the edge with zod: `ZodValidationPipe(schema)` per `@Body`/`@Query`/`@Param` → 400 `VALIDATION_FAILED` with `details.issues[{ field, code, message }]` (ADR-0009, P1-05); never return Prisma entities directly.
 - Error shape: `{ error: { code, message, details?, requestId } }`, rendered for every failure by the global `AllExceptionsFilter`; `code` is a stable `ApiErrorCode` localised by the client; no stack traces or framework/driver text in any environment.
 - Every response carries `x-request-id` (accepted from the caller when well-formed, else a UUID), also available in-process via `currentRequestId()`.
