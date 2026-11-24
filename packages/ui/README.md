@@ -12,7 +12,7 @@ The design system (backlog P1-09, [ADR-0013](../../docs/decisions/0013-design-sy
 - **Themes** — `dark` (default), `light`, `system`. `THEME_COOKIE`, `parseThemePreference()`,
   `themeCookie()`; the server renders `<html data-theme>` from the cookie (no flash).
 - **Primitives** (shadcn/ui `new-york-v4` adapted, Radix underneath): `Button` (`asChild` for links),
-  `Input`, `Skeleton`, `Dialog*`, `DropdownMenu*`, `Toaster` + `toast()`. Logical CSS only; labels
+  `Input`, `Skeleton`, `EmptyState` (P1-11), `Dialog*`, `DropdownMenu*`, `Toaster` + `toast()`. Logical CSS only; labels
   such as a dialog's `closeLabel` or the toaster's `label`/`regionLabel`/`closeLabel` are props —
   pass localized messages.
 - **`UiProvider`** — wrap the app once with `dir` (Radix direction) and the request's CSP `nonce`

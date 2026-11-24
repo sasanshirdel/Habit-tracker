@@ -64,3 +64,15 @@ PRD §3.12: Persian (RTL) and English (LTR) are both first-class; Persian must n
   test documents this and switches to the strict check when upstream fixes it.
 - **Testing:** Playwright arrives with P1-13; until then `apps/web/e2e` runs HTTP route tests
   against `next start` in CI (`lang`/`dir`, redirects, cookie, nonce on every script).
+
+## Application shell (P1-11, 2026-11-25)
+
+- **Navigation mirrors by layout, not by code:** the sidebar sits at the inline start (right in
+  RTL) and the bottom bar starts with Overview at the inline start, through flex order and logical
+  borders only — no per-direction branches.
+- **Icons:** flip an icon in RTL (`rtl:-scale-x-100`) only when it shows direction or reading order
+  — arrows, chevrons, a list with leading markers (the Tasks icon). Objects, clocks, checkmarks,
+  sparkles and charts used as symbols are not flipped. Per section this is the `mirrorInRtl` flag in
+  `apps/web/lib/navigation/sections.ts` (tested).
+- **Language switcher:** keeps the current page (`/fa/habits` ⇄ `/en/habits`) and marks the link
+  with `hreflang`/`lang` of its target.

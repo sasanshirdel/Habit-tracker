@@ -76,3 +76,14 @@ release-age-checked dependencies (ADR-0001). Backlog P1-09 (#13).
 - `UiProvider` must wrap the app for RTL behaviour in Radix and for the scroll-lock nonce.
 - Browser-level checks (visual, real CSP enforcement of injected styles) arrive with Playwright in
   P1-13; jsdom tests verify that the injected style carries the nonce.
+
+## Addendum — P1-11 application shell (2026-11-25)
+
+- **`EmptyState`** joins the primitives: a region named by its heading (`aria-labelledby`), a
+  decorative icon, a description and an optional action; heading level configurable (default
+  `h2`) so pages keep their outline. Not from the shadcn registry (its `empty` block is
+  presentational only); written here with tokens and centred layout, so it needs no RTL variant.
+- **Bottom sheet = `DialogContent` restyled** (`top-auto bottom-0 translate-y-0`, slide from the
+  bottom) rather than a new Drawer/vaul dependency: the shell's "More" sheet keeps Radix Dialog's
+  focus trap, Escape, scroll lock (nonce-aware) and focus return. When a sheet link navigates away,
+  focus return is cancelled and the shell focuses the new page's `main` instead.
