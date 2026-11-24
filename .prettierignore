@@ -3,6 +3,9 @@ node_modules
 dist
 .next
 coverage
+playwright-report
+test-results
+blob-report
 # Canonical spec: preserved verbatim, never reformatted.
 docs/PRODUCT_REQUIREMENTS.md
 docs/backlog/issues.json
