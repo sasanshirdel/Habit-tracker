@@ -53,14 +53,21 @@ describe('GET /api/docs/openapi.json when enabled (NODE_ENV=test, API_DOCS_ENABL
     await app?.close();
   });
 
-  it('serves a valid OpenAPI 3.1 JSON document documenting the health probes', async () => {
+  it('serves a valid OpenAPI 3.1 JSON document documenting the routes', async () => {
     const res = await request(app.getHttpServer()).get(DOCS).expect(200);
     expect(res.headers['content-type']).toBe('application/json; charset=utf-8');
     const doc = res.body as OpenApiDocument;
     expect(validateOpenApiDocument(doc)).toEqual([]);
     expect(doc.openapi).toBe('3.1.1');
     expect(doc.servers).toEqual([{ url: '/api/v1', description: expect.any(String) }]);
-    expect(Object.keys(doc.paths)).toEqual(['/health', '/health/ready']);
+    expect(Object.keys(doc.paths)).toEqual([
+      '/auth/login',
+      '/auth/logout',
+      '/auth/logout-everywhere',
+      '/auth/register',
+      '/health',
+      '/health/ready',
+    ]);
   });
 
   it('carries the API security headers and a request id', async () => {
