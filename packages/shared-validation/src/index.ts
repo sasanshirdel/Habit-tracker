@@ -8,3 +8,13 @@ export {
   paginationQuerySchema,
   type PaginationQuery,
 } from './pagination.js';
+export {
+  EMAIL_MAX_LENGTH,
+  PASSWORD_INPUT_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  currentPasswordSchema,
+  emailAddressSchema,
+  newPasswordSchema,
+  normalizePassword,
+} from './credentials.js';

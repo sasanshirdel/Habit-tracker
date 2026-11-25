@@ -14,3 +14,10 @@ export type {
   ReadinessResponse,
 } from './health.js';
 export type { PageInfo, Paginated } from './pagination.js';
+export type {
+  AuthenticatedUser,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegistrationAcceptedResponse,
+} from './auth.js';
