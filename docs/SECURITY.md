@@ -58,6 +58,7 @@ These operations also require a trusted online connection (never queued offline)
 - CSRF: double-submit token or origin/`Sec-Fetch-Site` checks on all state-changing cookie-authenticated requests. The web client sends a CSRF header on state-changing methods once P2-03 configures it (ADR-0014).
 - The browser never stores tokens or session identifiers in `localStorage`/`sessionStorage`; the web API client relies on cookies only (`credentials: 'include'`, tested).
 - Passwords: Argon2id; rate limiting + progressive lockout on login, recovery, MFA and verification endpoints; generic error messages (no account enumeration).
+- Storage (P2-01, ADR-0017): session cookies and emailed links carry a 256-bit random token; the database keeps only its SHA-256 hash (32 bytes, unique, enforced by CHECK), so a database copy yields no usable session or link. Password hashes are accepted by the database only as Argon2id PHC strings. Malformed tokens are rejected before any lookup and treated exactly like unknown ones; in-memory hash comparisons are constant time (`secretTokenHashesEqual`). Email addresses are `citext` and stay reserved while an account is soft-deleted.
 
 ## 6. Audit logging
 
