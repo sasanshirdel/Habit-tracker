@@ -47,6 +47,41 @@ Decisions referenced as ADR-NNNN live in [`decisions/`](decisions/).
 | `packages/localization`      | 1     | Locale metadata: locales, direction, Intl tags                                         |
 | `infrastructure/`            | 12    | Deployment, Docker images, scripts                                                     |
 
+### 2.1 Dependency rules (enforced)
+
+`pnpm lint` ends with `pnpm check:architecture` (CI job `verify`), which fails on any violation of
+these rules; the graph itself lives in `packages/config/architecture/rules.js` (P1-15, ADR-0016).
+Change both together.
+
+- **Layers:** apps may depend on packages; packages never depend on or import apps. Apps do not
+  depend on each other — the one exception is `apps/worker` → `@habit/api`, and only its
+  `@habit/api/queue` and `@habit/api/worker` exports (ADR-0002). In particular the web app never
+  imports API code and the API never imports web code; they share contracts only through
+  `@habit/shared-types` and `@habit/shared-validation`.
+- **Allowed workspace graph** (`@habit/config` is build tooling, allowed everywhere):
+
+  | Package                    | May depend on                                                                         |
+  | -------------------------- | ------------------------------------------------------------------------------------- |
+  | `@habit/shared-types`      | —                                                                                     |
+  | `@habit/localization`      | —                                                                                     |
+  | `@habit/shared-validation` | `localization`                                                                        |
+  | `@habit/ui`                | —                                                                                     |
+  | `@habit/api`               | `shared-types`, `shared-validation`, `localization`                                   |
+  | `@habit/worker`            | `api` (`/queue`, `/worker` only), `shared-types`, `shared-validation`, `localization` |
+  | `@habit/web`               | `shared-types`, `shared-validation`, `localization`, `ui`                             |
+
+  A new workspace package fails the check until it has an entry; no cycles between packages.
+
+- **Entry points only:** a `@habit/*` import must be declared in the importer's `package.json` and
+  name an entry of the target's `exports` (never `src/` or `dist/` paths); relative and `@/` imports
+  never leave their own package.
+- **API (ADR-0006):** feature modules (`src/modules/<name>/`, from Phase 2) are imported only through
+  their `index.ts`, and every module has one. Platform areas (`common`, `config`, `database`,
+  `health`, `openapi`, `queue`, `rate-limit`) never import feature modules; only the composition root
+  (`src/*.ts`) and `worker/` wire them in. Prisma's generated client (`src/generated`) is imported
+  only by `database/` and feature modules. Areas form layers: no cycles between them.
+- **No runtime import cycles** between the files of any package (`import type` cycles are allowed).
+
 ## 3. Backend modules (PRD §5.4)
 
 Grouped by roadmap phase:
@@ -65,7 +100,7 @@ Grouped by roadmap phase:
 | Administration        | admin-auth, rbac, admin, support, audit-logs, feature-flags, system-health                | 10    |
 | Social & integrations | accountability, integrations (Google Calendar/Tasks)                                      | 11    |
 
-Rules: a module owns its tables; cross-module calls only through exported services; side effects via domain events/queues.
+Rules: a module owns its tables; cross-module calls only through exported services; side effects via domain events/queues. The import rules are enforced by the architecture check (§2.1).
 
 ## 4. Data architecture
 
