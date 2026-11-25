@@ -93,6 +93,7 @@ Rules: a module owns its tables; cross-module calls only through exported servic
 - i18n with next-intl (P1-10, ADR-0004): `proxy.ts` sets the nonce CSP, then negotiates the locale for unprefixed paths (cookie → `Accept-Language` → `defaultLocale` from `@habit/localization`, 307, same origin only); ICU messages in `apps/web/lib/i18n/messages/{en,fa}.json` with a CI parity test; named formats in `lib/i18n/formats.ts`; locale-aware `Link`/`redirect` from `lib/i18n/navigation.ts`. Physical left/right utilities fail lint.
 - Server components by default; client components for interaction. TanStack Query for client cache of API data (Phase 1).
 - Design tokens (`packages/ui`) → Tailwind theme via `@habit/ui/styles.css`; dark (default), light and system themes from a `theme` cookie rendered on the server (no flash); logical CSS only; self-hosted Inter/Vazirmatn; primitives (Button, Input, Skeleton, Dialog, DropdownMenu, Toast) wrapped by `UiProvider` for direction and the CSP nonce (P1-09, ADR-0013).
+- Application shell (P1-11): the `app/[locale]/(app)` route group renders every signed-in-app page inside `components/shell/app-shell.tsx` — skip link, labelled `navigation` (sidebar at the inline start: icon rail from `md`, full from `lg`; bottom bar with four sections + "More" sheet below `md`), `banner` with language and theme switchers, and `main#main` (focused after each client-side navigation). Sections and their placement are data in `lib/navigation/sections.ts`; direction-bearing icons are flipped in RTL (`rtl:-scale-x-100`). The shell does no authorization: P2-03 adds the server-side session check to the `(app)` layout. Placeholder pages are `noindex` until then.
 - PWA (Phase 8): manifest, service worker, IndexedDB store + operation queue, background sync where supported; documented offline matrix.
 
 ## 7. Initial information architecture
@@ -114,6 +115,12 @@ Primary navigation (PRD §2.3), validated during Phase 1 design work:
 
 Public: `/{locale}` landing, `/{locale}/pricing`, `/{locale}/auth/*`, `/{locale}/onboarding`. Admin: separate app.
 Quick capture is a global action (keyboard shortcut / FAB), not a page.
+
+**Implemented in P1-11** (shell + one placeholder page per section, no data):
+
+- Overview is served at **`/{locale}/overview`** (interim), because `/{locale}` is the public landing page and, without authentication, nothing can decide who sees which. Phase 2 (P2-09) can redirect signed-in users from `/{locale}` to the overview or swap the two — ROADMAP "Outstanding decisions" #10.
+- Top-level section routes exist (`/habits`, `/goals`, `/tasks`, `/planner`, `/focus`, `/journal`, `/insights`, `/coach`, `/settings`); the sub-routes in the table (`/habits/[id]`, `/planner/day`, `/settings/profile`, …) are added by the features that own them. Unknown paths below a section return the localized 404.
+- Mobile bottom bar: Overview, Habits, Tasks, Planner, **More**; "More" opens a sheet with Goals, Focus, Journal, Insights, AI Coach, Settings (Settings last).
 
 ## 8. Cross-cutting concerns
 

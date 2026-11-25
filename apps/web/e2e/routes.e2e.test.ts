@@ -179,3 +179,122 @@ describe('design system (P1-09)', () => {
     expect(en).toContain('aria-label="Theme: Dark"');
   });
 });
+
+describe('application shell (P1-11)', () => {
+  const sectionPaths = [
+    'overview',
+    'habits',
+    'goals',
+    'tasks',
+    'planner',
+    'focus',
+    'journal',
+    'insights',
+    'coach',
+    'settings',
+  ];
+
+  /** The opening tag and contents of the first `<nav>` carrying `data-nav="…"`. */
+  function navBlock(html: string, kind: 'sidebar' | 'bottom'): string {
+    const start = html.search(new RegExp(`<nav[^>]*data-nav="${kind}"`));
+    if (start < 0) return '';
+    return html.slice(start, html.indexOf('</nav>', start) + '</nav>'.length);
+  }
+
+  describe.each([
+    { locale: 'fa', dir: 'rtl', nav: 'اصلی', skip: 'رفتن به محتوای اصلی', habits: 'عادت‌ها' },
+    { locale: 'en', dir: 'ltr', nav: 'Main', skip: 'Skip to main content', habits: 'Habits' },
+  ])('/$locale', ({ locale, dir, nav, skip, habits }) => {
+    it.each(sectionPaths)(
+      `/${locale}/%s renders inside the shell (200, lang, dir)`,
+      async (path) => {
+        const res = await get(`/${locale}/${path}`);
+        expect(res.status).toBe(200);
+        const html = await res.text();
+        const tag = htmlTag(html);
+        expect(tag).toContain(`lang="${locale}"`);
+        expect(tag).toContain(`dir="${dir}"`);
+        expect(html).toMatch(/<main[^>]*id="main"/);
+        expect(html).toMatch(/<h1[^>]*>[^<]+<\/h1>/);
+        expect(html).toContain('data-slot="empty-state"');
+        // Placeholder pages are not for search engines (no auth yet, no content).
+        expect(html).toMatch(/<meta name="robots" content="noindex, nofollow"/);
+      },
+    );
+
+    it('has the landmarks: skip link first, labelled navigation, banner, main', async () => {
+      const html = await (await get(`/${locale}/habits`)).text();
+      const body = html.slice(html.indexOf('<body'));
+      const firstLink = /<a\b[^>]*>([^<]*)<\/a>/.exec(body);
+      expect(firstLink?.[0]).toContain('href="#main"');
+      expect(firstLink?.[1]).toBe(skip);
+      expect(html).toMatch(/<header\b/);
+      expect(html).toMatch(
+        /<main[^>]*id="main"[^>]*tabindex="-1"|<main[^>]*tabindex="-1"[^>]*id="main"/i,
+      );
+      for (const kind of ['sidebar', 'bottom'] as const) {
+        expect(navBlock(html, kind), kind).toContain(`aria-label="${nav}"`);
+      }
+    });
+
+    it('links every section, locale-prefixed, and marks the current one', async () => {
+      const html = await (await get(`/${locale}/habits`)).text();
+      const sidebar = navBlock(html, 'sidebar');
+      for (const path of sectionPaths) {
+        expect(sidebar, path).toMatch(new RegExp(`<a[^>]+href="/${locale}/${path}"`));
+      }
+      const current = [...sidebar.matchAll(/<a\b[^>]*aria-current="page"[^>]*>/g)];
+      expect(current).toHaveLength(1);
+      expect(current[0]?.[0]).toContain(`href="/${locale}/habits"`);
+      expect(sidebar).toContain(habits);
+      // Mobile: four sections and the "More" button.
+      const bottom = navBlock(html, 'bottom');
+      expect([...bottom.matchAll(/<a\b/g)]).toHaveLength(4);
+      expect(bottom).toMatch(/<button[^>]*aria-haspopup="dialog"/);
+    });
+
+    it('switches language on the same page', async () => {
+      const other = locale === 'fa' ? 'en' : 'fa';
+      const html = await (await get(`/${locale}/tasks`)).text();
+      expect(html).toMatch(
+        new RegExp(
+          `<a[^>]+href="/${other}/tasks"[^>]*hrefLang="${other}"|<a[^>]+hrefLang="${other}"[^>]*href="/${other}/tasks"`,
+          'i',
+        ),
+      );
+    });
+
+    it('keeps the per-request CSP nonce on every script', async () => {
+      const res = await get(`/${locale}/overview`);
+      const nonce = cspNonce(res);
+      expect(nonce).toMatch(/^[A-Za-z0-9+/]{22}==$/);
+      const scripts = (await res.text()).match(/<script\b[^>]*>/g) ?? [];
+      expect(scripts.length).toBeGreaterThan(0);
+      for (const script of scripts) expect(script).toContain(`nonce="${nonce}"`);
+    });
+  });
+
+  it('localizes the page title per section', async () => {
+    expect(await (await get('/en/journal')).text()).toContain(
+      '<title>Journal · Habit Tracker</title>',
+    );
+    expect(await (await get('/fa/journal')).text()).toContain(
+      '<title>یادداشت روزانه · ردیاب عادت</title>',
+    );
+  });
+
+  it('unprefixed section paths redirect to the negotiated locale', async () => {
+    const res = await get('/habits', { 'accept-language': 'fa' });
+    expect(res.status).toBe(307);
+    expect(new URL(res.headers.get('location') ?? '', baseUrl).pathname).toBe('/fa/habits');
+  });
+
+  it('unknown pages below a section still 404', async () => {
+    expect((await get('/en/habits/does-not-exist')).status).toBe(404);
+  });
+
+  it('the landing page links into the app', async () => {
+    const html = await (await get('/en')).text();
+    expect(html).toMatch(/<a[^>]+href="\/en\/overview"/);
+  });
+});

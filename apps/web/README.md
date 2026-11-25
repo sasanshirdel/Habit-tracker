@@ -28,6 +28,22 @@ Next.js 16 App Router frontend, bilingual from the first page:
   permissions policies) from `lib/security/headers.ts`. Never add inline `<script>`; use
   `next/script` with the nonce from the `x-nonce` request header.
 
+- **Application shell** (P1-11, ARCHITECTURE §7): pages in the `app/[locale]/(app)` route group
+  (no URL segment) render inside `components/shell/app-shell.tsx`:
+  - skip link (first focusable) → `main#main`; `RouteFocus` moves focus to `main` after every
+    client-side navigation;
+  - `SidebarNav` (`md`: icon rail, `lg`: full sidebar) at the inline start, `MobileNav` (below `md`:
+    bottom bar + "More" bottom sheet on the `Dialog` primitive), both labelled `navigation`
+    landmarks; the current section has `aria-current="page"`;
+  - a `banner` with the brand (phones), `LanguageSwitcher` (same page, other locale) and the theme
+    switcher.
+  - Sections, their order, their mobile slot and whether their icon flips in RTL live in
+    `lib/navigation/sections.ts`; labels are `nav.*` messages, placeholder copy `sections.*`.
+  - Each section page is a placeholder (`components/shell/section-page.tsx`: heading +
+    `EmptyState`), `noindex`. **No authorization yet** — P2-03 adds the session check to
+    `app/[locale]/(app)/layout.tsx`. Overview is at `/{locale}/overview` (interim, see ROADMAP
+    decision #10).
+
 Use logical CSS properties/utilities (`ms-*`, `pe-*`, `start-*`, `text-start`) — never physical
 left/right; ESLint rejects physical utilities in class names and a test scans the stylesheets.
 No raw colour values outside the tokens (`lib/design-guard.test.ts`).
@@ -35,7 +51,7 @@ No raw colour values outside the tokens (`lib/design-guard.test.ts`).
 ## Tests
 
 ```bash
-pnpm --filter @habit/web test        # unit: messages parity, formatting, proxy routing, CSP
+pnpm --filter @habit/web test        # unit + component (jsdom): messages parity, formatting, proxy routing, CSP, shell
 pnpm --filter @habit/web build
-pnpm --filter @habit/web test:e2e    # HTTP route tests against `next start` (lang/dir, redirects, nonce)
+pnpm --filter @habit/web test:e2e    # HTTP route tests against `next start` (lang/dir, redirects, nonce, shell)
 ```

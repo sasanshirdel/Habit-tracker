@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { parseLocale } from '@/lib/i18n/config';
 import { Link } from '@/lib/i18n/navigation';
+import { appHomeHref } from '@/lib/navigation/sections';
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const locale = parseLocale((await params).locale);
@@ -26,6 +27,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <p className="text-text-secondary">
         <time dateTime={now.toISOString()}>{t('today', { date: now })}</time>
       </p>
+      <Button asChild className="self-start">
+        <Link href={appHomeHref}>{t('openApp')}</Link>
+      </Button>
       {/* Logical properties (ms/me, ps/pe, start/end) only — never left/right — so RTL mirrors correctly. */}
       <nav aria-label={tLanguage('label')} className="flex items-center gap-2">
         <Button asChild variant="outline">

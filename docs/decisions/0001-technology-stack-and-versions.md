@@ -178,3 +178,11 @@ scripts: `pnpm install` raised no `ERR_PNPM_IGNORED_BUILDS`.
 
 Not added: `sonner` 2.0.8 (injects an un-nonced `<style>`), `next-themes` (inline script), the
 `shadcn` CLI as a dependency (used only to read the registry sources).
+
+## Addendum — Phase 1, P1-11 application shell (2026-11-25)
+
+No new packages. `apps/web` gained the component-test dev dependencies `packages/ui` already uses,
+at the **same pinned versions** (one resolved copy each in the lockfile): `@testing-library/react`
+16.3.3, `@testing-library/dom` 10.4.2, `@testing-library/user-event` 14.6.13, `jsdom` 31.0.1. They
+run the shell's component tests (`// @vitest-environment jsdom`); the app's other tests stay in the
+`node` environment.

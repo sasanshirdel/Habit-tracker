@@ -6,7 +6,8 @@
   "home": {
     "heading": "Build better habits.",
     "subheading": "Foundation build — product features arrive in later phases.",
-    "today": "Today is {date, date, long}."
+    "today": "Today is {date, date, long}.",
+    "openApp": "Open the app"
   },
   "language": {
     "label": "Language",
@@ -31,5 +32,68 @@
     "label": "Notification",
     "region": "Notifications",
     "close": "Close"
+  },
+  "shell": {
+    "brand": "Habit Tracker",
+    "skipToContent": "Skip to main content",
+    "home": "Habit Tracker home"
+  },
+  "nav": {
+    "label": "Main",
+    "more": "More",
+    "moreTitle": "More sections",
+    "overview": "Overview",
+    "habits": "Habits",
+    "goals": "Goals",
+    "tasks": "Tasks",
+    "planner": "Planner",
+    "focus": "Focus",
+    "journal": "Journal",
+    "insights": "Insights",
+    "coach": "AI Coach",
+    "settings": "Settings",
+    "close": "Close"
+  },
+  "sections": {
+    "overview": {
+      "emptyTitle": "Your day at a glance",
+      "emptyDescription": "Today's habits, tasks, focus time and progress will be summarised here."
+    },
+    "habits": {
+      "emptyTitle": "No habits yet",
+      "emptyDescription": "Habits you create, with their schedules, streaks and history, will appear here."
+    },
+    "goals": {
+      "emptyTitle": "No goals yet",
+      "emptyDescription": "Goals with milestones and measurable progress will appear here."
+    },
+    "tasks": {
+      "emptyTitle": "No tasks yet",
+      "emptyDescription": "Tasks with subtasks, priorities and due dates will appear here, in list, calendar and board views."
+    },
+    "planner": {
+      "emptyTitle": "Nothing planned yet",
+      "emptyDescription": "Plan your day and week, and prioritise with the Eisenhower matrix, here."
+    },
+    "focus": {
+      "emptyTitle": "No focus sessions yet",
+      "emptyDescription": "Focus timers and your session history will appear here."
+    },
+    "journal": {
+      "emptyTitle": "No journal entries yet",
+      "emptyDescription": "Daily reflections and notes will appear here. Your journal stays private."
+    },
+    "insights": {
+      "emptyTitle": "No insights yet",
+      "emptyDescription": "Trends, weekly reviews and experiments based on your activity will appear here."
+    },
+    "coach": {
+      "emptyTitle": "The AI coach isn't available yet",
+      "emptyDescription": "Personal suggestions based on your progress will appear here. It never changes your data without your confirmation."
+    },
+    "settings": {
+      "emptyTitle": "Settings are coming soon",
+      "emptyDescription": "Profile, preferences, notifications, privacy, billing, integrations and accountability settings will live here."
+    }
   }
 }
