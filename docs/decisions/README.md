@@ -16,5 +16,6 @@ new ADR that supersedes the old one (and mark the old one `Superseded by ADR-NNN
 | [0009](0009-api-conventions-validation-errors-pagination.md) | API conventions: zod validation, errors, pagination, request ids | Accepted          |
 | [0010](0010-structured-logging-and-redaction.md)             | Structured logging and redaction                                 | Accepted          |
 | [0011](0011-security-headers-cors-and-rate-limiting.md)      | Security headers, CORS and rate limiting                         | Accepted          |
+| [0012](0012-openapi-from-zod.md)                             | OpenAPI generated from zod                                       | Accepted          |
 
 New ADRs: copy [`TEMPLATE.md`](TEMPLATE.md), use the next number, open it in the same PR as the change.

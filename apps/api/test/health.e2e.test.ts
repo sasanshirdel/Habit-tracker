@@ -3,6 +3,7 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.factory.js';
+import { healthResponseSchema, notReadyErrorSchema } from '../src/health/health.schemas.js';
 
 // No database or Redis runs for these tests: vitest.config.ts points DATABASE_URL and REDIS_URL at
 // closed ports. The "up" paths are covered by test/*.int.test.ts against real PostgreSQL + Redis.
@@ -27,6 +28,12 @@ describe('health endpoints (database and Redis unavailable)', () => {
       expect(new Date(res.body.timestamp).toString()).not.toBe('Invalid Date');
     });
 
+    it('matches its documented (OpenAPI) schema exactly', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/health').expect(200);
+      // Strict zod schema published in /api/docs/openapi.json (P1-06): an undocumented field fails.
+      expect(healthResponseSchema.parse(res.body)).toEqual(res.body);
+    });
+
     it('does not advertise the server stack', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/health');
       expect(res.headers['x-powered-by']).toBeUndefined();
@@ -49,6 +56,11 @@ describe('health endpoints (database and Redis unavailable)', () => {
           requestId: res.headers['x-request-id'],
         },
       });
+    });
+
+    it('matches its documented (OpenAPI) 503 schema exactly', async () => {
+      const res = await request(app.getHttpServer()).get('/api/v1/health/ready').expect(503);
+      expect(notReadyErrorSchema.parse(res.body)).toEqual(res.body);
     });
 
     it('does not leak connection details or driver errors', async () => {

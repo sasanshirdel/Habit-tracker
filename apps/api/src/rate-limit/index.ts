@@ -1,5 +1,11 @@
 // Platform rate limiting (backlog P1-08, ADR-0011).
-export { RateLimit, RateLimitGuard, SkipRateLimit, clientKey } from './rate-limit.guard.js';
+export {
+  RateLimit,
+  RateLimitGuard,
+  SkipRateLimit,
+  clientKey,
+  routeRateLimitPolicies,
+} from './rate-limit.guard.js';
 export { RateLimitModule } from './rate-limit.module.js';
 export {
   RATE_LIMIT_CLASSES,

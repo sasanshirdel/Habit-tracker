@@ -46,6 +46,29 @@ export function SkipRateLimit(): MethodDecorator & ClassDecorator {
   return applyDecorators(SetMetadata(RATE_LIMIT_SKIP, true));
 }
 
+/**
+ * The policies a route counts against, in order: `default` plus the route's (or controller's)
+ * class, or none for `@SkipRateLimit()`. Shared by the guard and the OpenAPI generator (P1-06),
+ * so the documented 429 matches what is enforced.
+ */
+export function routeRateLimitPolicies(
+  reflector: Reflector,
+  handler: ReturnType<ExecutionContext['getHandler']>,
+  controller: ReturnType<ExecutionContext['getClass']>,
+): RateLimitPolicy[] {
+  const targets = [handler, controller];
+  if (reflector.getAllAndOverride<boolean>(RATE_LIMIT_SKIP, targets)) return [];
+  const routePolicy = reflector.getAllAndOverride<RateLimitPolicy | undefined>(
+    RATE_LIMIT_POLICY,
+    targets,
+  );
+  const policies: RateLimitPolicy[] = [RATE_LIMIT_CLASSES.default];
+  if (routePolicy && routePolicy.name !== RATE_LIMIT_CLASSES.default.name) {
+    policies.push(routePolicy);
+  }
+  return policies;
+}
+
 interface ClientRequest extends IncomingMessage {
   /** Client address as resolved by Express, honouring `trust proxy` (env `TRUST_PROXY`). */
   ip?: string;
@@ -105,17 +128,12 @@ export class RateLimitGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (!this.enabled || context.getType() !== 'http') return true;
-    const targets = [context.getHandler(), context.getClass()];
-    if (this.reflector.getAllAndOverride<boolean>(RATE_LIMIT_SKIP, targets)) return true;
-
-    const routePolicy = this.reflector.getAllAndOverride<RateLimitPolicy | undefined>(
-      RATE_LIMIT_POLICY,
-      targets,
+    const policies = routeRateLimitPolicies(
+      this.reflector,
+      context.getHandler(),
+      context.getClass(),
     );
-    const policies: RateLimitPolicy[] = [RATE_LIMIT_CLASSES.default];
-    if (routePolicy && routePolicy.name !== RATE_LIMIT_CLASSES.default.name) {
-      policies.push(routePolicy);
-    }
+    if (policies.length === 0) return true;
 
     const http = context.switchToHttp();
     const req = http.getRequest<ClientRequest>();

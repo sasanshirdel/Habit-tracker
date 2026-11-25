@@ -37,6 +37,7 @@ their env at boot (`apps/api/src/config/env.ts`) and exit on invalid config with
 | `RATE_LIMIT_ENABLED`                                                    | api                 | no (`true`)                      | `false` only for local load tests (P1-08)        |
 | `RATE_LIMIT_PREFIX`                                                     | api                 | no (`habit:rl`)                  | Namespace of rate-limit counter keys in Redis    |
 | `TRUST_PROXY`                                                           | api                 | no (`0`, 0–5)                    | Trusted reverse-proxy hops for the client IP     |
+| `API_DOCS_ENABLED`                                                      | api                 | no (on unless production)        | Serve `/api/docs/openapi.json` (P1-06, ADR-0012) |
 | `DATABASE_URL`                                                          | api, worker, prisma | **yes** (refuses to boot)        | PostgreSQL URL (`postgres://` / `postgresql://`) |
 | `REDIS_URL`                                                             | api, worker         | **yes** (refuses to boot, P1-03) | Redis URL (`redis://`, or `rediss://` for TLS)   |
 | `QUEUE_PREFIX`                                                          | api, worker         | no (`habit:q`)                   | Namespace of all BullMQ keys                     |

@@ -91,6 +91,13 @@ no admin UI can edit or delete entries. Retention defined before launch.
   the socket address unless `TRUST_PROXY` hops are configured — set it exactly behind a load
   balancer, never higher (spoofable `X-Forwarded-For`). New credential/code endpoints must use
   `@RateLimit('auth')`.
+- **API documentation (P1-06, ADR-0012):** the OpenAPI document is JSON only at
+  `/api/docs/openapi.json` (no HTML UI, which the API CSP would block anyway). It is **off when
+  `NODE_ENV=production`** (production and staging) unless `API_DOCS_ENABLED=true` is set explicitly,
+  which logs a warning; disabled, the path answers 404 `NOT_FOUND`. It is generated from the zod
+  schemas, contains no configuration or connection details (tested), and is not rate-limited
+  (cached, read-only). **Admin routes (`/api/v1/admin/*`) must be `@ApiExclude()`d** — the generator
+  refuses to build a document that would publish one, so admin endpoints never appear in it.
 - **Redis and background jobs (P1-03):** the Redis URL comes only from `REDIS_URL` (validated, never logged; connection errors are logged as error codes, once per outage — tested). Redis must never be reachable from the internet: docker-compose binds it to `127.0.0.1`; staging/production must keep it on a private network with authentication (`rediss://` + ACL user) — to be enforced with deployment (P12-06). **Job payloads carry identifiers and small parameters only**, never personal or sensitive content (journal text, emails, tokens): payload schemas are strict (`z.strictObject`), validated by the producer and again by the worker, and payloads are never logged (failures log job name, id, attempt and an error code). Handlers must re-check authorization/ownership against the database rather than trust a payload.
 - **Database roles (least privilege):** the docker-compose and CI users are local/ephemeral superusers for convenience only. Staging/production must use two roles: a _migration_ role that owns the schema and runs `prisma migrate deploy`, and a _runtime_ role for the API/worker with only `CONNECT` + `USAGE` on the schema and `SELECT/INSERT/UPDATE/DELETE` on tables (no DDL, no `CREATE DATABASE`, not superuser). Append-only tables (audit logs, Phase 10) additionally revoke `UPDATE/DELETE` from the runtime role. To be implemented with deployment (P12-06).
 
@@ -99,6 +106,7 @@ no admin UI can edit or delete entries. Retention defined before launch.
 | Control                                                                          | Status                                                  |
 | -------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | Input validation at API edge (DTO schemas)                                       | Phase 1 (env validation done in Phase 0)                |
+| API docs off in production; admin endpoints never documented                     | **Done (P1-06)** — tested                               |
 | Output encoding / XSS (React escaping, CSP)                                      | **Done (P1-08)** — nonce CSP + security headers, tested |
 | `X-Powered-By` removed                                                           | **Done (Phase 0)** — tested                             |
 | SQL injection (Prisma parameterisation; raw SQL reviewed)                        | Phase 1+ (only raw SQL so far: readiness `SELECT 1`)    |

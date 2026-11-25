@@ -55,7 +55,16 @@ export const envSchema = baseEnvSchema.extend({
   // the client. Set it to the real hop count behind a load balancer, or every client shares the
   // proxy's address — and its rate limit; never higher, or clients can spoof their address.
   TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
+  // OpenAPI document at `/api/docs/openapi.json` (backlog P1-06, ADR-0012). Unset: served unless
+  // NODE_ENV=production. Production (and staging, which runs with NODE_ENV=production) serves it
+  // only with an explicit `API_DOCS_ENABLED=true` — a deliberate choice that is logged as a warning.
+  API_DOCS_ENABLED: z.stringbool().optional(),
 });
+
+/** Whether the API serves its OpenAPI document (see `API_DOCS_ENABLED`). */
+export function apiDocsEnabled(env: Pick<Env, 'API_DOCS_ENABLED' | 'NODE_ENV'>): boolean {
+  return env.API_DOCS_ENABLED ?? env.NODE_ENV !== 'production';
+}
 
 export const workerEnvSchema = baseEnvSchema.extend({
   // Jobs processed in parallel per queue by one worker process.

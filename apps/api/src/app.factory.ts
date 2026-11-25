@@ -1,4 +1,4 @@
-import type { INestApplication, LoggerService } from '@nestjs/common';
+import { Logger, type INestApplication, type LoggerService } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -8,7 +8,8 @@ import { accessLogMiddleware } from './common/logging/access-log.middleware.js';
 import { createLogger } from './common/logging/json-logger.js';
 import { requestIdMiddleware } from './common/request/request-id.middleware.js';
 import { corsDelegate, securityHeadersMiddleware } from './common/security/security-headers.js';
-import type { Env } from './config/env.js';
+import { apiDocsEnabled, type Env } from './config/env.js';
+import { registerApiDocs } from './openapi/openapi.route.js';
 
 export const API_PREFIX = 'api/v1';
 /** JSON body size limit; larger bodies → 413 `PAYLOAD_TOO_LARGE`. */
@@ -22,7 +23,9 @@ export const JSON_BODY_LIMIT = '100kb';
  * 3. access log (P1-07): one structured line per request, inside the request context;
  * 4. CORS (P1-08): exact allow-list from `CORS_ORIGINS`;
  * 5. JSON body parser (registered after them — Nest's built-in parser is disabled for this);
- * 6. global exception filter → `{ error: { code, message, details?, requestId } }`.
+ * 6. global exception filter → `{ error: { code, message, details?, requestId } }`;
+ * 7. OpenAPI document at `/api/docs/openapi.json` when `apiDocsEnabled`, else 404 there (P1-06,
+ *    ADR-0012).
  * Validation is per parameter with `ZodValidationPipe` (ADR-0009); rate limiting is a global
  * guard (`RateLimitModule`, ADR-0011) and so runs after routing, before handlers.
  * The root module must provide `ConfigService` (AppModule does).
@@ -41,6 +44,17 @@ export function configureApp(app: NestExpressApplication): void {
   app.useBodyParser('json', { limit: JSON_BODY_LIMIT });
   app.useGlobalFilters(new AllExceptionsFilter(app.get(HttpAdapterHost)));
   app.setGlobalPrefix(API_PREFIX);
+  const nodeEnv = config.get('NODE_ENV', { infer: true });
+  const docsEnabled = apiDocsEnabled({
+    API_DOCS_ENABLED: config.get('API_DOCS_ENABLED', { infer: true }),
+    NODE_ENV: nodeEnv,
+  });
+  registerApiDocs(app, API_PREFIX, { enabled: docsEnabled });
+  if (docsEnabled && nodeEnv === 'production') {
+    new Logger('OpenApi').warn(
+      'API docs are served in production (API_DOCS_ENABLED=true): /api/docs/openapi.json is public.',
+    );
+  }
   app.enableShutdownHooks();
 }
 
