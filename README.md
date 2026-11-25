@@ -26,7 +26,7 @@ and an isolated super-admin.
 
 - **Web:** Next.js 16 (App Router) · React 19 · TypeScript 6 (strict) · Tailwind CSS 4 · (Phase 1: shadcn/ui, next-intl, TanStack Query)
 - **API:** NestJS 12 (ESM) · zod · Prisma 7 · PostgreSQL 18
-- **Background work:** Redis 8 · BullMQ (Phase 1)
+- **Background work:** Redis 8 · BullMQ 6 (`apps/worker`)
 - **Tooling:** pnpm 12 workspaces · Node 24 LTS · ESLint 10 · Prettier · Vitest 5 · GitHub Actions · Docker Compose (dev services)
 
 ## Repository layout
@@ -35,9 +35,13 @@ and an isolated super-admin.
 apps/
   web/            Next.js frontend — /en (LTR) and /fa (RTL)
   api/            NestJS REST API — /api/v1, Prisma schema in prisma/
+  worker/         background worker process — BullMQ consumers sharing the API's modules
 packages/
   config/         shared tsconfig presets + ESLint flat config
   ui/             design tokens (TS + CSS variables); shared UI from Phase 1
+  shared-types/   API contract types shared by web and api
+  shared-validation/  zod 4 input schemas shared by web and api
+  localization/   locale metadata (locales, RTL/LTR direction, Intl tags)
 docs/             PRD, architecture, roadmap, security, workflow, ADRs, backlog
 .github/          CI workflow, PR + issue templates, Copilot pointer
 docker-compose.yml  Postgres + Redis for local development only
@@ -51,7 +55,9 @@ Prerequisites: **Node.js 24 LTS** (`.nvmrc`), **pnpm 12** (`corepack enable` or 
 cp .env.example .env            # placeholders only; adjust locally
 pnpm install
 pnpm dev:services               # postgres:18.7 + redis:8.8.4 on 127.0.0.1 (Docker)
+pnpm build:deps                 # shared packages + API library (dist/)
 pnpm --filter @habit/api dev    # http://localhost:4000/api/v1/health
+pnpm --filter @habit/worker dev # background jobs (BullMQ)
 pnpm --filter @habit/web dev    # http://localhost:3000  (redirects to /en; try /fa)
 ```
 

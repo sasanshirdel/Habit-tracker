@@ -39,6 +39,7 @@ Redis/BullMQ for background work, pnpm monorepo.
 ```bash
 pnpm install --frozen-lockfile
 pnpm format:check   # prettier
+pnpm build:deps     # build packages/* + the API library apps/worker imports; typecheck/test run it first
 pnpm lint           # eslint, all packages
 pnpm typecheck      # tsc --noEmit, all packages
 pnpm test           # vitest, all packages
@@ -47,6 +48,7 @@ pnpm check          # all of the above in order
 pnpm dev:services   # docker compose: postgres + redis (needs Docker)
 pnpm --filter @habit/web dev      # http://localhost:3000 -> /en, /fa
 pnpm --filter @habit/api dev      # http://localhost:4000/api/v1/health
+pnpm --filter @habit/worker dev   # BullMQ consumers (apps/worker)
 ```
 
 ## Conventions

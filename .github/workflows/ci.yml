@@ -40,6 +40,13 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # Shared packages (packages/*) are consumed through their built dist/ (types + JS), so they
+      # are built — in dependency order — before anything that imports them (P1-04). apps/worker
+      # consumes the API the same way (`@habit/api/worker`, P1-03), so the API is built too. The
+      # root typecheck/test scripts also run `build:deps`, so local runs behave the same.
+      - name: Build shared packages and the API library
+        run: pnpm build:deps
+
       - name: Typecheck
         run: pnpm typecheck
 
@@ -55,3 +62,81 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  # Integration tests against real PostgreSQL + Redis (backlog P1-01, P1-02). Ephemeral service
+  # containers with throwaway credentials — no repository secrets. Independent of `verify`, so the
+  # unit job stays fast and never needs a database or Redis.
+  integration:
+    name: integration · PostgreSQL + Redis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18.7-alpine # keep in sync with docker-compose.yml
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-only-not-a-secret
+          POSTGRES_DB: habit_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d habit_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        # Keep in sync with docker-compose.yml. Service containers cannot take a `command`, so the
+        # image default applies; its maxmemory-policy is `noeviction` (what BullMQ needs), and
+        # test/redis.int.test.ts asserts it.
+        image: redis:8.8.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci-only-not-a-secret@localhost:5432/habit_ci?schema=public
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages and the API library
+        run: pnpm build:deps
+
+      - name: Apply migrations (prisma migrate deploy)
+        working-directory: apps/api
+        run: pnpm db:migrate:deploy
+
+      - name: Migration status
+        working-directory: apps/api
+        run: pnpm db:migrate:status
+
+      # API: PostgreSQL + Redis + queue/worker contexts in-process. Worker: builds itself and runs
+      # the real worker process (enqueue → process → SIGTERM drain) — backlog P1-03.
+      - name: Integration tests
+        run: pnpm test:integration
+
+      - name: No leftover integration databases or Redis keys
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+          REDIS_CONTAINER: ${{ job.services.redis.id }}
+        run: |
+          dbs="$(docker exec "$PG_CONTAINER" psql -U ci -d habit_ci -Atc "SELECT datname FROM pg_database WHERE datname LIKE 'habit_it_%'")"
+          keys="$(docker exec "$REDIS_CONTAINER" redis-cli --scan --pattern 'habit:it:*')"
+          if [ -n "$dbs" ] || [ -n "$keys" ]; then
+            echo "::error::Integration teardown left resources behind: dbs=[$dbs] keys=[$keys]"
+            exit 1
+          fi
+          echo "Teardown clean: no throwaway databases or integration keys remain."

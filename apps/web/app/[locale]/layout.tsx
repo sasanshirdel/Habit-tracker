@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { getDirection, isLocale, locales } from '@/lib/i18n/config';
+import { getDirection, locales, parseLocale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import '../globals.css';
 
@@ -16,8 +16,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
-  if (!isLocale(locale)) return {};
+  const locale = parseLocale((await params).locale);
+  if (!locale) return {};
   const t = getDictionary(locale);
   return { title: t.meta.title, description: t.meta.description };
 }
@@ -29,8 +29,8 @@ export default async function LocaleLayout({
   children: ReactNode;
   params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
-  if (!isLocale(locale)) notFound();
+  const locale = parseLocale((await params).locale);
+  if (!locale) notFound();
 
   return (
     <html lang={locale} dir={getDirection(locale)} data-theme="dark">

@@ -1,13 +1,20 @@
-// Prisma schema skeleton (Phase 0).
+// Prisma schema (Phase 1 — database foundation, backlog P1-01).
 //
-// Intentionally contains NO product tables. Models are added per roadmap phase
-// with version-controlled migrations (`prisma migrate dev`), starting in Phase 1/2.
-// See docs/ARCHITECTURE.md §Data and the conceptual entity list in
+// Still intentionally contains NO product tables. Models are added per roadmap phase with
+// version-controlled migrations (`pnpm --filter @habit/api db:migrate:dev --name <change>`).
+// See docs/ARCHITECTURE.md §Data, ADR-0006 (data conventions) and the conceptual entity list in
 // docs/PRODUCT_REQUIREMENTS.md §6.
+//
+// The connection URL is NOT configured here: Prisma 7 reads it from prisma.config.ts (CLI) and the
+// API passes it to the pg driver adapter at runtime (src/database/prisma.service.ts).
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  // Pinned explicitly so the generated client matches the API's ESM/NodeNext setup.
+  moduleFormat        = "esm"
+  runtime             = "nodejs"
+  importFileExtension = "js"
 }
 
 datasource db {

@@ -13,6 +13,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@habit/localization": "workspace:*",
+    "@habit/shared-validation": "workspace:*",
     "@habit/ui": "workspace:*",
     "next": "16.4.6",
     "react": "19.3.1",

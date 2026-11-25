@@ -21,6 +21,40 @@ PRD §5.3 asks for a monorepo with `apps/web`, `apps/api`, `apps/worker` and sha
 - **Module system:** ESM everywhere (`"type": "module"`); NestJS 12 is ESM-only.
 - **Docs layout:** top-level docs in `docs/*.md` (as PRD §21 lists), ADRs in `docs/decisions/`, backlog in `docs/backlog/`. The deeper `docs/<area>/` folders in PRD §5.3 are created as content appears.
 
+## Addendum (2026-11-24, P1-04): shared packages and build order
+
+- Added `packages/shared-types` (types only), `packages/shared-validation` (zod 4.6.7, already
+  pinned in ADR-0001 — no new third-party dependency) and `packages/localization`.
+- **Consumption convention:** every package publishes `dist/` (`.js` + `.d.ts`) through
+  `package.json#exports` with `types` and `default` conditions; consumers never import a
+  package's `src/`. This works unchanged for NodeNext (`apps/api`, future `apps/worker`) and
+  bundler resolution (`apps/web`), and keeps `tsc` `rootDir` boundaries intact.
+- **Build order:** `pnpm build:packages` builds `packages/**` in workspace dependency order
+  (`pnpm -r` is topological). Root `typecheck`, `test` and `test:integration` run it first; CI
+  runs it as an explicit step before typecheck/test and before integration tests. `pnpm build`
+  is already topological. `lint` is not type-aware and needs no build.
+- **Boundaries:** `shared-validation` may depend on `localization`; `shared-types` depends on
+  nothing; packages never import from `apps/*`. Whether the API validates with these zod schemas
+  (vs class-validator) is decided by P1-05 — until then the API consumes `shared-types` only.
+
+## Addendum (2026-11-24, P1-03): `apps/worker` and the API as a library
+
+- Added `apps/worker` (`@habit/worker`). The worker shares the API's modules (PRD §5.3, ADR-0006)
+  by depending on `@habit/api` (`workspace:*`) and importing its **package exports**
+  `@habit/api/worker` and `@habit/api/queue`, which point at the API's built `dist/` (`types` +
+  `default` conditions; the API's build now emits declarations). Same convention as `packages/*`
+  (consume `dist/`, never `src/`), so NodeNext resolution and `rootDir` boundaries hold.
+- The worker app contains only the process lifecycle (signals, drain, exit codes); the worker
+  module, handlers and job definitions live in the API next to the modules that own them, so one
+  codebase is versioned and deployed together.
+- **Build order:** new root script `pnpm build:deps` = `build:packages` + `pnpm --filter
+@habit/api build`. Root `typecheck`, `test` and `test:integration` run it first; CI's verify and
+  integration jobs run it as an explicit step. `pnpm build` (`pnpm -r`) is topological:
+  packages → api → worker → web.
+- Rejected alternative: a second entry point inside `apps/api` (`src/worker.ts`) — simpler, but the
+  PRD/ARCHITECTURE layout names `apps/worker` as its own deployable, and a separate package keeps
+  the worker's dependencies and start command explicit.
+
 ## Consequences
 
 - One `pnpm install` and five root commands (`format:check`, `lint`, `typecheck`, `test`, `build`) cover the whole repo.

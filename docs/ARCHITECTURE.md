@@ -34,16 +34,18 @@ Decisions referenced as ADR-NNNN live in [`decisions/`](decisions/).
 
 ## 2. Repository structure (current + planned)
 
-| Path                                                         | Phase | Purpose                                          |
-| ------------------------------------------------------------ | ----- | ------------------------------------------------ |
-| `apps/web`                                                   | 0     | Next.js App Router; `app/[locale]/…`, `lib/i18n` |
-| `apps/api`                                                   | 0     | NestJS; `src/modules/*`, `src/config`, `prisma/` |
-| `apps/worker`                                                | 1     | BullMQ consumers (shares API modules/services)   |
-| `apps/admin`                                                 | 10    | Admin frontend on a separate origin              |
-| `packages/config`                                            | 0     | tsconfig presets, ESLint config                  |
-| `packages/ui`                                                | 0→1   | Design tokens → shadcn/ui-based primitives       |
-| `packages/shared-types`, `shared-validation`, `localization` | 1     | API contracts, zod schemas, shared messages      |
-| `infrastructure/`                                            | 12    | Deployment, Docker images, scripts               |
+| Path                         | Phase | Purpose                                                                                |
+| ---------------------------- | ----- | -------------------------------------------------------------------------------------- |
+| `apps/web`                   | 0     | Next.js App Router; `app/[locale]/…`, `lib/i18n`                                       |
+| `apps/api`                   | 0     | NestJS; `src/modules/*`, `src/config`, `prisma/`                                       |
+| `apps/worker`                | 1     | Worker process: BullMQ consumers (P1-03); runs `WorkerModule` from `@habit/api/worker` |
+| `apps/admin`                 | 10    | Admin frontend on a separate origin                                                    |
+| `packages/config`            | 0     | tsconfig presets, ESLint config                                                        |
+| `packages/ui`                | 0→1   | Design tokens → shadcn/ui-based primitives                                             |
+| `packages/shared-types`      | 1     | API contract types (responses, error envelope)                                         |
+| `packages/shared-validation` | 1     | zod 4 input schemas (locale, time zone, date)                                          |
+| `packages/localization`      | 1     | Locale metadata: locales, direction, Intl tags                                         |
+| `infrastructure/`            | 12    | Deployment, Docker images, scripts                                                     |
 
 ## 3. Backend modules (PRD §5.4)
 
@@ -67,17 +69,21 @@ Rules: a module owns its tables; cross-module calls only through exported servic
 
 ## 4. Data architecture
 
-- PostgreSQL is the system of record; Prisma 7 schema at `apps/api/prisma/schema.prisma` (Phase 0: no models). Conceptual entities: PRD §6.
+- PostgreSQL is the system of record; Prisma 7 schema at `apps/api/prisma/schema.prisma` (no product models yet; they arrive with their owning phase). Conceptual entities: PRD §6.
+- **Access (P1-01):** `DatabaseModule` (`apps/api/src/database/`) provides a single `PrismaService` (Prisma 7 + `@prisma/adapter-pg`, pool connect timeout 5 s). `DATABASE_URL` is required and validated at boot. The API starts even when the database is down; `GET /api/v1/health` (liveness) never touches the DB, `GET /api/v1/health/ready` (readiness) runs a bounded `SELECT 1` and answers 503 when it fails. Prisma `query` events and Prisma's own error lines are not logged (they can carry personal data).
+- **Migrations:** `apps/api/prisma/migrations/`, starting with an empty `…_baseline` migration that only establishes the history. `prisma migrate deploy` in CI/deployments, `prisma migrate dev` locally. CI job `integration · PostgreSQL + Redis` (P1-02) applies migrations to a Postgres 18.7 service container and runs `*.int.test.ts` against a throwaway database (incl. a schema-drift check) and a Redis 8.8.4 service container (per-run key prefix), then verifies teardown left nothing behind.
 - Conventions (ADR-0006): UUIDv7 IDs, `timestamptz` UTC + user IANA timezone, occurrences keyed by local date + schedule version, money in integer minor units + currency, soft delete where restorable, `version` column for offline-editable entities, idempotency keys for retried writes, migrations only via `prisma migrate`.
+- **Queues (P1-03):** BullMQ 6 on Redis 8. The API's `QueueModule` (`apps/api/src/queue/`) owns one shared ioredis connection, the `QueueProducer` and the Redis readiness check; jobs are typed `JobDefinition`s (`defineJob`: name `<module>.<action>`, queue, strict zod payload schema, options) defined by the module that owns the work. Producers fail fast (`QUEUE_UNAVAILABLE`) instead of buffering when Redis is down, and accept an idempotency `jobId`. Defaults: 3 attempts, exponential backoff from 1 s, failed jobs retained 7 days in the failed set. The worker process (`apps/worker`) boots `WorkerModule` (`apps/api/src/worker/`) as a Nest application context: one BullMQ `Worker` per queue with handlers (`JOB_HANDLERS`), payloads re-validated before handling (invalid/unknown → failed without retry), graceful drain on SIGTERM bounded by `WORKER_SHUTDOWN_TIMEOUT_MS`, then connections close; anything cut off is recovered as a stalled job. Keys are namespaced by `QUEUE_PREFIX` (default `habit:q`). Readiness (`/api/v1/health/ready`) checks PostgreSQL and Redis in parallel.
 - **Habit engine (Phase 3)** is the riskiest domain logic: schedule versions with effective dates → occurrence generation (pure, deterministic function of schedule version + date range + timezone + pauses/vacations) → completions → streaks/consistency. Built as a pure library with exhaustive and property-based tests.
 - **Analytics (Phase 6):** metrics computed by deterministic SQL/TS; snapshots materialised by worker jobs; insights carry evidence, time range and confidence.
 
 ## 5. API design
 
 - REST under `/api/v1`; OpenAPI generated from Nest decorators (Phase 1).
-- DTOs validated at the edge (zod or class-validator — decided in Phase 1 issue); never return Prisma entities directly.
-- Error shape: `{ error: { code, message, details?, requestId } }`; `code` is stable and localised by the client.
-- Cursor pagination, filtering, sorting conventions defined in Phase 1.
+- Input validated at the edge with zod: `ZodValidationPipe(schema)` per `@Body`/`@Query`/`@Param` → 400 `VALIDATION_FAILED` with `details.issues[{ field, code, message }]` (ADR-0009, P1-05); never return Prisma entities directly.
+- Error shape: `{ error: { code, message, details?, requestId } }`, rendered for every failure by the global `AllExceptionsFilter`; `code` is a stable `ApiErrorCode` localised by the client; no stack traces or framework/driver text in any environment.
+- Every response carries `x-request-id` (accepted from the caller when well-formed, else a UUID), also available in-process via `currentRequestId()`.
+- Lists: cursor (keyset) pagination `?limit=&cursor=` → `{ data, page: { nextCursor, hasMore, limit } }`; `?sort=-field,field` over whitelisted fields; explicit typed filter parameters (ADR-0009). Helpers in `apps/api/src/common/`.
 - Auth via secure session cookies (ADR-0005); CSRF protection on state-changing requests; rate limits per IP/user/route class.
 
 ## 6. Frontend architecture
@@ -110,7 +116,7 @@ Quick capture is a global action (keyboard shortcut / FAB), not a page.
 ## 8. Cross-cutting concerns
 
 - **Security:** see [`SECURITY.md`](SECURITY.md).
-- **Observability (PRD §10):** structured JSON logs with request IDs and redaction; error tracking; metrics for API latency, queues, payments, AI usage; health/readiness endpoints; uptime checks; alerting. Phase 1 lays the logging/request-ID foundation; Phase 12 completes monitoring.
+- **Observability (PRD §10):** structured JSON logs with request IDs and redaction; error tracking; metrics for API latency, queues, payments, AI usage; health/readiness endpoints; uptime checks; alerting. Phase 1 lays the logging/request-ID foundation (P1-07, ADR-0010: `JsonLogger` installed as Nest's logger in API and worker — JSON lines with `requestId`/`userId` or `jobId`/`jobName`/`attempt`, one access line per request, mandatory redaction, `LOG_LEVEL`/`LOG_FORMAT`); Phase 12 completes monitoring.
 - **Configuration:** zod-validated env at boot (`apps/api/src/config/env.ts`); fail fast; secrets only from the environment/secret manager.
 - **Feature flags & commercial config** (plans, prices, limits) live in the database with versioning — never hardcoded (PRD §3.14).
 - **Environments:** local → testing → staging → production (PRD §15). Deployment target is an open decision.

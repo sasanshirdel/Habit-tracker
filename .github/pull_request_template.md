@@ -17,6 +17,7 @@
 - [ ] `pnpm typecheck`
 - [ ] `pnpm test`
 - [ ] `pnpm build`
+- [ ] `pnpm test:integration` (when DB/queue code changes)
 
 ## Definition of Done (docs/DEFINITION_OF_DONE.md)
 
