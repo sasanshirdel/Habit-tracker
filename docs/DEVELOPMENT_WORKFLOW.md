@@ -19,6 +19,9 @@ pnpm --filter @habit/api dev         # :4000  GET /api/v1/health, /api/v1/health
 pnpm --filter @habit/worker dev      # BullMQ consumers (rebuild the API with `pnpm --filter @habit/api build` after API changes)
 pnpm --filter @habit/web dev         # :3000  / → /en or /fa (cookie, Accept-Language)
 pnpm --filter @habit/web build && pnpm --filter @habit/web test:e2e   # route tests on next start
+# Browser tests (ADR-0015): needs DATABASE_URL + REDIS_URL, the built API (build:deps) and Chromium
+pnpm --filter @habit/web exec playwright install --only-shell chromium   # once per Playwright version
+pnpm --filter @habit/web build:e2e && pnpm --filter @habit/web test:browser
 ```
 
 pnpm only runs install scripts for packages on the `allowBuilds` allow-list in

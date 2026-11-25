@@ -160,3 +160,99 @@ jobs:
             exit 1
           fi
           echo "Teardown clean: no throwaway databases or integration keys remain."
+
+  # Browser end-to-end suite (backlog P1-13, ADR-0015): Playwright drives headless Chromium against
+  # the production web build (`next start`) and the built API on PostgreSQL + Redis. Same
+  # throwaway service containers as `integration`; no repository secrets.
+  e2e:
+    name: e2e · Playwright (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.7-alpine # keep in sync with docker-compose.yml
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-only-not-a-secret
+          POSTGRES_DB: habit_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d habit_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:8.8.4-alpine # keep in sync with docker-compose.yml
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci-only-not-a-secret@localhost:5432/habit_e2e?schema=public
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages and the API
+        run: pnpm build:deps
+
+      # The browser reaches the API cross-origin at the suite's fixed address
+      # (apps/web/e2e/browser/env.ts); NEXT_PUBLIC_API_BASE_URL is inlined at build time.
+      - name: Build the web app for the suite
+        run: pnpm --filter @habit/web build:e2e
+
+      - name: Apply migrations (prisma migrate deploy)
+        working-directory: apps/api
+        run: pnpm db:migrate:deploy
+
+      # Browsers are cached per Playwright version (the lockfile pins it); the OS libraries they
+      # need are not cacheable and are installed on every run.
+      - name: Playwright version
+        id: playwright
+        working-directory: apps/web
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: browser-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}-chromium-headless-shell
+
+      - name: Install Chromium (headless shell) and its OS dependencies
+        if: steps.browser-cache.outputs.cache-hit != 'true'
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+
+      - name: Install Chromium OS dependencies (browser restored from cache)
+        if: steps.browser-cache.outputs.cache-hit == 'true'
+        working-directory: apps/web
+        run: pnpm exec playwright install-deps chromium
+
+      - name: Browser tests (Playwright)
+        run: pnpm --filter @habit/web test:browser
+
+      - name: Upload Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          if-no-files-found: ignore
+          retention-days: 14

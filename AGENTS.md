@@ -48,6 +48,7 @@ pnpm check          # all of the above in order
 pnpm dev:services   # docker compose: postgres + redis (needs Docker)
 pnpm --filter @habit/web dev      # http://localhost:3000 -> /en or /fa (negotiated)
 pnpm --filter @habit/web test:e2e # route tests against `next start` (after `pnpm build`)
+pnpm --filter @habit/web test:browser # Playwright (Chromium) vs next start + API on Postgres/Redis (after build:e2e; ADR-0015)
 pnpm --filter @habit/api dev      # http://localhost:4000/api/v1/health
 pnpm --filter @habit/worker dev   # BullMQ consumers (apps/worker)
 ```
