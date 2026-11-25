@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
+import { readinessResponseSchema } from '../src/health/health.schemas.js';
 import { prismaCli } from './integration/prisma-cli.js';
 
 // Integration: real PostgreSQL, migrations applied by `prisma migrate deploy` in global setup.
@@ -69,6 +70,8 @@ describe('database foundation (real PostgreSQL)', () => {
   it('GET /api/v1/health/ready returns 200 when the database is up', async () => {
     const res = await request(app.getHttpServer()).get('/api/v1/health/ready').expect(200);
     expect(res.body).toMatchObject({ status: 'ok', checks: { database: 'up' } });
+    // Matches the strict schema published in the OpenAPI document (P1-06).
+    expect(readinessResponseSchema.parse(res.body)).toEqual(res.body);
     expect(JSON.stringify(res.body)).not.toContain(databaseName);
   });
 });

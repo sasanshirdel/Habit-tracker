@@ -77,7 +77,9 @@ to server logs. The web app already validates forms with the zod schemas in
 - **class-validator + class-transformer + Nest `ValidationPipe`**: idiomatic Nest and integrates
   with `@nestjs/swagger` decorators. Rejected because it adds two dependencies and duplicates the
   rules already in the shared zod schemas the web uses, and its decorator-based classes cannot be
-  shared with the frontend. OpenAPI generation from zod is handled in P1-06.
+  shared with the frontend. OpenAPI generation from zod is handled in P1-06: the document is built
+  from the same zod schemas without `@nestjs/swagger` ([ADR-0012](0012-openapi-from-zod.md)), so
+  losing swagger's DTO decorators costs nothing.
 - **A global zod pipe driven by metadata**: needs a custom decorator per parameter anyway. The
   explicit per-parameter pipe is clearer and fully typed.
 - **Offset pagination**: simpler, but unstable under concurrent inserts and slow on deep pages.

@@ -8,6 +8,10 @@ build/
 .next/
 out/
 coverage/
+# Playwright output (apps/web)
+playwright-report/
+test-results/
+blob-report/
 *.tsbuildinfo
 next-env.d.ts
 

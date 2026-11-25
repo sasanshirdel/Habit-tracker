@@ -36,16 +36,51 @@ Decisions referenced as ADR-NNNN live in [`decisions/`](decisions/).
 
 | Path                         | Phase | Purpose                                                                                |
 | ---------------------------- | ----- | -------------------------------------------------------------------------------------- |
-| `apps/web`                   | 0     | Next.js App Router; `app/[locale]/…`, `lib/i18n`                                       |
+| `apps/web`                   | 0     | Next.js App Router; `app/[locale]/…`, `lib/i18n` (next-intl routing, ICU messages)     |
 | `apps/api`                   | 0     | NestJS; `src/modules/*`, `src/config`, `prisma/`                                       |
 | `apps/worker`                | 1     | Worker process: BullMQ consumers (P1-03); runs `WorkerModule` from `@habit/api/worker` |
 | `apps/admin`                 | 10    | Admin frontend on a separate origin                                                    |
 | `packages/config`            | 0     | tsconfig presets, ESLint config                                                        |
-| `packages/ui`                | 0→1   | Design tokens → shadcn/ui-based primitives                                             |
+| `packages/ui`                | 0→1   | Tokens, themes, shadcn/ui primitives on Radix (`styles.css` for Tailwind; ADR-0013)    |
 | `packages/shared-types`      | 1     | API contract types (responses, error envelope)                                         |
 | `packages/shared-validation` | 1     | zod 4 input schemas (locale, time zone, date)                                          |
 | `packages/localization`      | 1     | Locale metadata: locales, direction, Intl tags                                         |
 | `infrastructure/`            | 12    | Deployment, Docker images, scripts                                                     |
+
+### 2.1 Dependency rules (enforced)
+
+`pnpm lint` ends with `pnpm check:architecture` (CI job `verify`), which fails on any violation of
+these rules; the graph itself lives in `packages/config/architecture/rules.js` (P1-15, ADR-0016).
+Change both together.
+
+- **Layers:** apps may depend on packages; packages never depend on or import apps. Apps do not
+  depend on each other — the one exception is `apps/worker` → `@habit/api`, and only its
+  `@habit/api/queue` and `@habit/api/worker` exports (ADR-0002). In particular the web app never
+  imports API code and the API never imports web code; they share contracts only through
+  `@habit/shared-types` and `@habit/shared-validation`.
+- **Allowed workspace graph** (`@habit/config` is build tooling, allowed everywhere):
+
+  | Package                    | May depend on                                                                         |
+  | -------------------------- | ------------------------------------------------------------------------------------- |
+  | `@habit/shared-types`      | —                                                                                     |
+  | `@habit/localization`      | —                                                                                     |
+  | `@habit/shared-validation` | `localization`                                                                        |
+  | `@habit/ui`                | —                                                                                     |
+  | `@habit/api`               | `shared-types`, `shared-validation`, `localization`                                   |
+  | `@habit/worker`            | `api` (`/queue`, `/worker` only), `shared-types`, `shared-validation`, `localization` |
+  | `@habit/web`               | `shared-types`, `shared-validation`, `localization`, `ui`                             |
+
+  A new workspace package fails the check until it has an entry; no cycles between packages.
+
+- **Entry points only:** a `@habit/*` import must be declared in the importer's `package.json` and
+  name an entry of the target's `exports` (never `src/` or `dist/` paths); relative and `@/` imports
+  never leave their own package.
+- **API (ADR-0006):** feature modules (`src/modules/<name>/`, from Phase 2) are imported only through
+  their `index.ts`, and every module has one. Platform areas (`common`, `config`, `database`,
+  `health`, `openapi`, `queue`, `rate-limit`) never import feature modules; only the composition root
+  (`src/*.ts`) and `worker/` wire them in. Prisma's generated client (`src/generated`) is imported
+  only by `database/` and feature modules. Areas form layers: no cycles between them.
+- **No runtime import cycles** between the files of any package (`import type` cycles are allowed).
 
 ## 3. Backend modules (PRD §5.4)
 
@@ -54,7 +89,7 @@ Grouped by roadmap phase:
 | Area                  | Modules                                                                                   | Phase |
 | --------------------- | ----------------------------------------------------------------------------------------- | ----- |
 | Platform              | config, health, logging, errors, OpenAPI, rate limiting                                   | 1     |
-| Identity              | auth, users, profiles, preferences, sessions                                              | 2     |
+| Identity              | identity (auth, users, profiles, preferences, sessions — one module for now, ADR-0017)    | 2     |
 | Habits                | habits, habit-schedules (versioned), habit-occurrences, habit-templates, streaks          | 3     |
 | Execution             | goals, tasks, planning                                                                    | 4     |
 | Focus & journal       | focus, journal                                                                            | 5     |
@@ -65,11 +100,12 @@ Grouped by roadmap phase:
 | Administration        | admin-auth, rbac, admin, support, audit-logs, feature-flags, system-health                | 10    |
 | Social & integrations | accountability, integrations (Google Calendar/Tasks)                                      | 11    |
 
-Rules: a module owns its tables; cross-module calls only through exported services; side effects via domain events/queues.
+Rules: a module owns its tables; cross-module calls only through exported services; side effects via domain events/queues. The import rules are enforced by the architecture check (§2.1).
 
 ## 4. Data architecture
 
-- PostgreSQL is the system of record; Prisma 7 schema at `apps/api/prisma/schema.prisma` (no product models yet; they arrive with their owning phase). Conceptual entities: PRD §6.
+- PostgreSQL is the system of record; Prisma 7 schema at `apps/api/prisma/schema.prisma`; models arrive with their owning phase. Conceptual entities: PRD §6.
+- **Identity tables (P2-01, ADR-0017):** `users` (citext unique email incl. soft-deleted, `deleted_at`), `user_profiles`, `user_preferences` (locale, IANA timezone, theme), `user_password_credentials` (Argon2id PHC only), `user_sessions` and `user_tokens` (only SHA-256 hashes of 256-bit random tokens, unique, 32 bytes by CHECK), all owned by the `identity` module (`src/modules/identity`) and cascading from `users`. CHECK constraints Prisma cannot express are hand-written in the migration SQL.
 - **Access (P1-01):** `DatabaseModule` (`apps/api/src/database/`) provides a single `PrismaService` (Prisma 7 + `@prisma/adapter-pg`, pool connect timeout 5 s). `DATABASE_URL` is required and validated at boot. The API starts even when the database is down; `GET /api/v1/health` (liveness) never touches the DB, `GET /api/v1/health/ready` (readiness) runs a bounded `SELECT 1` and answers 503 when it fails. Prisma `query` events and Prisma's own error lines are not logged (they can carry personal data).
 - **Migrations:** `apps/api/prisma/migrations/`, starting with an empty `…_baseline` migration that only establishes the history. `prisma migrate deploy` in CI/deployments, `prisma migrate dev` locally. CI job `integration · PostgreSQL + Redis` (P1-02) applies migrations to a Postgres 18.7 service container and runs `*.int.test.ts` against a throwaway database (incl. a schema-drift check) and a Redis 8.8.4 service container (per-run key prefix), then verifies teardown left nothing behind.
 - Conventions (ADR-0006): UUIDv7 IDs, `timestamptz` UTC + user IANA timezone, occurrences keyed by local date + schedule version, money in integer minor units + currency, soft delete where restorable, `version` column for offline-editable entities, idempotency keys for retried writes, migrations only via `prisma migrate`.
@@ -79,18 +115,21 @@ Rules: a module owns its tables; cross-module calls only through exported servic
 
 ## 5. API design
 
-- REST under `/api/v1`; OpenAPI generated from Nest decorators (Phase 1).
+- REST under `/api/v1`; OpenAPI 3.1 generated from the routes' zod schemas (`ZodValidationPipe` inputs + `@ApiDoc` response schemas, no `@nestjs/swagger`), served as JSON at `/api/docs/openapi.json` outside production (`API_DOCS_ENABLED`) and exported by CI as an artifact; admin routes must be `@ApiExclude()`d (ADR-0012, P1-06).
 - Input validated at the edge with zod: `ZodValidationPipe(schema)` per `@Body`/`@Query`/`@Param` → 400 `VALIDATION_FAILED` with `details.issues[{ field, code, message }]` (ADR-0009, P1-05); never return Prisma entities directly.
 - Error shape: `{ error: { code, message, details?, requestId } }`, rendered for every failure by the global `AllExceptionsFilter`; `code` is a stable `ApiErrorCode` localised by the client; no stack traces or framework/driver text in any environment.
 - Every response carries `x-request-id` (accepted from the caller when well-formed, else a UUID), also available in-process via `currentRequestId()`.
 - Lists: cursor (keyset) pagination `?limit=&cursor=` → `{ data, page: { nextCursor, hasMore, limit } }`; `?sort=-field,field` over whitelisted fields; explicit typed filter parameters (ADR-0009). Helpers in `apps/api/src/common/`.
-- Auth via secure session cookies (ADR-0005); CSRF protection on state-changing requests; rate limits per IP/user/route class.
+- Auth via secure session cookies (ADR-0005); CSRF protection on state-changing requests.
+- Security headers on every response, exact CORS allow-list, and rate limits per user-or-address and route class (`default` on every route; `@RateLimit('auth' | 'expensive')`; `@SkipRateLimit()` for probes only) with Redis counters → 429 `RATE_LIMITED` + `Retry-After` (ADR-0011, P1-08). The web app sets a per-request nonce CSP in `apps/web/proxy.ts`, so its pages render dynamically.
 
 ## 6. Frontend architecture
 
 - App Router with `[locale]` segment; `<html lang dir>` from locale (ADR-0004).
-- Server components by default; client components for interaction. TanStack Query for client cache of API data (Phase 1).
-- Design tokens (`packages/ui`) → Tailwind theme; dark (default) + light themes; logical CSS only.
+- i18n with next-intl (P1-10, ADR-0004): `proxy.ts` sets the nonce CSP, then negotiates the locale for unprefixed paths (cookie → `Accept-Language` → `defaultLocale` from `@habit/localization`, 307, same origin only); ICU messages in `apps/web/lib/i18n/messages/{en,fa}.json` with a CI parity test; named formats in `lib/i18n/formats.ts`; locale-aware `Link`/`redirect` from `lib/i18n/navigation.ts`. Physical left/right utilities fail lint.
+- Server components by default; client components for interaction. Data layer (P1-12, ADR-0014): typed `fetch` client `lib/api/client.ts` (`credentials: 'include'`, timeout, CSRF hook for P2-03, never web storage) → `ApiError` with the envelope's stable `code`; TanStack Query 5 with retry only for transient codes; errors shown with `useErrorMessage()` from `apiErrors.<CODE>` messages (every `API_ERROR_CODES` entry, enforced); standard loading/error/empty states (`Skeleton` + `aria-busy`, `QueryError`, `EmptyState`). Demo: `/{locale}/status`.
+- Design tokens (`packages/ui`) → Tailwind theme via `@habit/ui/styles.css`; dark (default), light and system themes from a `theme` cookie rendered on the server (no flash); logical CSS only; self-hosted Inter/Vazirmatn; primitives (Button, Input, Skeleton, Dialog, DropdownMenu, Toast) wrapped by `UiProvider` for direction and the CSP nonce (P1-09, ADR-0013).
+- Application shell (P1-11): the `app/[locale]/(app)` route group renders every signed-in-app page inside `components/shell/app-shell.tsx` — skip link, labelled `navigation` (sidebar at the inline start: icon rail from `md`, full from `lg`; bottom bar with four sections + "More" sheet below `md`), `banner` with language and theme switchers, and `main#main` (focused after each client-side navigation). Sections and their placement are data in `lib/navigation/sections.ts`; direction-bearing icons are flipped in RTL (`rtl:-scale-x-100`). The shell does no authorization: P2-03 adds the server-side session check to the `(app)` layout. Placeholder pages are `noindex` until then.
 - PWA (Phase 8): manifest, service worker, IndexedDB store + operation queue, background sync where supported; documented offline matrix.
 
 ## 7. Initial information architecture
@@ -112,6 +151,12 @@ Primary navigation (PRD §2.3), validated during Phase 1 design work:
 
 Public: `/{locale}` landing, `/{locale}/pricing`, `/{locale}/auth/*`, `/{locale}/onboarding`. Admin: separate app.
 Quick capture is a global action (keyboard shortcut / FAB), not a page.
+
+**Implemented in P1-11** (shell + one placeholder page per section, no data):
+
+- Overview is served at **`/{locale}/overview`** (interim), because `/{locale}` is the public landing page and, without authentication, nothing can decide who sees which. Phase 2 (P2-09) can redirect signed-in users from `/{locale}` to the overview or swap the two — ROADMAP "Outstanding decisions" #10.
+- Top-level section routes exist (`/habits`, `/goals`, `/tasks`, `/planner`, `/focus`, `/journal`, `/insights`, `/coach`, `/settings`); the sub-routes in the table (`/habits/[id]`, `/planner/day`, `/settings/profile`, …) are added by the features that own them. Unknown paths below a section return the localized 404.
+- Mobile bottom bar: Overview, Habits, Tasks, Planner, **More**; "More" opens a sheet with Goals, Focus, Journal, Insights, AI Coach, Settings (Settings last).
 
 ## 8. Cross-cutting concerns
 

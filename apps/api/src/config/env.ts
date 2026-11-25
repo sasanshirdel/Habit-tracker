@@ -41,7 +41,30 @@ export const envSchema = baseEnvSchema.extend({
         .filter(Boolean),
     )
     .pipe(z.array(z.url())),
+  // Rate limiting (backlog P1-08, ADR-0011). Counters live in Redis under this namespace.
+  // `RATE_LIMIT_ENABLED=false` switches the limiter off entirely — local load tests only; never
+  // in staging/production.
+  RATE_LIMIT_ENABLED: z.stringbool().default(true),
+  RATE_LIMIT_PREFIX: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]+(:[A-Za-z0-9_-]+)*$/, 'letters, digits, "_", "-" separated by ":"')
+    .max(64)
+    .default('habit:rl'),
+  // Number of reverse proxies in front of the API whose `X-Forwarded-For` entry is trusted for
+  // the client address (Express `trust proxy`). 0 (default) trusts none: the socket address is
+  // the client. Set it to the real hop count behind a load balancer, or every client shares the
+  // proxy's address — and its rate limit; never higher, or clients can spoof their address.
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
+  // OpenAPI document at `/api/docs/openapi.json` (backlog P1-06, ADR-0012). Unset: served unless
+  // NODE_ENV=production. Production (and staging, which runs with NODE_ENV=production) serves it
+  // only with an explicit `API_DOCS_ENABLED=true` — a deliberate choice that is logged as a warning.
+  API_DOCS_ENABLED: z.stringbool().optional(),
 });
+
+/** Whether the API serves its OpenAPI document (see `API_DOCS_ENABLED`). */
+export function apiDocsEnabled(env: Pick<Env, 'API_DOCS_ENABLED' | 'NODE_ENV'>): boolean {
+  return env.API_DOCS_ENABLED ?? env.NODE_ENV !== 'production';
+}
 
 export const workerEnvSchema = baseEnvSchema.extend({
   // Jobs processed in parallel per queue by one worker process.

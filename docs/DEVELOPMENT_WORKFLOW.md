@@ -17,7 +17,11 @@ pnpm --filter @habit/api db:migrate:deploy   # apply migrations to the local dat
 pnpm build:deps                      # build packages/* and the API library the worker imports
 pnpm --filter @habit/api dev         # :4000  GET /api/v1/health, /api/v1/health/ready
 pnpm --filter @habit/worker dev      # BullMQ consumers (rebuild the API with `pnpm --filter @habit/api build` after API changes)
-pnpm --filter @habit/web dev         # :3000  /en  /fa
+pnpm --filter @habit/web dev         # :3000  / → /en or /fa (cookie, Accept-Language)
+pnpm --filter @habit/web build && pnpm --filter @habit/web test:e2e   # route tests on next start
+# Browser tests (ADR-0015): needs DATABASE_URL + REDIS_URL, the built API (build:deps) and Chromium
+pnpm --filter @habit/web exec playwright install --only-shell chromium   # once per Playwright version
+pnpm --filter @habit/web build:e2e && pnpm --filter @habit/web test:browser
 ```
 
 pnpm only runs install scripts for packages on the `allowBuilds` allow-list in
@@ -34,6 +38,10 @@ their env at boot (`apps/api/src/config/env.ts`) and exit on invalid config with
 | `NODE_ENV`                                                              | api, worker         | no (`development`)               | `development` / `test` / `production`            |
 | `API_PORT`                                                              | api                 | no (`4000`)                      | HTTP port                                        |
 | `CORS_ORIGINS`                                                          | api                 | no (`http://localhost:3000`)     | Comma-separated allowed browser origins          |
+| `RATE_LIMIT_ENABLED`                                                    | api                 | no (`true`)                      | `false` only for local load tests (P1-08)        |
+| `RATE_LIMIT_PREFIX`                                                     | api                 | no (`habit:rl`)                  | Namespace of rate-limit counter keys in Redis    |
+| `TRUST_PROXY`                                                           | api                 | no (`0`, 0–5)                    | Trusted reverse-proxy hops for the client IP     |
+| `API_DOCS_ENABLED`                                                      | api                 | no (on unless production)        | Serve `/api/docs/openapi.json` (P1-06, ADR-0012) |
 | `DATABASE_URL`                                                          | api, worker, prisma | **yes** (refuses to boot)        | PostgreSQL URL (`postgres://` / `postgresql://`) |
 | `REDIS_URL`                                                             | api, worker         | **yes** (refuses to boot, P1-03) | Redis URL (`redis://`, or `rediss://` for TLS)   |
 | `QUEUE_PREFIX`                                                          | api, worker         | no (`habit:q`)                   | Namespace of all BullMQ keys                     |
@@ -73,7 +81,7 @@ Small, logical commits; no secrets; no generated artefacts (`dist`, `.next`).
 | `pnpm format:check`                        | Prettier (PRD file excluded — kept verbatim)                                                        |
 | `pnpm build:packages`                      | Build `packages/*` in dependency order                                                              |
 | `pnpm build:deps`                          | `build:packages` + build the API library imported by `apps/worker` (run by `typecheck`/`test`)      |
-| `pnpm lint`                                | ESLint 10 flat config (`@habit/config/eslint`, Next plugin for web)                                 |
+| `pnpm lint`                                | ESLint 10 (`@habit/config/eslint`, Next plugin for web) + architecture check (ADR-0016)             |
 | `pnpm typecheck`                           | `tsc --noEmit` per package (web runs `next typegen` first)                                          |
 | `pnpm test`                                | Vitest per package                                                                                  |
 | `pnpm build`                               | `tsc` (api, ui), `next build` (web)                                                                 |
@@ -133,6 +141,7 @@ CI (`.github/workflows/ci.yml`) runs install (frozen lockfile), format, lint, ty
 - TypeScript strict, `noUncheckedIndexedAccess`; avoid `any`; prefer pure functions for domain logic.
 - ESM; API relative imports end in `.js`.
 - Pinned dependency versions; new dependencies need justification + ADR entry (version, date checked).
+- Workspace and module boundaries are checked by `pnpm check:architecture` (part of `pnpm lint`; ARCHITECTURE §2.1, ADR-0016).
 - API: module boundaries (ADR-0006), zod validation per parameter (`ZodValidationPipe`), errors via `ApiException` with an `ApiErrorCode`, cursor pagination for lists (ADR-0009), no Prisma entities in responses.
 - UI: design tokens only, logical CSS, dictionaries for all strings, accessible components.
 - Tests live next to code (`*.test.ts`) or in `apps/api/test/` for HTTP-level tests.

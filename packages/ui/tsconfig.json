@@ -1,7 +1,10 @@
 {
   "extends": "@habit/config/tsconfig.node.json",
   "compilerOptions": {
-    "rootDir": "."
+    "rootDir": ".",
+    "jsx": "react-jsx",
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
+    "types": ["node"]
   },
   "include": ["src", "*.ts"]
 }

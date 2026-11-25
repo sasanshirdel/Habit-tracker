@@ -55,8 +55,10 @@ These operations also require a trusted online connection (never queued offline)
 
 - Opaque, random session IDs; stored hashed server-side; rotated at login and privilege change; revocable individually and "sign out everywhere".
 - Cookies: `__Host-` prefix, `Secure`, `HttpOnly`, `Path=/`, appropriate `SameSite`.
-- CSRF: double-submit token or origin/`Sec-Fetch-Site` checks on all state-changing cookie-authenticated requests.
+- CSRF: double-submit token or origin/`Sec-Fetch-Site` checks on all state-changing cookie-authenticated requests. The web client sends a CSRF header on state-changing methods once P2-03 configures it (ADR-0014).
+- The browser never stores tokens or session identifiers in `localStorage`/`sessionStorage`; the web API client relies on cookies only (`credentials: 'include'`, tested).
 - Passwords: Argon2id; rate limiting + progressive lockout on login, recovery, MFA and verification endpoints; generic error messages (no account enumeration).
+- Storage (P2-01, ADR-0017): session cookies and emailed links carry a 256-bit random token; the database keeps only its SHA-256 hash (32 bytes, unique, enforced by CHECK), so a database copy yields no usable session or link. Password hashes are accepted by the database only as Argon2id PHC strings. Malformed tokens are rejected before any lookup and treated exactly like unknown ones; in-memory hash comparisons are constant time (`secretTokenHashesEqual`). Email addresses are `citext` and stay reserved while an account is soft-deleted.
 
 ## 6. Audit logging
 
@@ -77,26 +79,58 @@ no admin UI can edit or delete entries. Retention defined before launch.
 - Agents and CI use sandbox credentials only; no production credentials in development.
 - **Database credentials** come only from `DATABASE_URL` (validated, never logged or returned; readiness responses carry no connection details or driver errors — tested). Prisma query/parameter logging is disabled.
 - **Error responses (P1-05):** every failure is rendered by one global filter as `{ error: { code, message, details?, requestId } }`; stack traces, framework/driver messages and rejected input values never reach the client (any environment — tested). Unexpected errors are logged server-side as one structured line with the request id (P1-07). Client-supplied `x-request-id` values are accepted only in a strict format (no injection into logs/headers).
+- **Security headers, CORS and rate limiting (P1-08, ADR-0011):** every API response carries a
+  deny-all CSP (`default-src 'none'; frame-ancestors 'none'`), HSTS, `nosniff`, `X-Frame-Options: DENY`,
+  `Referrer-Policy: no-referrer`, COOP/CORP and `Cache-Control: no-store`. Web documents get a
+  per-request **nonce CSP** from `apps/web/proxy.ts` (no inline or injected scripts, no `eval` in
+  production, no framing, `connect-src` limited to self + the API origin) and static headers (HSTS,
+  `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` with sensors/payment off) from
+  `next.config.ts`. CORS: only exact `CORS_ORIGINS` get CORS headers (credentials, explicit methods
+  and request headers, nothing reflected); other origins get none. Rate limiting: a global guard with
+  Redis counters — `default` 300/min per user-or-address on every route, `auth` 10/5 min per address
+  (fails **closed** with 503 when Redis is down), `expensive` 20/h; 429 `RATE_LIMITED` with
+  `Retry-After`. Counter keys hold a hash of the address, never the raw IP. The client address is
+  the socket address unless `TRUST_PROXY` hops are configured — set it exactly behind a load
+  balancer, never higher (spoofable `X-Forwarded-For`). New credential/code endpoints must use
+  `@RateLimit('auth')`.
+- **CSP enforced in a real browser (P1-13, ADR-0015):** the Playwright suite fails on any CSP
+  violation, `console.error` or uncaught error on every page it visits, and proves that an injected
+  inline script and inline event handler never run and that `fetch` to a foreign origin is refused,
+  while the app's nonce'd scripts hydrate and the API origin stays reachable (CORS with credentials).
+  E2E fixtures use no credentials; the CI job uses throwaway service-container passwords only.
+- **UI primitives and the CSP (P1-09, ADR-0013):** fonts are self-hosted (`font-src 'self'`, no font
+  CDN at runtime or build time); primitives inject no `<style>` without the request's nonce
+  (`UiProvider` hands it to the modal scroll lock; sonner was rejected for injecting un-nonced
+  styles); themes need no inline script (server-rendered from the `theme` cookie, whose value is
+  validated against a fixed list).
+- **API documentation (P1-06, ADR-0012):** the OpenAPI document is JSON only at
+  `/api/docs/openapi.json` (no HTML UI, which the API CSP would block anyway). It is **off when
+  `NODE_ENV=production`** (production and staging) unless `API_DOCS_ENABLED=true` is set explicitly,
+  which logs a warning; disabled, the path answers 404 `NOT_FOUND`. It is generated from the zod
+  schemas, contains no configuration or connection details (tested), and is not rate-limited
+  (cached, read-only). **Admin routes (`/api/v1/admin/*`) must be `@ApiExclude()`d** — the generator
+  refuses to build a document that would publish one, so admin endpoints never appear in it.
 - **Redis and background jobs (P1-03):** the Redis URL comes only from `REDIS_URL` (validated, never logged; connection errors are logged as error codes, once per outage — tested). Redis must never be reachable from the internet: docker-compose binds it to `127.0.0.1`; staging/production must keep it on a private network with authentication (`rediss://` + ACL user) — to be enforced with deployment (P12-06). **Job payloads carry identifiers and small parameters only**, never personal or sensitive content (journal text, emails, tokens): payload schemas are strict (`z.strictObject`), validated by the producer and again by the worker, and payloads are never logged (failures log job name, id, attempt and an error code). Handlers must re-check authorization/ownership against the database rather than trust a payload.
 - **Database roles (least privilege):** the docker-compose and CI users are local/ephemeral superusers for convenience only. Staging/production must use two roles: a _migration_ role that owns the schema and runs `prisma migrate deploy`, and a _runtime_ role for the API/worker with only `CONNECT` + `USAGE` on the schema and `SELECT/INSERT/UPDATE/DELETE` on tables (no DDL, no `CREATE DATABASE`, not superuser). Append-only tables (audit logs, Phase 10) additionally revoke `UPDATE/DELETE` from the runtime role. To be implemented with deployment (P12-06).
 
 ## 8. Application security controls
 
-| Control                                                                          | Status                                                     |
-| -------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Input validation at API edge (DTO schemas)                                       | Phase 1 (env validation done in Phase 0)                   |
-| Output encoding / XSS (React escaping, CSP)                                      | Phase 1 (CSP + security headers via helmet / Next headers) |
-| `X-Powered-By` removed                                                           | **Done (Phase 0)** — tested                                |
-| SQL injection (Prisma parameterisation; raw SQL reviewed)                        | Phase 1+ (only raw SQL so far: readiness `SELECT 1`)       |
-| Rate limiting & brute-force protection (Redis-backed)                            | Phase 1–2                                                  |
-| CORS allow-list from env                                                         | **Done (Phase 0)**                                         |
-| Secure file uploads (type/size checks, private S3, signed URLs)                  | Phase 2 (avatar)                                           |
-| Webhook signature verification + idempotency                                     | Phase 9                                                    |
-| Dependency scanning (`pnpm audit`, Dependabot/Renovate), secret scanning, CodeQL | Backlog (Phase 1)                                          |
-| pnpm `allowBuilds` allow-list + minimum release age for install scripts          | **Done (Phase 0)**                                         |
-| Encryption in transit (TLS everywhere), at rest (managed DB/S3 encryption)       | Phase 12 deployment                                        |
-| Backups with tested restore                                                      | Phase 12                                                   |
-| Security monitoring & alerting                                                   | Phase 10–12                                                |
+| Control                                                                          | Status                                                  |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Input validation at API edge (DTO schemas)                                       | Phase 1 (env validation done in Phase 0)                |
+| API docs off in production; admin endpoints never documented                     | **Done (P1-06)** — tested                               |
+| Output encoding / XSS (React escaping, CSP)                                      | **Done (P1-08)** — nonce CSP + security headers, tested |
+| `X-Powered-By` removed                                                           | **Done (Phase 0)** — tested                             |
+| SQL injection (Prisma parameterisation; raw SQL reviewed)                        | Phase 1+ (only raw SQL so far: readiness `SELECT 1`)    |
+| Rate limiting & brute-force protection (Redis-backed)                            | **Baseline done (P1-08)**; per-account lockout P2-02    |
+| CORS allow-list from env                                                         | **Done (Phase 0)**; hardened + tested (P1-08)           |
+| Secure file uploads (type/size checks, private S3, signed URLs)                  | Phase 2 (avatar)                                        |
+| Webhook signature verification + idempotency                                     | Phase 9                                                 |
+| Dependency scanning (`pnpm audit`, Dependabot/Renovate), secret scanning, CodeQL | Backlog (Phase 1)                                       |
+| pnpm `allowBuilds` allow-list + minimum release age for install scripts          | **Done (Phase 0)**                                      |
+| Encryption in transit (TLS everywhere), at rest (managed DB/S3 encryption)       | Phase 12 deployment                                     |
+| Backups with tested restore                                                      | Phase 12                                                |
+| Security monitoring & alerting                                                   | Phase 10–12                                             |
 
 ## 9. AI and privacy
 

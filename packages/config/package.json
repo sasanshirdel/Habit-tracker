@@ -8,7 +8,15 @@
     "./tsconfig.base.json": "./tsconfig.base.json",
     "./tsconfig.node.json": "./tsconfig.node.json",
     "./tsconfig.nextjs.json": "./tsconfig.nextjs.json",
-    "./eslint": "./eslint.base.js"
+    "./eslint": {
+      "types": "./eslint.base.d.ts",
+      "default": "./eslint.base.js"
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@eslint/js": "10.0.1",
@@ -17,5 +25,11 @@
   "peerDependencies": {
     "eslint": "^10.0.0",
     "typescript": ">=6.0.0 <6.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "eslint": "10.15.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.1"
   }
 }

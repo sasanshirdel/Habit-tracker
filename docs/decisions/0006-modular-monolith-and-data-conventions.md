@@ -27,7 +27,26 @@ PRD §5.1/§5.4: start as a modular monolith with clear module boundaries so mod
 - **Idempotency:** client operation IDs / idempotency keys for writes that can be retried (offline sync, payments, webhooks).
 - **Migrations:** Prisma migrate only; destructive migrations need human approval (PRD §13.5).
 
+## Addendum (2026-11-25, P1-15): the architecture test
+
+The import rules above are enforced by `pnpm check:architecture` (part of `pnpm lint`, CI `verify`):
+feature modules in `src/modules/<name>/` are imported only through their `index.ts` (type-only
+imports included), every module has one, platform areas never import feature modules (only the
+`src/*.ts` composition root and `worker/` do), Prisma's generated client is imported only by
+`database/` and feature modules, and API areas have no dependency cycles. Table ownership is not
+checked yet (no product models). Details and the workspace-level rules: ADR-0016, ARCHITECTURE §2.1.
+
 ## Consequences
 
 - Clear seams for later extraction (e.g. a separate worker or billing service) without a rewrite.
 - Slightly more ceremony (interfaces, events) than calling across modules directly.
+
+## Addendum (2026-11-25, P2-01): first product tables
+
+The identity tables follow these conventions (ADR-0017): app-generated UUIDv7 ids stored as `uuid`,
+snake_case table/column names mapped from PascalCase models, `timestamptz(3)` everywhere,
+`deleted_at` soft delete on `users`, children cascading from `users` for the hard-delete step,
+and CHECK constraints Prisma cannot express written by hand in the migration (kept in step with
+application constants by a unit test). Every new migration must apply both to an empty database
+and on top of the previous release state (integration test `identity.int.test.ts`, which is
+generic over the newest migration).

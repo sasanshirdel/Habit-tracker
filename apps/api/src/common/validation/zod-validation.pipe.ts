@@ -43,7 +43,8 @@ export function validationFailed(issues: ValidationIssue[]): ApiException {
  * objects for bodies so unknown fields are rejected rather than silently dropped.
  */
 export class ZodValidationPipe<S extends z.ZodType> implements PipeTransform<unknown, z.output<S>> {
-  constructor(private readonly schema: S) {}
+  /** Public so the OpenAPI generator (P1-06) documents exactly the schema that is enforced. */
+  constructor(readonly schema: S) {}
 
   transform(value: unknown, metadata: ArgumentMetadata): z.output<S> {
     const result = this.schema.safeParse(value);

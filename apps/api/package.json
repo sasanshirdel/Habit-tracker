@@ -22,6 +22,7 @@
     "lint": "eslint .",
     "test": "prisma generate && vitest run",
     "test:integration": "prisma generate && vitest run -c vitest.integration.config.ts",
+    "openapi:export": "node dist/openapi/export.js",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "prisma:format": "prisma format",
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@habit/config": "workspace:*",
+    "@habit/localization": "workspace:*",
     "@nestjs/cli": "12.0.15",
     "@nestjs/testing": "12.6.0",
     "@swc/core": "1.16.22",

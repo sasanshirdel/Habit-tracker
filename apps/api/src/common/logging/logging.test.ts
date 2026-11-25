@@ -62,6 +62,11 @@ describe('isSensitiveKey', () => {
     'DATABASE_URL',
     'redisUrl',
     'session',
+    // Identity columns (P2-01, ADR-0017)
+    'passwordHash',
+    'password_hash',
+    'tokenHash',
+    'token_hash',
     'sid',
     'otp',
     'pin',

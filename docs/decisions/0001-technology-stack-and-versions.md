@@ -31,7 +31,7 @@ PRD §5.2 recommends a stack but explicitly says: _"Do not select a library sole
 | `eslint-plugin-react-hooks`               | 7.1.1                                    | 2026-04-17 | Declares ESLint 10 support.                                                                                                             |
 | shadcn/ui CLI (`shadcn`)                  | 4.23.0 (**deferred to Phase 1**)         | 2026-10-27 | Copies component source into the repo; nothing to install in Phase 0.                                                                   |
 | next-intl                                 | 4.16.0 (**deferred to Phase 1**)         | 2026-11-23 | Peers support Next 16 / React 19. Published <24h before the check; Phase 1 must re-verify. See ADR-0004.                                |
-| TanStack Query, React Hook Form, Recharts | 5.108.4 / 7.92.0 / 3.11.1 (**deferred**) | —          | Recorded for reference only; added when first needed.                                                                                   |
+| TanStack Query, React Hook Form, Recharts | 5.108.4 / 7.92.0 / 3.11.1 (**deferred**) | —          | Recorded for reference only; added when first needed. TanStack Query added in P1-12 (addendum below).                                   |
 
 ### Backend (`apps/api`)
 
@@ -107,3 +107,108 @@ any depth or credentials inside strings, so a custom redactor is needed regardle
 value (JSON serialisation, stdout writer) did not justify three direct packages. The API and worker
 use an in-repo `JsonLogger` instead — rationale and the redaction rules in
 [ADR-0010](0010-structured-logging-and-redaction.md).
+
+## Addendum — Phase 1, P1-08 security headers and rate limiting (2026-11-24)
+
+**No dependency added.** Evaluated with `npm view` on 2026-11-24 (UTC+03:30): `helmet` **8.3.0**
+(last modified 2026-07-12), `@nestjs/throttler` **6.8.0** (2026-11-16, peers Nest `^7 … ^12`) with
+`@nest-lab/throttler-storage-redis` **1.2.0** (2026-02-03, peers Nest `^7 … ^11` — does not declare
+our Nest 12.6.0), and `rate-limiter-flexible` **11.5.0** (2026-11-15). The API's headers are a fixed
+list set by an in-repo middleware, and rate limiting is one atomic Lua script on the ioredis
+connection we already own (P1-03); the web CSP uses Next.js 16's built-in `proxy.ts` nonce support.
+Rationale and policy details in [ADR-0011](0011-security-headers-cors-and-rate-limiting.md).
+
+## Addendum — Phase 1, P1-06 OpenAPI (2026-11-25)
+
+**No dependency added.** Evaluated with `npm view` on 2026-11-25 (UTC+03:30): `@nestjs/swagger`
+**12.1.2** (last modified 2026-11-13, peers Nest `^12` plus `class-validator`/`class-transformer`;
+bundles `swagger-ui-dist` 5.34.1), `nestjs-zod` **5.6.0** (2026-11-08, peers Nest `^10 || ^11` — does
+not declare our Nest 12.6.0), `zod-openapi` **6.0.2** (2026-08-31) and
+`@asteasolutions/zod-to-openapi` **9.1.0** (2026-07-19), both peers `zod ^4`. The document is
+generated in-repo from Nest's route metadata and the routes' zod schemas with zod 4.6.7's built-in
+`z.toJSONSchema` (JSON Schema 2020-12, the OpenAPI 3.1 dialect); no HTML UI is served. Rationale in
+[ADR-0012](0012-openapi-from-zod.md). CI uses `actions/upload-artifact@v7` (latest release v7.0.2,
+2026-10-07) for the exported document.
+
+## Addendum — Phase 1, P1-10 next-intl (2026-11-25)
+
+Re-verified against the npm registry on 2026-11-25 (UTC+03:30) before installing
+(`npm view next-intl version time dependencies peerDependencies license`), as ADR-0004 requires:
+
+| Package     | Installed  | Published  | Notes                                                                                                                                                                                                                                                                                                                                               |
+| ----------- | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `next-intl` | **4.16.0** | 2026-11-23 | MIT, single maintainer (amannn), actively released. Peers `next ^12 … ^16`, `react ^16.8 … ^19` — matches Next 16.4.6 / React 19.3.1. **Not 4.16.1** (npm `latest`): published 2026-11-24 13:01 (UTC+03:30), under 24 h before the install, so pnpm's minimum-release-age policy refuses it (same rule as `typescript-eslint` and `ioredis` above). |
+
+Transitive runtime packages, all from the next-intl repository unless noted: `use-intl` 4.15.1,
+`icu-minify` 4.15.3, `@formatjs/intl-localematcher` (formatjs), `negotiator` 1.1.0 (jshttp), and
+the message-extractor stack (`@eloqnt/*` 0.1.x, `next-intl-swc-plugin-extractor` 4.15.1,
+`@swc/core` 1.16 — already allowed). The extractor is **not enabled**; its file watcher
+`@parcel/watcher` 2.6.0 has an install script that compiles native code, so it is **denied** in
+`allowBuilds` (like `msgpackr-extract`) and never loaded. Usage and decisions: ADR-0004 "Phase 1
+implementation".
+
+Considered and not chosen: keeping the Phase 0 stub plus `intl-messageformat` and a hand-written
+negotiator — next-intl already brings ICU formatting, typed keys, server/client message loading and
+an open-redirect-hardened locale middleware, which is what ADR-0004 decided on.
+
+## Addendum — Phase 1, P1-09 design system (2026-11-25)
+
+Checked with `npm view <pkg> version time peerDependencies engines license` on 2026-11-25
+(UTC+03:30); all pinned exactly. Rationale in [ADR-0013](0013-design-system.md).
+
+| Package                          | Installed   | Published  | Where / notes                                                                                                                                            |
+| -------------------------------- | ----------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `radix-ui`                       | **1.8.1**   | 2026-10-13 | ui. Headless primitives (Dialog, DropdownMenu, Toast, Slot, Direction). MIT. Peers React `^16.8 … ^19`.                                                  |
+| `class-variance-authority`       | **0.7.1**   | 2024-11-26 | ui. Variant classes (shadcn). Apache-2.0; stable, no newer release.                                                                                      |
+| `clsx`                           | **2.1.1**   | 2024-04-23 | ui. Class joining for `cn()`. MIT.                                                                                                                       |
+| `tailwind-merge`                 | **3.7.1**   | 2026-11-20 | ui. Tailwind v4 conflict resolution for `cn()`. MIT.                                                                                                     |
+| `lucide-react`                   | **1.78.0**  | 2026-11-23 | ui and web. Icons (shadcn default). ISC. **Not 1.79.0** (npm `latest`, published 2026-11-24 09:42 — under pnpm's minimum release age).                   |
+| `tw-animate-css`                 | **1.4.0**   | 2025-09-24 | ui (CSS only). Enter/exit animations for Tailwind v4 used by the primitives. MIT.                                                                        |
+| `get-nonce`                      | **1.0.1**   | 2022-05-03 | ui. Already in the tree via `react-style-singleton`; direct so `UiProvider` can hand it the CSP nonce (same resolved version, one module instance). MIT. |
+| `@fontsource-variable/inter`     | **5.3.0**   | 2026-07-19 | web. Self-hosted Inter (variable, `unicode-range` subsets). OFL-1.1.                                                                                     |
+| `@fontsource-variable/vazirmatn` | **5.3.0**   | 2026-07-19 | web. Self-hosted Vazirmatn (Arabic + Latin subsets). OFL-1.1.                                                                                            |
+| `@testing-library/react`         | **16.3.3**  | 2026-08-27 | ui (dev). Component tests. Peers React 19, `@testing-library/dom ^10`.                                                                                   |
+| `@testing-library/dom`           | **10.4.2**  | 2026-09-13 | ui (dev). Peer of the above.                                                                                                                             |
+| `@testing-library/user-event`    | **14.6.13** | 2026-11-19 | ui (dev). Realistic pointer/keyboard interaction in tests.                                                                                               |
+| `jsdom`                          | **31.0.1**  | 2026-11-13 | ui (dev). DOM for component tests. `engines.node ^24.15` — matches Node 24.22.3. Its `@napi-rs/canvas` peer is optional and not installed.               |
+
+React 19.3.1 / react-dom 19.3.1 / `@types/react(-dom)` 19.3.0 were added to `packages/ui` as dev
+dependencies (same versions as `apps/web`) with `react`/`react-dom ^19` as peers. No new install
+scripts: `pnpm install` raised no `ERR_PNPM_IGNORED_BUILDS`.
+
+Not added: `sonner` 2.0.8 (injects an un-nonced `<style>`), `next-themes` (inline script), the
+`shadcn` CLI as a dependency (used only to read the registry sources).
+
+## Addendum — Phase 1, P1-11 application shell (2026-11-25)
+
+No new packages. `apps/web` gained the component-test dev dependencies `packages/ui` already uses,
+at the **same pinned versions** (one resolved copy each in the lockfile): `@testing-library/react`
+16.3.3, `@testing-library/dom` 10.4.2, `@testing-library/user-event` 14.6.13, `jsdom` 31.0.1. They
+run the shell's component tests (`// @vitest-environment jsdom`); the app's other tests stay in the
+`node` environment.
+
+## Addendum — Phase 1, P1-12 frontend data layer (2026-11-25)
+
+| Package                 | Installed   | Published  | Where / notes                                                                                                 |
+| ----------------------- | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------- |
+| `@tanstack/react-query` | **5.108.4** | 2026-11-23 | web. Client cache for API data (ADR-0014). MIT; peers React `^18 \|\| ^19`; npm `latest`; no install scripts. |
+| `@tanstack/query-core`  | 5.108.4     | 2026-11-23 | Its only dependency (transitive).                                                                             |
+
+`apps/web` now also depends on the workspace package `@habit/shared-types` (response types, error
+codes). No other new packages; the HTTP client is in-repo `fetch` (ADR-0014).
+
+## Addendum — Phase 1, P1-13 browser end-to-end tests (2026-11-25)
+
+Checked with `npm view <pkg> version dist-tags time dependencies engines license` on 2026-11-25
+(UTC+03:30); pinned exactly. Rationale and usage in [ADR-0015](0015-browser-end-to-end-tests.md).
+
+| Package            | Installed  | Published  | Where / notes                                                                                                                                                                                  |
+| ------------------ | ---------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@playwright/test` | **1.65.1** | 2026-11-14 | web (dev). Browser test runner. Apache-2.0, Microsoft; npm `latest` (1.66 is only in `alpha`/`next`); `engines.node >=20`; well past pnpm's minimum release age. Its only dependency is below. |
+| `playwright`       | 1.65.1     | 2026-11-14 | Transitive. Depends only on `playwright-core`.                                                                                                                                                 |
+| `playwright-core`  | 1.65.1     | 2026-11-14 | Transitive. No dependencies.                                                                                                                                                                   |
+
+No install scripts: browsers are **not** downloaded on `pnpm install`; they are installed explicitly
+(`pnpm --filter @habit/web exec playwright install --only-shell chromium`; CI caches them). This
+version drives Chrome Headless Shell 159.0.8154.6 (revision 1255). `next` lists `@playwright/test`
+as an optional peer, so the lockfile now records it on `next`'s peer set — no change to Next itself.

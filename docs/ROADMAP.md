@@ -100,12 +100,13 @@ Functional, integration, E2E (all 15 PRD journeys), security, performance, acces
 
 ## Outstanding decisions (owner input needed)
 
-1. **Default locale** for `/` and new users: `fa` or `en` (stub uses `en`)?
+1. **Default locale** for `/` and new users: `fa` or `en`? Interim `en` — one constant, `defaultLocale` in `packages/localization/src/locales.ts`; it is only the fallback after the `NEXT_LOCALE` cookie and `Accept-Language` (P1-10).
 2. **Product name / domain** (PRD: TBD) — affects cookies, emails, PWA manifest.
 3. **Hosting / deployment target** (region matters for Iranian users and payment providers) and secret manager.
 4. **Payment providers**: which Iranian gateway(s) and which international provider (subject to eligibility — PRD §3.14).
 5. **AI provider(s)** and data-processing constraints.
 6. **Admin sequencing** (see note above) and whether `apps/admin` is a separate deployment from day one.
 7. **Redis vs Valkey** for production (licensing).
-8. **Calendar display** for Persian users (Solar Hijri default?).
+8. **Calendar display** for Persian users (Solar Hijri default?). Interim: `Intl`'s locale default — Solar Hijri for `fa` — set in `apps/web/lib/i18n/formats.ts` (P1-10).
 9. **Repository visibility**: PRD says private initially — confirm current GitHub visibility.
+10. **Overview URL**: ARCHITECTURE §7 maps both the dashboard and the public landing page to `/{locale}`. Interim (P1-11): landing at `/{locale}`, Overview at `/{locale}/overview`; revisit with auth (P2-09) — redirect signed-in users, or swap.
