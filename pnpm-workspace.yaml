@@ -6,8 +6,11 @@ packages:
 # @swc/core: native binary check; prisma/@prisma/engines: engine download/setup.
 # msgpackr-extract (via bullmq -> msgpackr): optional native speed-up; denied — msgpackr falls back
 # to its pure-JS implementation, so no third-party native build runs on install.
+# @parcel/watcher (via next-intl): file watcher for next-intl's optional message *extractor*, which we
+# do not enable; denied — its install script would compile native code (P1-10, ADR-0001 addendum).
 allowBuilds:
   '@swc/core': true
   '@prisma/engines': true
   prisma: true
   msgpackr-extract: false
+  '@parcel/watcher': false

@@ -1,8 +1,8 @@
 /**
- * Web-side locale configuration. Locale metadata (supported locales, direction, Intl tags) is
- * shared with the API through `@habit/localization`; route params are validated with the
- * shared `localeSchema` (`@habit/shared-validation`) so web and api accept exactly the same
- * values. Phase 1 replaces the dictionary loader with next-intl (P1-10, ADR-0004).
+ * Web-side locale helpers. Locale metadata (supported locales, default, direction, Intl tags) is
+ * shared with the API through `@habit/localization`; route params are validated with the shared
+ * `localeSchema` (`@habit/shared-validation`) so web and api accept exactly the same values.
+ * Routing, negotiation and messages use next-intl (`routing.ts`, `request.ts`; P1-10, ADR-0004).
  */
 import { type Locale } from '@habit/localization';
 import { localeSchema } from '@habit/shared-validation';

@@ -63,6 +63,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # The built web app under `next start`: locale negotiation and redirects, <html lang dir>,
+      # localized content, and the CSP nonce on every script through the i18n proxy (P1-10).
+      - name: Web route tests (next start)
+        run: pnpm --filter @habit/web test:e2e
+
       # OpenAPI document generated from the routes' zod schemas (backlog P1-06, ADR-0012). The
       # export scans the built app in Nest preview mode — no database, Redis or secret — and fails
       # the job if any route is undocumented, an admin route is published, or the document is

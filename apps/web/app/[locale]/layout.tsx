@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
+import { NextIntlClientProvider } from 'next-intl';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
 import { getDirection, locales, parseLocale } from '@/lib/i18n/config';
-import { getDictionary } from '@/lib/i18n/dictionaries';
 import '../globals.css';
 
 export const dynamicParams = false;
@@ -19,8 +20,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const locale = parseLocale((await params).locale);
   if (!locale) return {};
-  const t = getDictionary(locale);
-  return { title: t.meta.title, description: t.meta.description };
+  const t = await getTranslations({ locale, namespace: 'meta' });
+  return { title: t('title'), description: t('description') };
 }
 
 export default async function LocaleLayout({
@@ -35,10 +36,14 @@ export default async function LocaleLayout({
   await connection();
   const locale = parseLocale((await params).locale);
   if (!locale) notFound();
+  // The `[locale]` segment is the source of truth for this render (P1-10, ADR-0004).
+  setRequestLocale(locale);
 
   return (
     <html lang={locale} dir={getDirection(locale)} data-theme="dark">
-      <body>{children}</body>
+      <body>
+        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+      </body>
     </html>
   );
 }

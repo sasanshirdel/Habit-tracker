@@ -17,7 +17,8 @@ pnpm --filter @habit/api db:migrate:deploy   # apply migrations to the local dat
 pnpm build:deps                      # build packages/* and the API library the worker imports
 pnpm --filter @habit/api dev         # :4000  GET /api/v1/health, /api/v1/health/ready
 pnpm --filter @habit/worker dev      # BullMQ consumers (rebuild the API with `pnpm --filter @habit/api build` after API changes)
-pnpm --filter @habit/web dev         # :3000  /en  /fa
+pnpm --filter @habit/web dev         # :3000  / → /en or /fa (cookie, Accept-Language)
+pnpm --filter @habit/web build && pnpm --filter @habit/web test:e2e   # route tests on next start
 ```
 
 pnpm only runs install scripts for packages on the `allowBuilds` allow-list in
