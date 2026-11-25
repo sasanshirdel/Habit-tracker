@@ -89,7 +89,7 @@ Grouped by roadmap phase:
 | Area                  | Modules                                                                                   | Phase |
 | --------------------- | ----------------------------------------------------------------------------------------- | ----- |
 | Platform              | config, health, logging, errors, OpenAPI, rate limiting                                   | 1     |
-| Identity              | auth, users, profiles, preferences, sessions                                              | 2     |
+| Identity              | identity (auth, users, profiles, preferences, sessions — one module for now, ADR-0017)    | 2     |
 | Habits                | habits, habit-schedules (versioned), habit-occurrences, habit-templates, streaks          | 3     |
 | Execution             | goals, tasks, planning                                                                    | 4     |
 | Focus & journal       | focus, journal                                                                            | 5     |
@@ -104,7 +104,8 @@ Rules: a module owns its tables; cross-module calls only through exported servic
 
 ## 4. Data architecture
 
-- PostgreSQL is the system of record; Prisma 7 schema at `apps/api/prisma/schema.prisma` (no product models yet; they arrive with their owning phase). Conceptual entities: PRD §6.
+- PostgreSQL is the system of record; Prisma 7 schema at `apps/api/prisma/schema.prisma`; models arrive with their owning phase. Conceptual entities: PRD §6.
+- **Identity tables (P2-01, ADR-0017):** `users` (citext unique email incl. soft-deleted, `deleted_at`), `user_profiles`, `user_preferences` (locale, IANA timezone, theme), `user_password_credentials` (Argon2id PHC only), `user_sessions` and `user_tokens` (only SHA-256 hashes of 256-bit random tokens, unique, 32 bytes by CHECK), all owned by the `identity` module (`src/modules/identity`) and cascading from `users`. CHECK constraints Prisma cannot express are hand-written in the migration SQL.
 - **Access (P1-01):** `DatabaseModule` (`apps/api/src/database/`) provides a single `PrismaService` (Prisma 7 + `@prisma/adapter-pg`, pool connect timeout 5 s). `DATABASE_URL` is required and validated at boot. The API starts even when the database is down; `GET /api/v1/health` (liveness) never touches the DB, `GET /api/v1/health/ready` (readiness) runs a bounded `SELECT 1` and answers 503 when it fails. Prisma `query` events and Prisma's own error lines are not logged (they can carry personal data).
 - **Migrations:** `apps/api/prisma/migrations/`, starting with an empty `…_baseline` migration that only establishes the history. `prisma migrate deploy` in CI/deployments, `prisma migrate dev` locally. CI job `integration · PostgreSQL + Redis` (P1-02) applies migrations to a Postgres 18.7 service container and runs `*.int.test.ts` against a throwaway database (incl. a schema-drift check) and a Redis 8.8.4 service container (per-run key prefix), then verifies teardown left nothing behind.
 - Conventions (ADR-0006): UUIDv7 IDs, `timestamptz` UTC + user IANA timezone, occurrences keyed by local date + schedule version, money in integer minor units + currency, soft delete where restorable, `version` column for offline-editable entities, idempotency keys for retried writes, migrations only via `prisma migrate`.

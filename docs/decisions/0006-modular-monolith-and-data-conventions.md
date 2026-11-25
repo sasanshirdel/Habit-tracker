@@ -40,3 +40,13 @@ checked yet (no product models). Details and the workspace-level rules: ADR-0016
 
 - Clear seams for later extraction (e.g. a separate worker or billing service) without a rewrite.
 - Slightly more ceremony (interfaces, events) than calling across modules directly.
+
+## Addendum (2026-11-25, P2-01): first product tables
+
+The identity tables follow these conventions (ADR-0017): app-generated UUIDv7 ids stored as `uuid`,
+snake_case table/column names mapped from PascalCase models, `timestamptz(3)` everywhere,
+`deleted_at` soft delete on `users`, children cascading from `users` for the hard-delete step,
+and CHECK constraints Prisma cannot express written by hand in the migration (kept in step with
+application constants by a unit test). Every new migration must apply both to an empty database
+and on top of the previous release state (integration test `identity.int.test.ts`, which is
+generic over the newest migration).
