@@ -128,3 +128,54 @@ describe('unknown paths', () => {
     expect(new URL(res.headers.get('location') ?? '', baseUrl).pathname).toBe('/en/de');
   });
 });
+
+describe('design system (P1-09)', () => {
+  it.each([
+    [undefined, 'dark'],
+    ['theme=light', 'light'],
+    ['theme=system', 'system'],
+    ['theme=dark', 'dark'],
+    ['theme=%3Cscript%3E', 'dark'],
+  ])(
+    'theme cookie %s renders data-theme="%s" on the first byte (no flash)',
+    async (cookie, theme) => {
+      const res = await get('/en', cookie ? { cookie } : {});
+      expect(htmlTag(await res.text())).toContain(`data-theme="${theme}"`);
+    },
+  );
+
+  it('serves the self-hosted variable fonts from its own origin (no font CDN)', async () => {
+    const html = await (await get('/fa')).text();
+    const stylesheets = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(
+      (m) => m[1] ?? '',
+    );
+    expect(stylesheets.length).toBeGreaterThan(0);
+    const css = (await Promise.all(stylesheets.map(async (href) => (await get(href)).text()))).join(
+      '\n',
+    );
+    expect(css).toMatch(/font-family:\s*Inter Variable/);
+    expect(css).toMatch(/font-family:\s*Vazirmatn Variable/);
+    expect(css).not.toMatch(/fonts\.(googleapis|gstatic)\.com|url\(\s*["']?https?:/);
+    const vazirmatn = /url\(([^)]*vazirmatn-arabic-wght-normal[^)]*\.woff2)\)/.exec(css)?.[1];
+    expect(vazirmatn).toBeDefined();
+    const font = await get(new URL(vazirmatn ?? '', `${baseUrl}${stylesheets[0]}`).pathname);
+    expect(font.status).toBe(200);
+    expect(font.headers.get('content-type')).toBe('font/woff2');
+  });
+
+  it('applies the theme tokens, including `system` through prefers-color-scheme', async () => {
+    const html = await (await get('/en')).text();
+    const href = /<link rel="stylesheet" href="([^"]+)"/.exec(html)?.[1] ?? '';
+    const css = await (await get(href)).text();
+    expect(css).toMatch(/\[data-theme=light\]\{[^}]*--token-accent:#8a6420/);
+    expect(css).toMatch(/prefers-color-scheme:\s*light\)\{\[data-theme=system\]/);
+  });
+
+  it('renders the localized theme switcher and toast region', async () => {
+    const html = await (await get('/fa', { cookie: 'theme=light' })).text();
+    expect(html).toContain('aria-label="پوسته: روشن"');
+    expect(html).toContain('aria-label="اعلان‌ها"');
+    const en = await (await get('/en')).text();
+    expect(en).toContain('aria-label="Theme: Dark"');
+  });
+});

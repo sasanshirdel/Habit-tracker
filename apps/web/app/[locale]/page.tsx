@@ -1,5 +1,8 @@
+import { Button, THEME_COOKIE, parseThemePreference } from '@habit/ui';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 import { parseLocale } from '@/lib/i18n/config';
 import { Link } from '@/lib/i18n/navigation';
 
@@ -7,8 +10,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const locale = parseLocale((await params).locale);
   if (!locale) notFound();
   setRequestLocale(locale);
-  const t = await getTranslations('home');
-  const tLanguage = await getTranslations('language');
+  const [t, tLanguage, tTheme, cookieStore] = await Promise.all([
+    getTranslations('home'),
+    getTranslations('language'),
+    getTranslations('theme'),
+    cookies(),
+  ]);
   const other = locale === 'fa' ? 'en' : 'fa';
   const now = new Date();
 
@@ -20,16 +27,21 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         <time dateTime={now.toISOString()}>{t('today', { date: now })}</time>
       </p>
       {/* Logical properties (ms/me, ps/pe, start/end) only — never left/right — so RTL mirrors correctly. */}
-      <nav aria-label={tLanguage('label')}>
-        <Link
-          href="/"
-          locale={other}
-          hrefLang={other}
-          lang={other}
-          className="inline-block rounded-md border border-border bg-surface px-4 py-2 text-accent"
-        >
-          {tLanguage('switchTo')}
-        </Link>
+      <nav aria-label={tLanguage('label')} className="flex items-center gap-2">
+        <Button asChild variant="outline">
+          <Link href="/" locale={other} hrefLang={other} lang={other}>
+            {tLanguage('switchTo')}
+          </Link>
+        </Button>
+        <ThemeSwitcher
+          initial={parseThemePreference(cookieStore.get(THEME_COOKIE)?.value)}
+          labels={{
+            label: tTheme('label'),
+            dark: tTheme('dark'),
+            light: tTheme('light'),
+            system: tTheme('system'),
+          }}
+        />
       </nav>
     </main>
   );

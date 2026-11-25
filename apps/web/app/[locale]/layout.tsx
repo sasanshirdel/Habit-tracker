@@ -1,6 +1,10 @@
+import '@fontsource-variable/inter';
+import '@fontsource-variable/vazirmatn';
+import { THEME_COOKIE, Toaster, UiProvider, parseThemePreference } from '@habit/ui';
 import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { cookies, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
@@ -39,10 +43,25 @@ export default async function LocaleLayout({
   // The `[locale]` segment is the source of truth for this render (P1-10, ADR-0004).
   setRequestLocale(locale);
 
+  const [cookieStore, headerStore, t] = await Promise.all([
+    cookies(),
+    headers(),
+    getTranslations('toast'),
+  ]);
+  // Theme from the cookie, rendered on the first byte: no flash, no inline script (P1-09).
+  const theme = parseThemePreference(cookieStore.get(THEME_COOKIE)?.value);
+  const nonce = headerStore.get('x-nonce') ?? undefined;
+  const dir = getDirection(locale);
+
   return (
-    <html lang={locale} dir={getDirection(locale)} data-theme="dark">
-      <body>
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+    <html lang={locale} dir={dir} data-theme={theme}>
+      <body className="min-h-dvh antialiased">
+        <NextIntlClientProvider>
+          <UiProvider dir={dir} nonce={nonce}>
+            {children}
+            <Toaster label={t('label')} regionLabel={t('region')} closeLabel={t('close')} />
+          </UiProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

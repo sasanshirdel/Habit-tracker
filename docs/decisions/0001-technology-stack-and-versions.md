@@ -150,3 +150,31 @@ implementation".
 Considered and not chosen: keeping the Phase 0 stub plus `intl-messageformat` and a hand-written
 negotiator — next-intl already brings ICU formatting, typed keys, server/client message loading and
 an open-redirect-hardened locale middleware, which is what ADR-0004 decided on.
+
+## Addendum — Phase 1, P1-09 design system (2026-11-25)
+
+Checked with `npm view <pkg> version time peerDependencies engines license` on 2026-11-25
+(UTC+03:30); all pinned exactly. Rationale in [ADR-0013](0013-design-system.md).
+
+| Package                          | Installed   | Published  | Where / notes                                                                                                                                            |
+| -------------------------------- | ----------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `radix-ui`                       | **1.8.1**   | 2026-10-13 | ui. Headless primitives (Dialog, DropdownMenu, Toast, Slot, Direction). MIT. Peers React `^16.8 … ^19`.                                                  |
+| `class-variance-authority`       | **0.7.1**   | 2024-11-26 | ui. Variant classes (shadcn). Apache-2.0; stable, no newer release.                                                                                      |
+| `clsx`                           | **2.1.1**   | 2024-04-23 | ui. Class joining for `cn()`. MIT.                                                                                                                       |
+| `tailwind-merge`                 | **3.7.1**   | 2026-11-20 | ui. Tailwind v4 conflict resolution for `cn()`. MIT.                                                                                                     |
+| `lucide-react`                   | **1.78.0**  | 2026-11-23 | ui and web. Icons (shadcn default). ISC. **Not 1.79.0** (npm `latest`, published 2026-11-24 09:42 — under pnpm's minimum release age).                   |
+| `tw-animate-css`                 | **1.4.0**   | 2025-09-24 | ui (CSS only). Enter/exit animations for Tailwind v4 used by the primitives. MIT.                                                                        |
+| `get-nonce`                      | **1.0.1**   | 2022-05-03 | ui. Already in the tree via `react-style-singleton`; direct so `UiProvider` can hand it the CSP nonce (same resolved version, one module instance). MIT. |
+| `@fontsource-variable/inter`     | **5.3.0**   | 2026-07-19 | web. Self-hosted Inter (variable, `unicode-range` subsets). OFL-1.1.                                                                                     |
+| `@fontsource-variable/vazirmatn` | **5.3.0**   | 2026-07-19 | web. Self-hosted Vazirmatn (Arabic + Latin subsets). OFL-1.1.                                                                                            |
+| `@testing-library/react`         | **16.3.3**  | 2026-08-27 | ui (dev). Component tests. Peers React 19, `@testing-library/dom ^10`.                                                                                   |
+| `@testing-library/dom`           | **10.4.2**  | 2026-09-13 | ui (dev). Peer of the above.                                                                                                                             |
+| `@testing-library/user-event`    | **14.6.13** | 2026-11-19 | ui (dev). Realistic pointer/keyboard interaction in tests.                                                                                               |
+| `jsdom`                          | **31.0.1**  | 2026-11-13 | ui (dev). DOM for component tests. `engines.node ^24.15` — matches Node 24.22.3. Its `@napi-rs/canvas` peer is optional and not installed.               |
+
+React 19.3.1 / react-dom 19.3.1 / `@types/react(-dom)` 19.3.0 were added to `packages/ui` as dev
+dependencies (same versions as `apps/web`) with `react`/`react-dom ^19` as peers. No new install
+scripts: `pnpm install` raised no `ERR_PNPM_IGNORED_BUILDS`.
+
+Not added: `sonner` 2.0.8 (injects an un-nonced `<style>`), `next-themes` (inline script), the
+`shadcn` CLI as a dependency (used only to read the registry sources).

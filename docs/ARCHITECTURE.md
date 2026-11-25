@@ -41,7 +41,7 @@ Decisions referenced as ADR-NNNN live in [`decisions/`](decisions/).
 | `apps/worker`                | 1     | Worker process: BullMQ consumers (P1-03); runs `WorkerModule` from `@habit/api/worker` |
 | `apps/admin`                 | 10    | Admin frontend on a separate origin                                                    |
 | `packages/config`            | 0     | tsconfig presets, ESLint config                                                        |
-| `packages/ui`                | 0→1   | Design tokens → shadcn/ui-based primitives                                             |
+| `packages/ui`                | 0→1   | Tokens, themes, shadcn/ui primitives on Radix (`styles.css` for Tailwind; ADR-0013)    |
 | `packages/shared-types`      | 1     | API contract types (responses, error envelope)                                         |
 | `packages/shared-validation` | 1     | zod 4 input schemas (locale, time zone, date)                                          |
 | `packages/localization`      | 1     | Locale metadata: locales, direction, Intl tags                                         |
@@ -92,7 +92,7 @@ Rules: a module owns its tables; cross-module calls only through exported servic
 - App Router with `[locale]` segment; `<html lang dir>` from locale (ADR-0004).
 - i18n with next-intl (P1-10, ADR-0004): `proxy.ts` sets the nonce CSP, then negotiates the locale for unprefixed paths (cookie → `Accept-Language` → `defaultLocale` from `@habit/localization`, 307, same origin only); ICU messages in `apps/web/lib/i18n/messages/{en,fa}.json` with a CI parity test; named formats in `lib/i18n/formats.ts`; locale-aware `Link`/`redirect` from `lib/i18n/navigation.ts`. Physical left/right utilities fail lint.
 - Server components by default; client components for interaction. TanStack Query for client cache of API data (Phase 1).
-- Design tokens (`packages/ui`) → Tailwind theme; dark (default) + light themes; logical CSS only.
+- Design tokens (`packages/ui`) → Tailwind theme via `@habit/ui/styles.css`; dark (default), light and system themes from a `theme` cookie rendered on the server (no flash); logical CSS only; self-hosted Inter/Vazirmatn; primitives (Button, Input, Skeleton, Dialog, DropdownMenu, Toast) wrapped by `UiProvider` for direction and the CSP nonce (P1-09, ADR-0013).
 - PWA (Phase 8): manifest, service worker, IndexedDB store + operation queue, background sync where supported; documented offline matrix.
 
 ## 7. Initial information architecture
