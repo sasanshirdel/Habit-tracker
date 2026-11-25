@@ -81,7 +81,7 @@ Small, logical commits; no secrets; no generated artefacts (`dist`, `.next`).
 | `pnpm format:check`                        | Prettier (PRD file excluded — kept verbatim)                                                        |
 | `pnpm build:packages`                      | Build `packages/*` in dependency order                                                              |
 | `pnpm build:deps`                          | `build:packages` + build the API library imported by `apps/worker` (run by `typecheck`/`test`)      |
-| `pnpm lint`                                | ESLint 10 flat config (`@habit/config/eslint`, Next plugin for web)                                 |
+| `pnpm lint`                                | ESLint 10 (`@habit/config/eslint`, Next plugin for web) + architecture check (ADR-0016)             |
 | `pnpm typecheck`                           | `tsc --noEmit` per package (web runs `next typegen` first)                                          |
 | `pnpm test`                                | Vitest per package                                                                                  |
 | `pnpm build`                               | `tsc` (api, ui), `next build` (web)                                                                 |
@@ -141,6 +141,7 @@ CI (`.github/workflows/ci.yml`) runs install (frozen lockfile), format, lint, ty
 - TypeScript strict, `noUncheckedIndexedAccess`; avoid `any`; prefer pure functions for domain logic.
 - ESM; API relative imports end in `.js`.
 - Pinned dependency versions; new dependencies need justification + ADR entry (version, date checked).
+- Workspace and module boundaries are checked by `pnpm check:architecture` (part of `pnpm lint`; ARCHITECTURE §2.1, ADR-0016).
 - API: module boundaries (ADR-0006), zod validation per parameter (`ZodValidationPipe`), errors via `ApiException` with an `ApiErrorCode`, cursor pagination for lists (ADR-0009), no Prisma entities in responses.
 - UI: design tokens only, logical CSS, dictionaries for all strings, accessible components.
 - Tests live next to code (`*.test.ts`) or in `apps/api/test/` for HTTP-level tests.

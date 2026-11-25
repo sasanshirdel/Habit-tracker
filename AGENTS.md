@@ -40,7 +40,7 @@ Redis/BullMQ for background work, pnpm monorepo.
 pnpm install --frozen-lockfile
 pnpm format:check   # prettier
 pnpm build:deps     # build packages/* + the API library apps/worker imports; typecheck/test run it first
-pnpm lint           # eslint, all packages
+pnpm lint           # eslint, all packages + architecture check (pnpm check:architecture)
 pnpm typecheck      # tsc --noEmit, all packages
 pnpm test           # vitest, all packages
 pnpm build          # all packages
@@ -57,7 +57,8 @@ pnpm --filter @habit/worker dev   # BullMQ consumers (apps/worker)
 
 - **TypeScript strict** everywhere; no `any` without a justified comment. ESM (`"type": "module"`); API imports use `.js` extensions (NodeNext).
 - **Pinned dependency versions** (no `^`). Before adding a dependency: justify it, check current version/maintenance/peers (`npm view`), record it in an ADR or ADR-0001 addendum. Prefer no new dependency.
-- **Module boundaries (API):** one Nest module per bounded area under `apps/api/src/modules/<name>/`; other modules use only its exported service interface (ADR-0006).
+- **Boundaries (enforced by `pnpm check:architecture`, part of `pnpm lint`; ARCHITECTURE §2.1, ADR-0016):** apps depend on packages, never packages on apps, never app on app (only `apps/worker` → `@habit/api/queue|worker`); web and API share code only via `@habit/shared-types`/`shared-validation`; import a `@habit/*` package only through its `exports` and only if declared; no relative paths into another package; no runtime import cycles. New workspace package or edge → update `packages/config/architecture/rules.js` + ARCHITECTURE §2.1.
+- **Module boundaries (API):** one Nest module per bounded area under `apps/api/src/modules/<name>/` with an `index.ts`; other code uses only that public entry; platform areas never import feature modules; Prisma's generated client only in `database/` and modules (ADR-0006).
 - **API:** versioned REST under `/api/v1`, DTOs + validation at the edge, consistent error shape with error **codes** (UI localises), OpenAPI docs.
 - **Server is the authority** for authz, entitlements, metrics and payments. Frontend checks are UX only.
 - **i18n:** no hardcoded UI strings — next-intl ICU messages in `apps/web/lib/i18n/messages/{en,fa}.json` with identical keys and arguments (CI parity test); internal links via `@/lib/i18n/navigation`. Use logical CSS (`ms-/me-/ps-/pe-/start-/end-`), never `left/right` (lint fails). Check every UI change in `/en` and `/fa` (ADR-0004).

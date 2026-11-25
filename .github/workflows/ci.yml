@@ -37,6 +37,8 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+      # ESLint in every package, then the architecture check (P1-15, ADR-0016): workspace dependency
+      # graph, app/package layering, package entry points, API module boundaries, import cycles.
       - name: Lint
         run: pnpm lint
 
