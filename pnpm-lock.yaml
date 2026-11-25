@@ -224,6 +224,9 @@ importers:
       '@habit/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@habit/localization':
+        specifier: workspace:*
+        version: link:../../packages/localization
       '@nestjs/cli':
         specifier: 12.0.15
         version: 12.0.15(@swc/core@1.16.22(@swc/helpers@0.5.23))(@types/node@24.19.2)(prettier@3.10.1)
