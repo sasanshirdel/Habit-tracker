@@ -298,3 +298,36 @@ describe('application shell (P1-11)', () => {
     expect(html).toMatch(/<a[^>]+href="\/en\/overview"/);
   });
 });
+
+describe('status page — frontend data layer demo (P1-12)', () => {
+  it.each([
+    { locale: 'fa', dir: 'rtl', heading: 'وضعیت سامانه' },
+    { locale: 'en', dir: 'ltr', heading: 'System status' },
+  ])(
+    '/$locale/status renders the localized page with loading states',
+    async ({ locale, dir, heading }) => {
+      const res = await get(`/${locale}/status`);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(htmlTag(html)).toContain(`lang="${locale}"`);
+      expect(htmlTag(html)).toContain(`dir="${dir}"`);
+      expect(html).toMatch(new RegExp(`<h1[^>]*>${heading}</h1>`));
+      // The checks run in the browser: the server HTML holds both sections busy with skeletons.
+      expect([...html.matchAll(/aria-busy="true"/g)]).toHaveLength(2);
+      expect(html).toContain('data-slot="skeleton"');
+      expect(html).toMatch(/<meta name="robots" content="noindex"/);
+    },
+  );
+
+  it('keeps the CSP nonce on every script of the status page', async () => {
+    const res = await get('/en/status');
+    const nonce = cspNonce(res);
+    const scripts = (await res.text()).match(/<script\b[^>]*>/g) ?? [];
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const script of scripts) expect(script).toContain(`nonce="${nonce}"`);
+  });
+
+  it('is linked from the landing page', async () => {
+    expect(await (await get('/fa')).text()).toMatch(/<a[^>]+href="\/fa\/status"/);
+  });
+});

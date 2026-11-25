@@ -31,7 +31,7 @@ PRD §5.2 recommends a stack but explicitly says: _"Do not select a library sole
 | `eslint-plugin-react-hooks`               | 7.1.1                                    | 2026-04-17 | Declares ESLint 10 support.                                                                                                             |
 | shadcn/ui CLI (`shadcn`)                  | 4.23.0 (**deferred to Phase 1**)         | 2026-10-27 | Copies component source into the repo; nothing to install in Phase 0.                                                                   |
 | next-intl                                 | 4.16.0 (**deferred to Phase 1**)         | 2026-11-23 | Peers support Next 16 / React 19. Published <24h before the check; Phase 1 must re-verify. See ADR-0004.                                |
-| TanStack Query, React Hook Form, Recharts | 5.108.4 / 7.92.0 / 3.11.1 (**deferred**) | —          | Recorded for reference only; added when first needed.                                                                                   |
+| TanStack Query, React Hook Form, Recharts | 5.108.4 / 7.92.0 / 3.11.1 (**deferred**) | —          | Recorded for reference only; added when first needed. TanStack Query added in P1-12 (addendum below).                                   |
 
 ### Backend (`apps/api`)
 
@@ -186,3 +186,13 @@ at the **same pinned versions** (one resolved copy each in the lockfile): `@test
 16.3.3, `@testing-library/dom` 10.4.2, `@testing-library/user-event` 14.6.13, `jsdom` 31.0.1. They
 run the shell's component tests (`// @vitest-environment jsdom`); the app's other tests stay in the
 `node` environment.
+
+## Addendum — Phase 1, P1-12 frontend data layer (2026-11-25)
+
+| Package                 | Installed   | Published  | Where / notes                                                                                                 |
+| ----------------------- | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------- |
+| `@tanstack/react-query` | **5.108.4** | 2026-11-23 | web. Client cache for API data (ADR-0014). MIT; peers React `^18 \|\| ^19`; npm `latest`; no install scripts. |
+| `@tanstack/query-core`  | 5.108.4     | 2026-11-23 | Its only dependency (transitive).                                                                             |
+
+`apps/web` now also depends on the workspace package `@habit/shared-types` (response types, error
+codes). No other new packages; the HTTP client is in-repo `fetch` (ADR-0014).

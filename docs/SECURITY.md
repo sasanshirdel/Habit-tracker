@@ -55,7 +55,8 @@ These operations also require a trusted online connection (never queued offline)
 
 - Opaque, random session IDs; stored hashed server-side; rotated at login and privilege change; revocable individually and "sign out everywhere".
 - Cookies: `__Host-` prefix, `Secure`, `HttpOnly`, `Path=/`, appropriate `SameSite`.
-- CSRF: double-submit token or origin/`Sec-Fetch-Site` checks on all state-changing cookie-authenticated requests.
+- CSRF: double-submit token or origin/`Sec-Fetch-Site` checks on all state-changing cookie-authenticated requests. The web client sends a CSRF header on state-changing methods once P2-03 configures it (ADR-0014).
+- The browser never stores tokens or session identifiers in `localStorage`/`sessionStorage`; the web API client relies on cookies only (`credentials: 'include'`, tested).
 - Passwords: Argon2id; rate limiting + progressive lockout on login, recovery, MFA and verification endpoints; generic error messages (no account enumeration).
 
 ## 6. Audit logging

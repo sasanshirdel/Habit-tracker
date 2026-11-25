@@ -47,6 +47,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           }}
         />
       </nav>
+      <Link
+        href="/status"
+        className="self-start text-sm text-accent underline-offset-4 hover:underline"
+      >
+        {t('status')}
+      </Link>
     </main>
   );
 }

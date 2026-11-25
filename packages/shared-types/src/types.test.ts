@@ -1,4 +1,4 @@
-import { describe, expectTypeOf, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import type {
   ApiErrorBody,
   ApiErrorCode,
@@ -9,6 +9,7 @@ import type {
   ReadinessResponse,
   ValidationIssue,
 } from './index.js';
+import { API_ERROR_CODES, isApiErrorCode } from './index.js';
 
 // Type-level contract tests: they fail `vitest`/`tsc` if a shared shape changes unexpectedly.
 describe('@habit/shared-types', () => {
@@ -58,5 +59,14 @@ describe('@habit/shared-types', () => {
       policy: string;
     }>();
     expectTypeOf<'RATE_LIMITED'>().toExtend<ApiErrorCode>();
+  });
+
+  it('error codes: the runtime list is the type, without duplicates', () => {
+    expectTypeOf<(typeof API_ERROR_CODES)[number]>().toEqualTypeOf<ApiErrorCode>();
+    expect(new Set(API_ERROR_CODES).size).toBe(API_ERROR_CODES.length);
+    for (const code of API_ERROR_CODES) expect(code).toMatch(/^[A-Z][A-Z_]*[A-Z]$/);
+    expect(isApiErrorCode('RATE_LIMITED')).toBe(true);
+    expect(isApiErrorCode('rate_limited')).toBe(false);
+    expect(isApiErrorCode(undefined)).toBe(false);
   });
 });

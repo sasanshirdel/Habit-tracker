@@ -18,5 +18,6 @@ new ADR that supersedes the old one (and mark the old one `Superseded by ADR-NNN
 | [0011](0011-security-headers-cors-and-rate-limiting.md)      | Security headers, CORS and rate limiting                         | Accepted          |
 | [0012](0012-openapi-from-zod.md)                             | OpenAPI generated from zod                                       | Accepted          |
 | [0013](0013-design-system.md)                                | Design system: shadcn/ui primitives on Radix, themes, fonts      | Accepted          |
+| [0014](0014-frontend-data-layer.md)                          | Frontend data layer: fetch client, TanStack Query, error codes   | Accepted          |
 
 New ADRs: copy [`TEMPLATE.md`](TEMPLATE.md), use the next number, open it in the same PR as the change.

@@ -44,6 +44,14 @@ Next.js 16 App Router frontend, bilingual from the first page:
     `app/[locale]/(app)/layout.tsx`. Overview is at `/{locale}/overview` (interim, see ROADMAP
     decision #10).
 
+- **Data layer** (P1-12, ADR-0014): `lib/api/client.ts` (`createApiClient`; the app's instance is
+  `lib/api/api.ts`, base URL `NEXT_PUBLIC_API_BASE_URL`), `lib/api/errors.ts` (`ApiError`, client
+  codes), `lib/api/query-client.ts` (TanStack Query defaults, `QueryProvider` in the locale layout),
+  `lib/api/error-messages.ts` (`useErrorMessage()` → `apiErrors.<CODE>`), `lib/api/queries/*`
+  (`queryOptions` per resource). Standard error state: `components/status/query-error.tsx`. Demo:
+  `/{locale}/status` (API liveness/readiness from the browser). Every API error code needs an
+  `apiErrors` message in both catalogues (test). Cookies only — never put tokens in web storage.
+
 Use logical CSS properties/utilities (`ms-*`, `pe-*`, `start-*`, `text-start`) — never physical
 left/right; ESLint rejects physical utilities in class names and a test scans the stylesheets.
 No raw colour values outside the tokens (`lib/design-guard.test.ts`).
