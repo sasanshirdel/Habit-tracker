@@ -107,3 +107,13 @@ any depth or credentials inside strings, so a custom redactor is needed regardle
 value (JSON serialisation, stdout writer) did not justify three direct packages. The API and worker
 use an in-repo `JsonLogger` instead — rationale and the redaction rules in
 [ADR-0010](0010-structured-logging-and-redaction.md).
+
+## Addendum — Phase 1, P1-08 security headers and rate limiting (2026-11-24)
+
+**No dependency added.** Evaluated with `npm view` on 2026-11-24 (UTC+03:30): `helmet` **8.3.0**
+(last modified 2026-07-12), `@nestjs/throttler` **6.8.0** (2026-11-16, peers Nest `^7 … ^12`) with
+`@nest-lab/throttler-storage-redis` **1.2.0** (2026-02-03, peers Nest `^7 … ^11` — does not declare
+our Nest 12.6.0), and `rate-limiter-flexible` **11.5.0** (2026-11-15). The API's headers are a fixed
+list set by an in-repo middleware, and rate limiting is one atomic Lua script on the ioredis
+connection we already own (P1-03); the web CSP uses Next.js 16's built-in `proxy.ts` nonce support.
+Rationale and policy details in [ADR-0011](0011-security-headers-cors-and-rate-limiting.md).

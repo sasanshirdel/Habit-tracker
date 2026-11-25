@@ -1,6 +1,7 @@
 export type {
   ApiErrorBody,
   ApiErrorCode,
+  RateLimitErrorDetails,
   ValidationErrorDetails,
   ValidationIssue,
 } from './errors.js';

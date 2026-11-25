@@ -5,6 +5,7 @@ import type {
   DependencyStatus,
   HealthResponse,
   Paginated,
+  RateLimitErrorDetails,
   ReadinessResponse,
   ValidationIssue,
 } from './index.js';
@@ -49,5 +50,13 @@ describe('@habit/shared-types', () => {
     }>();
     expectTypeOf<'VALIDATION_FAILED'>().toExtend<ApiErrorCode>();
     expectTypeOf<'NOT_READY'>().toExtend<ApiErrorCode>();
+  });
+
+  it('rate-limit error details (P1-08)', () => {
+    expectTypeOf<RateLimitErrorDetails>().toEqualTypeOf<{
+      retryAfterSeconds: number;
+      policy: string;
+    }>();
+    expectTypeOf<'RATE_LIMITED'>().toExtend<ApiErrorCode>();
   });
 });

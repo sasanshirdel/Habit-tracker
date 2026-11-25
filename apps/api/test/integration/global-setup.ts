@@ -63,6 +63,8 @@ export default async function setup(project: TestProject): Promise<() => Promise
   // default `habit:q` namespace of a shared dev Redis is never touched and teardown removes them.
   // Test workers are spawned after global setup and inherit this environment.
   process.env.QUEUE_PREFIX = `${redisKeyPrefix}q`;
+  // Same for rate-limit counters (P1-08).
+  process.env.RATE_LIMIT_PREFIX = `${redisKeyPrefix}rl`;
 
   return async () => {
     try {

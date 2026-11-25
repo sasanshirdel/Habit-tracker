@@ -3,6 +3,7 @@ import type { HealthResponse, ReadinessErrorDetails, ReadinessResponse } from '@
 import { ApiException } from '../common/errors/api-exception.js';
 import { DatabaseHealthIndicator } from '../database/index.js';
 import { RedisHealthIndicator } from '../queue/redis.health.js';
+import { SkipRateLimit } from '../rate-limit/rate-limit.guard.js';
 
 // Response contracts live in @habit/shared-types so web and api share one definition (P1-04).
 export type { HealthResponse, ReadinessResponse };
@@ -16,7 +17,12 @@ export type { HealthResponse, ReadinessResponse };
  * - `GET /api/v1/health/ready` — readiness: dependencies needed to serve traffic are reachable.
  *   200 when all are up (PostgreSQL and Redis — Redis since backlog P1-03), 503 otherwise.
  *   Both checks run in parallel and are individually time-bounded.
+ *
+ * Exempt from rate limiting (P1-08): orchestrators and load balancers poll these every few seconds
+ * from a handful of addresses, and a throttled probe would take healthy instances out of service.
+ * They read no user data and are cheap (the readiness checks are time-bounded).
  */
+@SkipRateLimit()
 @Controller('health')
 export class HealthController {
   constructor(
