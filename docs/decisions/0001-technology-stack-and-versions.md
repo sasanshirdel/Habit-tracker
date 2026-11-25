@@ -212,3 +212,15 @@ No install scripts: browsers are **not** downloaded on `pnpm install`; they are 
 (`pnpm --filter @habit/web exec playwright install --only-shell chromium`; CI caches them). This
 version drives Chrome Headless Shell 159.0.8154.6 (revision 1255). `next` lists `@playwright/test`
 as an optional peer, so the lockfile now records it on `next`'s peer set — no change to Next itself.
+
+## Addendum — Phase 2, P2-02 password hashing (2026-11-26)
+
+**No new package.** Argon2id comes from Node's built-in `crypto.argon2()` (added in Node 24.7.0;
+the repository requires `>=24.11 <25`; Node 24.22.3 bundles OpenSSL 3.5.9), verified against the
+RFC 9106 and reference-implementation test vectors. Checked with `npm view <pkg> version license
+time scripts dependencies optionalDependencies engines` on 2026-11-26 (UTC+03:30) and not added:
+`argon2` 0.45.2 (MIT, npm provenance; native addon with a `node-gyp-build` **install script**, which
+`allowBuilds` in `pnpm-workspace.yaml` would block until explicitly allowed, plus toolchain/musl
+concerns for CI and Docker), `@node-rs/argon2` 2.2.2 (13 platform-specific prebuilt binaries), and
+`hash-wasm` 4.13.0 (WASM). `pnpm-workspace.yaml`, `package.json` files and the lockfile are
+unchanged. Parameters and rationale: [ADR-0018](0018-email-password-authentication.md).

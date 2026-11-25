@@ -10,7 +10,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started
 | ----- | ------------------------------------------ | ------------ |
 | 0     | Product definition & repository foundation | 🟡 (this PR) |
 | 1     | Application foundation                     | 🟡           |
-| 2     | Authentication & user management           | ⬜           |
+| 2     | Authentication & user management           | 🟡           |
 | 3     | Habit tracking core                        | ⬜           |
 | 4     | Goals, tasks & planning                    | ⬜           |
 | 5     | Focus & journal                            | ⬜           |

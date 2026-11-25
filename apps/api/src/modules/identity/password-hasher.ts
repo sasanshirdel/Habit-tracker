@@ -17,7 +17,7 @@ import { PASSWORD_HASH_PREFIX } from './identity.constants.js';
 
 /**
  * OWASP Password Storage Cheat Sheet (checked 2026-11-26): Argon2id with m=19 MiB, t=2, p=1 is
- * one of the equivalent minimum configurations. ≈ 30–60 ms per hash on the CI/dev machines (see
+ * one of the equivalent minimum configurations. ≈ 25–35 ms per hash on the arm64 dev sandbox (see
  * ADR-0018); raise memory/passes here when production hardware is known — existing hashes are
  * upgraded at their owner's next sign-in.
  */
