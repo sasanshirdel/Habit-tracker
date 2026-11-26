@@ -7,6 +7,7 @@ import { QueryError } from '@/components/status/query-error';
 import { signInHref } from '@/lib/auth/redirect';
 import { useSession } from '@/lib/auth/session';
 import { usePathname, useRouter } from '@/lib/i18n/navigation';
+import { VerifyEmailBanner } from './verify-email-banner';
 
 /**
  * Client-side page protection for the signed-in app (backlog P2-09, ADR-0020).
@@ -34,7 +35,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
     router.replace(signInHref(state.reason === 'signed-out' ? null : here));
   }, [state, pathname, router]);
 
-  if (state?.status === 'signed-in') return <>{children}</>;
+  if (state?.status === 'signed-in') {
+    return (
+      <>
+        {/* P2-04 (ADR-0021): unverified accounts can use the app, with a reminder. */}
+        {state.user.emailVerified ? null : <VerifyEmailBanner email={state.user.email} />}
+        {children}
+      </>
+    );
+  }
 
   if (session.isError && !state) {
     return (

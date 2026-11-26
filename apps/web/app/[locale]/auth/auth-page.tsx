@@ -10,8 +10,11 @@ export type AuthPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-/** `<title>` of an auth page: "Sign in · Habit Tracker". */
-export function authMetadata(page: 'signIn' | 'signUp') {
+/**
+ * `<title>` of an auth page: "Sign in · Habit Tracker". The verification page (P2-04) is never
+ * indexed: it only makes sense with a personal link.
+ */
+export function authMetadata(page: 'signIn' | 'signUp' | 'verifyEmail') {
   return async function generateMetadata({ params }: AuthPageProps): Promise<Metadata> {
     const locale = parseLocale((await params).locale);
     if (!locale) return {};
@@ -19,7 +22,10 @@ export function authMetadata(page: 'signIn' | 'signUp') {
       getTranslations({ locale, namespace: `auth.${page}` }),
       getTranslations({ locale, namespace: 'meta' }),
     ]);
-    return { title: `${t('title')} · ${tMeta('title')}` };
+    return {
+      title: `${t('title')} · ${tMeta('title')}`,
+      ...(page === 'verifyEmail' ? { robots: { index: false, follow: false } } : {}),
+    };
   };
 }
 

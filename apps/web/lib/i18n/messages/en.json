@@ -105,8 +105,10 @@
     "MALFORMED_REQUEST_BODY": "The request could not be read. Try again.",
     "UNAUTHENTICATED": "Your session has ended. Sign in again to continue.",
     "INVALID_CREDENTIALS": "The email or password is incorrect.",
+    "INVALID_TOKEN": "This link is invalid, has expired or was already used.",
     "FORBIDDEN": "You don't have permission to do that.",
     "CSRF_FAILED": "This request couldn't be verified. Reload the page and try again.",
+    "EMAIL_NOT_VERIFIED": "Confirm your email address to use this feature.",
     "NOT_FOUND": "We couldn't find what you were looking for.",
     "METHOD_NOT_ALLOWED": "That action isn't available here.",
     "CONFLICT": "This was changed elsewhere in the meantime. Reload and try again.",
@@ -158,8 +160,8 @@
       "passwordHint": "At least {min, number} characters. A long phrase is easier to remember than a complex word.",
       "haveAccount": "Already have an account?",
       "signIn": "Sign in",
-      "acceptedTitle": "Request received",
-      "acceptedBody": "If this email address isn't registered yet, your account is ready. Sign in with your email and password to continue.",
+      "acceptedTitle": "Check your email",
+      "acceptedBody": "We've sent a message to {email} with the next step. If it doesn't arrive within a few minutes, check your spam folder. You can sign in now and confirm your address later.",
       "acceptedAction": "Continue to sign in"
     },
     "fields": {
@@ -179,7 +181,8 @@
       "invalidCredentials": "The email or password is incorrect.",
       "locked": "Too many unsuccessful sign-in attempts. For your security, wait {minutes, plural, one {# minute} other {# minutes}} and try again.",
       "tooManyAttempts": "Too many attempts from this device. Wait {minutes, plural, one {# minute} other {# minutes}} and try again.",
-      "invalidInput": "Some of the information you entered is not valid. Check it and try again."
+      "invalidInput": "Some of the information you entered is not valid. Check it and try again.",
+      "resendTooSoon": "You've asked for a new link recently. Wait {minutes, plural, one {# minute} other {# minutes}} before asking again."
     },
     "session": {
       "checking": "Checking your session…",
@@ -190,6 +193,26 @@
       "signedOut": "You've signed out.",
       "signOutFailed": "We couldn't sign you out. Check your connection and try again.",
       "checkFailed": "We couldn't check whether you're signed in."
+    },
+    "verifyEmail": {
+      "title": "Confirm your email address",
+      "description": "Press the button to confirm that this email address is yours.",
+      "reading": "Reading your link…",
+      "confirm": "Confirm email address",
+      "confirming": "Confirming…",
+      "verifiedTitle": "Email address confirmed",
+      "verifiedBody": "Thank you. Your email address is verified.",
+      "continue": "Continue",
+      "invalidTitle": "This link doesn't work",
+      "invalidBody": "It may have expired, been used already, or been replaced by a newer link. Sign in and ask for a new one.",
+      "signIn": "Sign in"
+    },
+    "verifyBanner": {
+      "title": "Confirm your email address",
+      "body": "We sent a confirmation link to {email}. Open it to verify your address.",
+      "resend": "Send a new link",
+      "resending": "Sending…",
+      "sent": "We've sent a new link. It can take a few minutes to arrive."
     }
   }
 }
