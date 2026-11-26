@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { directionOf, locales, viewports, type Locale, type ViewportName } from './env';
-import { expect, messages, test } from './fixtures';
+import { expect, messages, openApp, test } from './fixtures';
 
 /**
  * The application shell at 3 viewports × 2 locales (P1-11 criteria moved to P1-13): which
@@ -35,7 +35,7 @@ for (const locale of locales) {
       test.use({ viewport: viewports[name] });
 
       test(`shows the ${name} navigation in ${directionOf[locale]}`, async ({ page }) => {
-        await page.goto(`/${locale}/overview`);
+        await openApp(page, `/${locale}/overview`);
         await expect(page.locator('html')).toHaveAttribute('dir', directionOf[locale]);
         await expect(page.getByRole('main')).toBeVisible();
 

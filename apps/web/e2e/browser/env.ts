@@ -13,6 +13,24 @@ export const E2E_API_BASE_URL = `${E2E_API_ORIGIN}/api/v1`;
 
 /** Redis namespaces of the API under test, apart from development data and integration runs. */
 export const E2E_RATE_LIMIT_PREFIX = 'habit:e2e:rl';
+
+/**
+ * The signed-in browser state the `setup` project creates (P2-09): one account, signed in once,
+ * reused by every test that needs the app. Tests that sign in, sign out or rotate a session must
+ * start from an empty state instead ({@link SIGNED_OUT}): signing in revokes the presented session
+ * and signing out ends it, which would sign every other test out.
+ */
+export const STORAGE_STATE = `${import.meta.dirname}/../.auth/user.json`;
+export const SHARED_ACCOUNT = `${import.meta.dirname}/../.auth/account.json`;
+export const SIGNED_OUT = { cookies: [], origins: [] };
+
+/**
+ * Budget of the API's `auth` rate-limit class (10 requests per 5 minutes per address; ADR-0011)
+ * that one run may spend: every register/login in the suite comes from 127.0.0.1. Each run gets
+ * its own counter namespace (playwright.config.ts), so reruns do not add up; keep the suite at or
+ * below this number (setup 2 + csrf 2 + auth journeys 5 = 9).
+ */
+export const E2E_AUTH_BUDGET = 9;
 export const E2E_QUEUE_PREFIX = 'habit:e2e:q';
 
 export const locales = ['fa', 'en'] as const;

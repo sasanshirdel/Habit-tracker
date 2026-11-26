@@ -34,7 +34,17 @@ interface Options {
    * no console errors, no page errors" check off and assert on what they expect instead.
    */
   allowPageErrors: boolean;
+  /**
+   * Console errors a test expects, e.g. Chromium's "Failed to load resource: … 401" for the
+   * session check on a signed-out page (P2-09). Matching messages are ignored; any other console
+   * error still fails the test.
+   */
+  expectedConsoleErrors: RegExp[];
 }
+
+/** Chromium logs every 401 response as a console error; the signed-out session check answers 401. */
+export const UNAUTHENTICATED_CONSOLE_ERROR =
+  /Failed to load resource: the server responded with a status of 401/;
 
 /**
  * The browser suite's `test`: every page records CSP violations from its first script on, and
@@ -43,8 +53,9 @@ interface Options {
  */
 export const test = base.extend<Options & { pageGuard: void }>({
   allowPageErrors: [false, { option: true }],
+  expectedConsoleErrors: [[], { option: true }],
   pageGuard: [
-    async ({ page, allowPageErrors }, use) => {
+    async ({ page, allowPageErrors, expectedConsoleErrors }, use) => {
       // Every violation of every document the test visits reaches this list through a binding;
       // the init script and the binding go through the DevTools protocol, so the page's CSP does
       // not apply to them.
@@ -69,7 +80,10 @@ export const test = base.extend<Options & { pageGuard: void }>({
       });
       const problems: string[] = [];
       page.on('console', (message) => {
-        if (message.type() === 'error') problems.push(`console.error: ${message.text()}`);
+        if (message.type() !== 'error') return;
+        const text = message.text();
+        if (expectedConsoleErrors.some((pattern) => pattern.test(text))) return;
+        problems.push(`console.error: ${text}`);
       });
       page.on('pageerror', (error) => problems.push(`page error: ${error.message}`));
 
@@ -84,3 +98,13 @@ export const test = base.extend<Options & { pageGuard: void }>({
 });
 
 export { expect };
+
+/**
+ * Opens a page of the signed-in app and waits until the auth gate let it through (P2-09): the
+ * shell renders at once, the page content only after `GET /auth/session` answered.
+ */
+export async function openApp(page: Page, path: string): Promise<void> {
+  await page.goto(path);
+  await expect(page.locator('[data-auth-gate]')).toHaveCount(0);
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+}

@@ -7,6 +7,7 @@ import {
   E2E_RATE_LIMIT_PREFIX,
   E2E_WEB_ORIGIN,
   E2E_WEB_PORT,
+  STORAGE_STATE,
 } from './e2e/browser/env';
 
 /**
@@ -19,6 +20,14 @@ import {
  * CSP enforcement, layout per viewport, focus and keyboard behaviour, client-side data fetching.
  */
 const isCI = !!process.env.CI;
+
+/**
+ * A fresh rate-limit namespace per run (P2-09): the suite's sign-ups and sign-ins all come from
+ * 127.0.0.1 and the `auth` class allows 10 per 5 minutes, so counters from a previous run must
+ * not count against this one (`E2E_AUTH_BUDGET` in e2e/browser/env.ts). Computed once here, in
+ * the runner process that starts the API.
+ */
+const rateLimitPrefix = `${E2E_RATE_LIMIT_PREFIX}:${Date.now().toString(36)}`;
 
 function requireEnv(name: 'DATABASE_URL' | 'REDIS_URL'): string {
   const value = process.env[name];
@@ -54,7 +63,16 @@ export default defineConfig({
     timezoneId: 'UTC',
     colorScheme: 'light',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    // Signs the shared account in once and saves the browser state (P2-09).
+    { name: 'setup', testMatch: /auth\.setup\.ts/, use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'chromium',
+      dependencies: ['setup'],
+      // Signed in by default; tests about signing in/out opt out with `SIGNED_OUT`.
+      use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE },
+    },
+  ],
   webServer: [
     {
       name: 'api',
@@ -72,7 +90,7 @@ export default defineConfig({
         CORS_ORIGINS: E2E_WEB_ORIGIN,
         DATABASE_URL: requireEnv('DATABASE_URL'),
         REDIS_URL: requireEnv('REDIS_URL'),
-        RATE_LIMIT_PREFIX: E2E_RATE_LIMIT_PREFIX,
+        RATE_LIMIT_PREFIX: rateLimitPrefix,
         QUEUE_PREFIX: E2E_QUEUE_PREFIX,
         LOG_LEVEL: 'warn',
       },

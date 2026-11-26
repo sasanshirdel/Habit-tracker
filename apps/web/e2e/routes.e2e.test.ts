@@ -215,9 +215,12 @@ describe('application shell (P1-11)', () => {
         expect(tag).toContain(`lang="${locale}"`);
         expect(tag).toContain(`dir="${dir}"`);
         expect(html).toMatch(/<main[^>]*id="main"/);
-        expect(html).toMatch(/<h1[^>]*>[^<]+<\/h1>/);
-        expect(html).toContain('data-slot="empty-state"');
-        // Placeholder pages are not for search engines (no auth yet, no content).
+        // P2-09: the server cannot know the session (the cookie lives on the API origin), so the
+        // page content is held back by the auth gate — no flash of app content before the check.
+        expect(html).toContain('data-auth-gate="checking"');
+        expect(html).not.toMatch(/<h1[^>]*>[^<]+<\/h1>/);
+        expect(html).not.toContain('data-slot="empty-state"');
+        // App pages are not for search engines.
         expect(html).toMatch(/<meta name="robots" content="noindex, nofollow"/);
       },
     );
@@ -293,9 +296,10 @@ describe('application shell (P1-11)', () => {
     expect((await get('/en/habits/does-not-exist')).status).toBe(404);
   });
 
-  it('the landing page links into the app', async () => {
+  it('the landing page links to sign-up and sign-in (ROADMAP decision #10 interim, P2-09)', async () => {
     const html = await (await get('/en')).text();
-    expect(html).toMatch(/<a[^>]+href="\/en\/overview"/);
+    expect(html).toMatch(/<a[^>]+href="\/en\/auth\/sign-up"/);
+    expect(html).toMatch(/<a[^>]+href="\/en\/auth\/sign-in"/);
   });
 });
 
@@ -329,5 +333,89 @@ describe('status page — frontend data layer demo (P1-12)', () => {
 
   it('is linked from the landing page', async () => {
     expect(await (await get('/fa')).text()).toMatch(/<a[^>]+href="\/fa\/status"/);
+  });
+});
+
+describe('auth pages (P2-09)', () => {
+  /**
+   * The opening tag of the input labelled by `<label for=…>` with this text, lower-cased (React
+   * writes `autoComplete=`; HTML attribute names are case-insensitive).
+   */
+  function inputFor(html: string, label: string): string {
+    const forId = new RegExp(`<label[^>]*for="([^"]+)"[^>]*>${label}</label>`).exec(html)?.[1];
+    if (!forId) return '';
+    const id = forId.replace(/[^\w-]/g, '\\$&');
+    return new RegExp(`<input[^>]*id="${id}"[^>]*>`).exec(html)?.[0]?.toLowerCase() ?? '';
+  }
+
+  describe.each([
+    {
+      locale: 'fa',
+      dir: 'rtl',
+      email: 'ایمیل',
+      password: 'رمز عبور',
+      signIn: 'ورود',
+      signUp: 'ساخت حساب کاربری',
+    },
+    {
+      locale: 'en',
+      dir: 'ltr',
+      email: 'Email',
+      password: 'Password',
+      signIn: 'Sign in',
+      signUp: 'Create your account',
+    },
+  ])('/$locale', ({ locale, dir, email, password, signIn, signUp }) => {
+    it('sign-in: localized, labelled fields with the right autocomplete, nonce on every script', async () => {
+      const res = await get(`/${locale}/auth/sign-in`);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(htmlTag(html)).toContain(`dir="${dir}"`);
+      expect(html).toMatch(new RegExp(`<h1[^>]*>${signIn}</h1>`));
+      expect(html).toMatch(/<form[^>]*novalidate/i);
+      const emailInput = inputFor(html, email);
+      expect(emailInput).toContain('type="email"');
+      expect(emailInput).toContain('autocomplete="username"');
+      expect(emailInput).toContain('dir="ltr"');
+      const passwordInput = inputFor(html, password);
+      expect(passwordInput).toContain('type="password"');
+      expect(passwordInput).toContain('autocomplete="current-password"');
+      expect(html).toMatch(/<button[^>]*aria-pressed="false"/);
+      const nonce = cspNonce(res);
+      for (const script of html.match(/<script\b[^>]*>/g) ?? []) {
+        expect(script).toContain(`nonce="${nonce}"`);
+      }
+    });
+
+    it('sign-up: new-password and the password rule linked to the field', async () => {
+      const html = await (await get(`/${locale}/auth/sign-up`)).text();
+      expect(html).toMatch(new RegExp(`<h1[^>]*>${signUp}</h1>`));
+      expect(inputFor(html, email)).toContain('autocomplete="email"');
+      const passwordInput = inputFor(html, password);
+      expect(passwordInput).toContain('autocomplete="new-password"');
+      const hintId = /aria-describedby="([^"]+)"/.exec(passwordInput)?.[1];
+      expect(hintId).toBeTruthy();
+      // `toBe(true)`, not `toMatch`: a failure should not print the whole page.
+      expect(new RegExp(`<p[^>]*id="${hintId}"`, 'i').test(html)).toBe(true);
+    });
+  });
+
+  it('/{locale}/auth itself is not a page', async () => {
+    expect((await get('/en/auth')).status).toBe(404);
+  });
+
+  it('carries only a safe `next` into the links between the auth pages (no open redirect)', async () => {
+    const safe = await (await get('/en/auth/sign-in?next=%2Fhabits%2F7')).text();
+    expect(safe).toContain('href="/en/auth/sign-up?next=%2Fhabits%2F7"');
+    for (const evil of [
+      'https://evil.example/',
+      '//evil.example',
+      '/%09/evil.example',
+      '/auth/sign-in',
+    ]) {
+      const html = await (await get(`/en/auth/sign-in?next=${encodeURIComponent(evil)}`)).text();
+      expect(html, evil).toContain('href="/en/auth/sign-up"');
+      expect(html, evil).not.toMatch(/href="[^"]*evil/);
+    }
   });
 });
