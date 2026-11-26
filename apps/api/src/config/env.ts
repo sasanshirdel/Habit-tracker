@@ -66,13 +66,65 @@ export function apiDocsEnabled(env: Pick<Env, 'API_DOCS_ENABLED' | 'NODE_ENV'>):
   return env.API_DOCS_ENABLED ?? env.NODE_ENV !== 'production';
 }
 
-export const workerEnvSchema = baseEnvSchema.extend({
-  // Jobs processed in parallel per queue by one worker process.
-  WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(5),
-  // How long a shutdown waits for in-flight jobs before disconnecting. Keep it below the
-  // orchestrator's termination grace period; jobs cut off are recovered as stalled and retried.
-  WORKER_SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(600_000).default(25_000),
-});
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+// "Name <local@domain>" or a bare "local@domain"; no line breaks (header injection), ≤ 254.
+const MAIL_FROM = /^(?:[^\r\n<>"]{1,64} )?<?[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.?[A-Za-z0-9-]*>?$/;
+
+/**
+ * Transactional email (backlog P2-04, ADR-0021) — read by the worker, which sends every email.
+ * Only development/test transports exist; a real provider is an owner decision.
+ */
+export const mailEnvShape = {
+  // `log` (default): nothing is delivered, one redacted line per message. `outbox`: each message
+  // is written as a JSON file into MAIL_OUTBOX_DIR (local development and the browser suite only —
+  // the files contain live single-use links).
+  MAIL_TRANSPORT: z.enum(['log', 'outbox']).default('log'),
+  MAIL_OUTBOX_DIR: z.string().min(1).max(4096).optional(),
+  // Sender of every message. Placeholder domain until the product name/domain is decided
+  // (ROADMAP "Outstanding decisions" #2).
+  MAIL_FROM: z
+    .string()
+    .max(254)
+    .regex(MAIL_FROM, 'an address, optionally with a display name: "Name <a@b.example>"')
+    .default('Habit Tracker <no-reply@localhost>'),
+  // Origin of the web app that emailed links point to (`<origin>/<locale>/auth/…`). Must be
+  // https, except http on a loopback host for local development and tests.
+  WEB_APP_URL: z
+    .url({ protocol: /^https?$/ })
+    .default('http://localhost:3000')
+    .refine((value) => {
+      const url = new URL(value);
+      return url.protocol === 'https:' || LOOPBACK_HOSTS.has(url.hostname);
+    }, 'must be an https URL (http only on localhost/127.0.0.1)')
+    .refine((value) => {
+      const url = new URL(value);
+      return url.pathname === '/' && !url.search && !url.hash && !url.username && !url.password;
+    }, 'must be an origin only (no path, query, fragment or credentials)')
+    .transform((value) => new URL(value).origin),
+};
+
+export const mailEnvSchema = z.object(mailEnvShape);
+export type MailEnv = z.infer<typeof mailEnvSchema>;
+
+export const workerEnvSchema = baseEnvSchema
+  .extend({
+    // Jobs processed in parallel per queue by one worker process.
+    WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(5),
+    // How long a shutdown waits for in-flight jobs before disconnecting. Keep it below the
+    // orchestrator's termination grace period; jobs cut off are recovered as stalled and retried.
+    WORKER_SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(600_000).default(25_000),
+    ...mailEnvShape,
+  })
+  .superRefine((env, ctx) => {
+    if (env.MAIL_TRANSPORT === 'outbox' && !env.MAIL_OUTBOX_DIR) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MAIL_OUTBOX_DIR'],
+        message: 'required when MAIL_TRANSPORT=outbox',
+      });
+    }
+  });
 
 export type BaseEnv = z.infer<typeof baseEnvSchema>;
 export type Env = z.infer<typeof envSchema>;
