@@ -40,8 +40,9 @@ Next.js 16 App Router frontend, bilingual from the first page:
   - Sections, their order, their mobile slot and whether their icon flips in RTL live in
     `lib/navigation/sections.ts`; labels are `nav.*` messages, placeholder copy `sections.*`.
   - Each section page is a placeholder (`components/shell/section-page.tsx`: heading +
-    `EmptyState`), `noindex`. **No authorization yet** — P2-03 adds the session check to
-    `app/[locale]/(app)/layout.tsx`. Overview is at `/{locale}/overview` (interim, see ROADMAP
+    `EmptyState`), `noindex`. **No page-level sign-in redirect yet** — the API denies by default
+    since P2-03; P2-09 adds a client-side redirect from `GET /auth/session` (a server-side check is
+    impossible while the API cookie is host-only on another origin, ADR-0019). Overview is at `/{locale}/overview` (interim, see ROADMAP
     decision #10).
 
 - **Data layer** (P1-12, ADR-0014): `lib/api/client.ts` (`createApiClient`; the app's instance is

@@ -95,6 +95,48 @@ describe('requests', () => {
     expect(sent).toEqual([null, 'csrf-token', 'csrf-token', 'csrf-token', null]);
   });
 
+  it('awaits an async CSRF token source (P2-03)', async () => {
+    const { fetch, calls } = fakeFetch(() => new Response(null, { status: 204 }));
+    const api = createApiClient({
+      baseUrl: BASE,
+      fetch,
+      csrf: { headerName: 'X-CSRF-Token', getToken: () => Promise.resolve('async-token') },
+    });
+    await api.post('/a');
+    expect(new Headers(calls[0]!.init.headers).get('x-csrf-token')).toBe('async-token');
+  });
+
+  it('after 403 CSRF_FAILED forgets the token and retries exactly once with a fresh one', async () => {
+    let current = 'stale';
+    const onRejected = vi.fn(() => {
+      current = 'fresh';
+    });
+    const { fetch, calls } = fakeFetch((_url, init) =>
+      new Headers(init.headers).get('x-csrf-token') === 'fresh'
+        ? json({ ok: true })
+        : json(envelope('CSRF_FAILED'), 403),
+    );
+    const api = createApiClient({
+      baseUrl: BASE,
+      fetch,
+      csrf: { headerName: 'X-CSRF-Token', getToken: () => current, onRejected },
+    });
+    await expect(api.post('/a', { x: 1 })).resolves.toEqual({ ok: true });
+    expect(onRejected).toHaveBeenCalledTimes(1);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]!.init.body).toBe(JSON.stringify({ x: 1 }));
+
+    // A second rejection is final (no loop), and safe methods are never retried.
+    current = 'still-wrong';
+    onRejected.mockImplementation(() => {});
+    const error = await rejection(api.delete('/a'));
+    expect(error).toMatchObject({ code: 'CSRF_FAILED', status: 403 });
+    expect(calls).toHaveLength(4);
+    const getError = await rejection(api.get('/a'));
+    expect(getError).toMatchObject({ code: 'CSRF_FAILED' });
+    expect(calls).toHaveLength(5);
+  });
+
   it('resolves 204 No Content to undefined', async () => {
     const { fetch } = fakeFetch(() => new Response(null, { status: 204 }));
     await expect(createApiClient({ baseUrl: BASE, fetch }).delete('/a')).resolves.toBeUndefined();

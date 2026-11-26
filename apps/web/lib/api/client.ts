@@ -7,9 +7,11 @@ import { ApiError, codeFromResponse, parseRetryAfter } from './errors';
  * - **Cookies, never tokens in storage:** every request is sent with `credentials: 'include'`,
  *   so the session cookie (Phase 2, `HttpOnly`) travels with it; the client never reads or
  *   writes `localStorage`/`sessionStorage` (a test asserts it).
- * - **CSRF header:** for state-changing methods the client adds the header returned by
- *   `csrf.getToken()` under `csrf.headerName`. P2-03 decides the token's source and header name
- *   (and adds it to the API's CORS allow-list); until then no CSRF option is configured.
+ * - **CSRF header:** for state-changing methods the client adds the token from `csrf.getToken()`
+ *   (sync or async) under `csrf.headerName`. When the API answers 403 `CSRF_FAILED` the client
+ *   calls `csrf.onRejected()` (forget the token) and retries the request once with a fresh token —
+ *   safe because a CSRF rejection happens before the API does anything. Configured in `api.ts`
+ *   (P2-03, ADR-0019).
  * - **Errors:** a non-2xx response becomes an `ApiError` with the envelope's stable `code`,
  *   `requestId`, `details` and `retryAfterSeconds`; envelope-less responses (e.g. a proxy's 502)
  *   get the code for their status. No response → `NETWORK_ERROR`; too slow → `TIMEOUT`;
@@ -37,7 +39,10 @@ export interface RequestOptions {
 
 export interface CsrfOptions {
   headerName: string;
-  getToken: () => string | null | undefined;
+  /** The current token, or none (then no header is sent). May fetch it first. */
+  getToken: () => string | null | undefined | Promise<string | null | undefined>;
+  /** Called after a 403 `CSRF_FAILED`, before the single retry: drop the remembered token. */
+  onRejected?: () => void;
 }
 
 export interface ApiClientOptions {
@@ -143,6 +148,22 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
 
   async function request<T>(path: string, init: RequestOptions = {}): Promise<T> {
     const method = init.method ?? 'GET';
+    const csrf = SAFE_METHODS.has(method) ? undefined : options.csrf;
+    try {
+      return await send<T>(path, init, method, csrf);
+    } catch (error) {
+      if (!csrf || !(error instanceof ApiError) || error.code !== 'CSRF_FAILED') throw error;
+      csrf.onRejected?.();
+      return send<T>(path, init, method, csrf);
+    }
+  }
+
+  async function send<T>(
+    path: string,
+    init: RequestOptions,
+    method: HttpMethod,
+    csrf: CsrfOptions | undefined,
+  ): Promise<T> {
     const url = buildUrl(options.baseUrl, path, init.query);
     const headers = new Headers(init.headers);
     headers.set('accept', 'application/json');
@@ -151,9 +172,9 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       headers.set('content-type', 'application/json');
       body = JSON.stringify(init.body);
     }
-    if (!SAFE_METHODS.has(method) && options.csrf) {
-      const token = options.csrf.getToken();
-      if (token) headers.set(options.csrf.headerName, token);
+    if (csrf) {
+      const token = await csrf.getToken();
+      if (token) headers.set(csrf.headerName, token);
     }
 
     const timeout = AbortSignal.timeout(timeoutMs);

@@ -17,8 +17,9 @@ export const MAIN_ID = 'main';
  * from `md`, bottom bar below), a banner with the language and theme switchers, and the `main`
  * region pages render into. Landmarks: `banner`, `navigation` (labelled), `main`.
  *
- * It shows navigation only — no user data and no access control. Authentication (Phase 2, P2-03)
- * adds the server-side session check to the `(app)` layout; nothing here pretends to authorize.
+ * It shows navigation only — no user data and no access control. The API is the authority (deny by
+ * default since P2-03); the page-level sign-in redirect comes with P2-09 (ADR-0019). Nothing here
+ * pretends to authorize.
  */
 export async function AppShell({ children }: { children: ReactNode }) {
   const [t, tTheme, cookieStore] = await Promise.all([
