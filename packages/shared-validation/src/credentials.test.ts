@@ -8,6 +8,8 @@ import {
   emailAddressSchema,
   newPasswordSchema,
   normalizePassword,
+  signInCredentialsSchema,
+  signUpCredentialsSchema,
 } from './index.js';
 
 describe('emailAddressSchema', () => {
@@ -91,5 +93,38 @@ describe('normalizePassword / currentPasswordSchema', () => {
     expect(currentPasswordSchema.safeParse('a'.repeat(PASSWORD_INPUT_MAX_LENGTH + 1)).success).toBe(
       false,
     );
+  });
+});
+
+describe('signInCredentialsSchema / signUpCredentialsSchema (P2-09)', () => {
+  it('normalise the email and password like the API does', () => {
+    expect(
+      signInCredentialsSchema.parse({ email: ' Sara@Example.COM ', password: 'ｐａｓｓ' }),
+    ).toEqual({ email: 'sara@example.com', password: 'pass' });
+  });
+
+  it('sign-in only bounds the password; sign-up applies the policy', () => {
+    expect(
+      signInCredentialsSchema.safeParse({ email: 'a@example.com', password: 'x' }).success,
+    ).toBe(true);
+    const short = signUpCredentialsSchema.safeParse({ email: 'a@example.com', password: 'x' });
+    expect(short.success).toBe(false);
+    expect(short.error?.issues[0]).toMatchObject({ code: 'too_small', path: ['password'] });
+    expect(
+      signUpCredentialsSchema.safeParse({ email: 'a@example.com', password: 'long enough' })
+        .success,
+    ).toBe(true);
+  });
+
+  it('report an empty or malformed email on the email path', () => {
+    for (const email of ['', 'not-an-email']) {
+      const result = signInCredentialsSchema.safeParse({ email, password: 'secret' });
+      expect(result.error?.issues.map((i) => i.path)).toEqual([['email']]);
+    }
+  });
+
+  it('never echo the password in an issue', () => {
+    const result = signUpCredentialsSchema.safeParse({ email: 'x', password: 'hunter2' });
+    expect(JSON.stringify(result.error?.issues)).not.toContain('hunter2');
   });
 });

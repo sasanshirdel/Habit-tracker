@@ -1,9 +1,8 @@
 import { z } from 'zod';
 import {
-  currentPasswordSchema,
-  emailAddressSchema,
   localeSchema,
-  newPasswordSchema,
+  signInCredentialsSchema,
+  signUpCredentialsSchema,
   timeZoneSchema,
 } from '@habit/shared-validation';
 import { component, errorEnvelopeWith } from '../../openapi/index.js';
@@ -16,11 +15,13 @@ import { IDENTITY_LIMITS } from './identity.constants.js';
  * `auth.test.ts`).
  */
 
+// Email and password rules come from the shared credential schemas, which the web forms (P2-09)
+// validate with too: one definition of what the server accepts.
 export const registerBodySchema = z.strictObject({
-  email: emailAddressSchema.meta({
+  email: signUpCredentialsSchema.shape.email.meta({
     description: 'Trimmed and lower-cased before use. At most 254 characters.',
   }),
-  password: newPasswordSchema.meta({
+  password: signUpCredentialsSchema.shape.password.meta({
     description:
       '8–128 characters (Unicode code points after NFKC normalisation). No composition rules.',
   }),
@@ -37,8 +38,8 @@ export const registerBodySchema = z.strictObject({
 export type RegisterInput = z.output<typeof registerBodySchema>;
 
 export const loginBodySchema = z.strictObject({
-  email: emailAddressSchema,
-  password: currentPasswordSchema.meta({
+  email: signInCredentialsSchema.shape.email,
+  password: signInCredentialsSchema.shape.password.meta({
     description: 'The account password (not policy-checked).',
   }),
 });
