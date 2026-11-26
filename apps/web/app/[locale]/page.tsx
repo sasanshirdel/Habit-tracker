@@ -5,7 +5,6 @@ import { notFound } from 'next/navigation';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { parseLocale } from '@/lib/i18n/config';
 import { Link } from '@/lib/i18n/navigation';
-import { appHomeHref } from '@/lib/navigation/sections';
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const locale = parseLocale((await params).locale);
@@ -27,9 +26,20 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <p className="text-text-secondary">
         <time dateTime={now.toISOString()}>{t('today', { date: now })}</time>
       </p>
-      <Button asChild className="self-start">
-        <Link href={appHomeHref}>{t('openApp')}</Link>
-      </Button>
+      {/*
+        Landing vs app (ROADMAP decision #10, interim since P2-09): the landing page stays at
+        /{locale} and links to sign-up and sign-in; a signed-in visitor who follows "Sign in" is
+        sent straight on to the app. No automatic redirect from here (no session check on the
+        public page). Reversible: one place to change.
+      */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button asChild>
+          <Link href="/auth/sign-up">{t('signUp')}</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/auth/sign-in">{t('signIn')}</Link>
+        </Button>
+      </div>
       {/* Logical properties (ms/me, ps/pe, start/end) only — never left/right — so RTL mirrors correctly. */}
       <nav aria-label={tLanguage('label')} className="flex items-center gap-2">
         <Button asChild variant="outline">

@@ -20,6 +20,13 @@ export const csrfTokens = createCsrfTokenStore(async () => {
   }
 });
 
+/**
+ * Client for the public, session-less auth routes (`POST /auth/register`, `POST /auth/login`;
+ * P2-09). Those routes never look at a session, so no CSRF token is needed (the API's Origin check
+ * still applies, ADR-0019) — and fetching one first would cost a `GET /auth/session` per attempt.
+ */
+export const publicApi = tokenClient;
+
 /** The app's API client (P1-12): cookies, timeouts, error codes, and the CSRF header (P2-03). */
 export const api = createApiClient({
   baseUrl: API_BASE_URL,
