@@ -66,3 +66,29 @@ export interface SessionResponse {
 
 /** Request header that carries the CSRF token on state-changing requests (ADR-0019). */
 export const CSRF_HEADER_NAME = 'X-CSRF-Token';
+
+/**
+ * `POST /api/v1/auth/verification/confirm` request body (backlog P2-04, ADR-0021). `token` is the
+ * secret from the emailed link (`…/auth/verify-email#token=…`); the link keeps it in the URL
+ * fragment, so it never reaches a server log or a `Referer` header.
+ */
+export interface ConfirmEmailRequest {
+  token: string;
+}
+
+/**
+ * `POST /api/v1/auth/verification/confirm` — 200 once the address is verified. An unknown,
+ * expired, already used or superseded token gets 400 `INVALID_TOKEN` — the same for every cause.
+ */
+export interface EmailVerifiedResponse {
+  status: 'verified';
+}
+
+/**
+ * `POST /api/v1/auth/verification/resend` — 202 (signed in). A new link is emailed unless the
+ * address is already verified; earlier links stop working. Too soon or too often → 429
+ * `RATE_LIMITED` with `details.policy` `verification-email`.
+ */
+export interface VerificationEmailAcceptedResponse {
+  status: 'accepted';
+}
