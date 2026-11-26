@@ -89,6 +89,7 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       '/auth/logout',
       '/auth/logout-everywhere',
       '/auth/register',
+      '/auth/session',
       '/health',
       '/health/ready',
     ]);
@@ -109,6 +110,7 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'ApiError',
       'ApiErrorCode',
       'AuthenticatedUser',
+      'CsrfFailedError',
       'DependencyStatus',
       'HealthResponse',
       'InvalidCredentialsError',
@@ -120,6 +122,7 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'ReadinessErrorDetails',
       'ReadinessResponse',
       'RegistrationAcceptedResponse',
+      'SessionResponse',
       'UnauthenticatedError',
       'ValidationErrorDetails',
       'ValidationFailedError',
@@ -127,6 +130,50 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     ]);
     // Unused components (PageInfo) are pruned.
     expect(doc.components.schemas.PageInfo).toBeUndefined();
+  });
+
+  it('declares the session cookie and CSRF header and states security on every operation (P2-03)', () => {
+    expect(doc.components.securitySchemes).toEqual({
+      sessionCookie: expect.objectContaining({
+        type: 'apiKey',
+        in: 'cookie',
+        name: '__Host-session',
+      }),
+      csrfToken: expect.objectContaining({ type: 'apiKey', in: 'header', name: 'X-CSRF-Token' }),
+    });
+    // Public: explicitly no security; unsafe public routes still document the origin check.
+    for (const [path, method] of [
+      ['/health', 'get'],
+      ['/health/ready', 'get'],
+      ['/auth/register', 'post'],
+      ['/auth/login', 'post'],
+    ] as const) {
+      expect(op(doc, path, method).security).toEqual([]);
+    }
+    expect(op(doc, '/health', 'get').responses['401']).toBeUndefined();
+    expect(op(doc, '/auth/login', 'post').responses['403']!.content).toEqual({
+      'application/json': { schema: { $ref: '#/components/schemas/CsrfFailedError' } },
+    });
+    expect(op(doc, '/health', 'get').responses['403']).toBeUndefined();
+    // Optional session: anonymous or cookie + CSRF header.
+    expect(op(doc, '/auth/logout', 'post').security).toEqual([
+      {},
+      { sessionCookie: [], csrfToken: [] },
+    ]);
+    // Protected: cookie (+ CSRF header on unsafe methods), 401 documented.
+    expect(op(doc, '/auth/session', 'get').security).toEqual([{ sessionCookie: [] }]);
+    expect(op(doc, '/auth/session', 'get').responses['403']).toBeUndefined();
+    expect(op(doc, '/auth/logout-everywhere', 'post').security).toEqual([
+      { sessionCookie: [], csrfToken: [] },
+    ]);
+    for (const [path, method] of [
+      ['/auth/session', 'get'],
+      ['/auth/logout-everywhere', 'post'],
+    ] as const) {
+      expect(op(doc, path, method).responses['401']!.content).toEqual({
+        'application/json': { schema: { $ref: '#/components/schemas/UnauthenticatedError' } },
+      });
+    }
   });
 
   it('documents probes as exempt from rate limiting (no 429, no rate-limit headers)', () => {

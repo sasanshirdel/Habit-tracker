@@ -138,14 +138,16 @@ describe('auth routes (no database)', () => {
     await http().post('/api/v1/auth/logout').set('Cookie', '__Host-session=garbage').expect(204);
   });
 
-  it('logout-everywhere without a session: 401 UNAUTHENTICATED and the cookie is cleared', async () => {
-    for (const cookie of [undefined, '__Host-session=garbage']) {
-      const req = http().post('/api/v1/auth/logout-everywhere');
-      if (cookie) req.set('Cookie', cookie);
-      const res = await req.expect(401);
-      expect(res.body.error.code).toBe('UNAUTHENTICATED');
-      expect(res.headers['set-cookie']?.[0]).toMatch(/^__Host-session=; Path=\/; Max-Age=0;/);
-    }
+  it('logout-everywhere without a session: 401 UNAUTHENTICATED (guard); a dead cookie is cleared', async () => {
+    const none = await http().post('/api/v1/auth/logout-everywhere').expect(401);
+    expect(none.body.error.code).toBe('UNAUTHENTICATED');
+    expect(none.headers['set-cookie']).toBeUndefined();
+    const dead = await http()
+      .post('/api/v1/auth/logout-everywhere')
+      .set('Cookie', '__Host-session=garbage')
+      .expect(401);
+    expect(dead.body.error.code).toBe('UNAUTHENTICATED');
+    expect(dead.headers['set-cookie']?.[0]).toMatch(/^__Host-session=; Path=\/; Max-Age=0;/);
   });
 
   it('never logs submitted credentials', async () => {

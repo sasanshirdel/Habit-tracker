@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
 import { createApp } from '../src/app.factory.js';
 import { JsonLogger, REDACTED, setRequestUserId } from '../src/common/index.js';
+import { Public } from '../src/common/auth/index.js';
 
 // e2e for structured logging (backlog P1-07) through the real global setup (`createApp`): every
 // line is JSON, lines logged during a request carry its id (= the x-request-id header) and user,
@@ -21,6 +22,8 @@ const SECRETS = {
   url: 'postgresql://admin:db-pass-55@db.internal/app',
 };
 
+// Test-only routes: public, so these suites exercise conventions without a session (P2-03).
+@Public()
 @Controller('logging-test')
 class LoggingTestController {
   private readonly logger = new Logger('LoggingTest');

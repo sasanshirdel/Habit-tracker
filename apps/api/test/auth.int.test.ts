@@ -5,6 +5,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from 'vitest';
 import { PrismaClient } from '../src/generated/prisma/client.js';
+import { csrfTokenFor } from '../src/modules/identity/csrf-token.js';
 import { RespClient } from './integration/redis-resp.js';
 
 // Integration (backlog P2-02): registration, sign-in, lockout, rate limiting and sign-out through
@@ -178,7 +179,10 @@ describe('email/password authentication (real PostgreSQL + Redis)', () => {
       await register(email).expect(202);
       const res = await login(email.toUpperCase(), PASSWORD).expect(200);
       const user = await db.user.findUniqueOrThrow({ where: { email } });
-      expect(res.body).toEqual({ user: { id: user.id, email, emailVerified: false } });
+      expect(res.body).toEqual({
+        user: { id: user.id, email, emailVerified: false },
+        csrfToken: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+      });
 
       const setCookie = res.headers['set-cookie'] as unknown as string[];
       expect(setCookie).toHaveLength(1);
@@ -187,6 +191,7 @@ describe('email/password authentication (real PostgreSQL + Redis)', () => {
       );
       const token = sessionTokenFrom(setCookie);
       expect(JSON.stringify(res.body)).not.toContain(token);
+      expect(res.body.csrfToken).toBe(csrfTokenFor(token));
       expect(res.headers['cache-control']).toBe('no-store');
 
       const sessions = await db.userSession.findMany({ where: { userId: user.id } });
@@ -360,6 +365,7 @@ describe('email/password authentication (real PostgreSQL + Redis)', () => {
       const res = await http()
         .post('/api/v1/auth/logout')
         .set('Cookie', `__Host-session=${token}`)
+        .set('X-CSRF-Token', csrfTokenFor(token))
         .expect(204);
       expect(res.headers['set-cookie']).toEqual([
         '__Host-session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax',
@@ -389,6 +395,7 @@ describe('email/password authentication (real PostgreSQL + Redis)', () => {
       const res = await http()
         .post('/api/v1/auth/logout-everywhere')
         .set('Cookie', `__Host-session=${a}`)
+        .set('X-CSRF-Token', csrfTokenFor(a))
         .expect(204);
       expect(res.headers['set-cookie']?.[0]).toMatch(/^__Host-session=; Path=\/; Max-Age=0;/);
       for (const t of [a, b]) {
@@ -432,7 +439,17 @@ describe('email/password authentication (real PostgreSQL + Redis)', () => {
     await login(email, 'wrong password here').expect(401);
     const res = await login(email, PASSWORD).expect(200);
     const token = sessionTokenFrom(res.headers['set-cookie']);
-    await http().post('/api/v1/auth/logout').set('Cookie', `__Host-session=${token}`).expect(204);
+    // Rejected CSRF attempts are logged by reason only.
+    await http()
+      .post('/api/v1/auth/logout')
+      .set('Cookie', `__Host-session=${token}`)
+      .set('X-CSRF-Token', 'x'.repeat(43))
+      .expect(403);
+    await http()
+      .post('/api/v1/auth/logout')
+      .set('Cookie', `__Host-session=${token}`)
+      .set('X-CSRF-Token', csrfTokenFor(token))
+      .expect(204);
     await new Promise((r) => setTimeout(r, 50));
     const credential = await db.userPasswordCredential.findFirstOrThrow({
       where: { user: { email } },
@@ -444,6 +461,7 @@ describe('email/password authentication (real PostgreSQL + Redis)', () => {
       'wrong password here',
       email,
       token,
+      csrfTokenFor(token),
       credential.passwordHash,
       credential.passwordHash.split('$').at(-1)!,
     ]) {
@@ -452,5 +470,153 @@ describe('email/password authentication (real PostgreSQL + Redis)', () => {
     // The successful sign-in's access line carries the user id (not the address).
     const user = await db.user.findUniqueOrThrow({ where: { email } });
     expect(text).toContain(user.id);
+    expect(text).toContain('"reason":"token-mismatch"');
+  });
+
+  describe('session guard and CSRF (P2-03)', () => {
+    const TRUSTED = 'http://localhost:3000'; // CORS_ORIGINS default in the test environment
+    async function signedIn(
+      label: string,
+    ): Promise<{ token: string; csrf: string; userId: string }> {
+      const email = uniqueEmail(label);
+      await register(email).expect(202);
+      const res = await login(email, PASSWORD).expect(200);
+      const token = sessionTokenFrom(res.headers['set-cookie']);
+      return { token, csrf: res.body.csrfToken as string, userId: res.body.user.id as string };
+    }
+    const session = (token: string) =>
+      http().get('/api/v1/auth/session').set('Cookie', `__Host-session=${token}`);
+
+    it('GET /auth/session: the account and the same CSRF token as sign-in; 401 when signed out', async () => {
+      const { token, csrf, userId } = await signedIn('session.read');
+      const res = await session(token).expect(200);
+      expect(res.body).toEqual({
+        user: { id: userId, email: expect.any(String), emailVerified: false },
+        csrfToken: csrf,
+      });
+      const anonymous = await http().get('/api/v1/auth/session').expect(401);
+      expect(anonymous.body.error.code).toBe('UNAUTHENTICATED');
+      expect(anonymous.headers['set-cookie']).toBeUndefined();
+    });
+
+    it('rejects revoked, absolutely expired and idle sessions with 401 and clears the cookie', async () => {
+      const revoked = await signedIn('guard.revoked');
+      const expired = await signedIn('guard.expired');
+      const idle = await signedIn('guard.idle');
+      await db.userSession.update({
+        where: { tokenHash: sha256(revoked.token) },
+        data: { revokedAt: new Date(), revokedReason: 'sign_out' },
+      });
+      await db.userSession.update({
+        where: { tokenHash: sha256(expired.token) },
+        data: {
+          createdAt: new Date(Date.now() - 31 * 24 * 3600 * 1000),
+          expiresAt: new Date(Date.now() - 1000),
+        },
+      });
+      await db.userSession.update({
+        where: { tokenHash: sha256(idle.token) },
+        data: { lastUsedAt: new Date(Date.now() - 7 * 24 * 3600 * 1000 - 1000) },
+      });
+      for (const { token } of [revoked, expired, idle]) {
+        const res = await session(token).expect(401);
+        expect(res.body.error.code).toBe('UNAUTHENTICATED');
+        expect(res.headers['set-cookie']?.[0]).toMatch(/^__Host-session=; Path=\/; Max-Age=0;/);
+      }
+    });
+
+    it('rejects a session of a deleted account', async () => {
+      const s = await signedIn('guard.deleted');
+      await db.user.update({ where: { id: s.userId }, data: { deletedAt: new Date() } });
+      await session(s.token).expect(401);
+    });
+
+    it('slides the idle timer: last_used_at moves forward on use (at most once a minute)', async () => {
+      const s = await signedIn('guard.sliding');
+      const sixDaysAgo = new Date(Date.now() - 6 * 24 * 3600 * 1000);
+      await db.userSession.update({
+        where: { tokenHash: sha256(s.token) },
+        data: { lastUsedAt: sixDaysAgo },
+      });
+      await session(s.token).expect(200);
+      const touched = await db.userSession.findUniqueOrThrow({
+        where: { tokenHash: sha256(s.token) },
+      });
+      expect(touched.lastUsedAt.getTime()).toBeGreaterThan(Date.now() - 60_000);
+    });
+
+    it('requires the session CSRF token on state-changing requests', async () => {
+      const a = await signedIn('csrf.a');
+      const b = await signedIn('csrf.b');
+      const everywhere = (token: string) =>
+        http().post('/api/v1/auth/logout-everywhere').set('Cookie', `__Host-session=${token}`);
+      for (const header of [undefined, '', 'x'.repeat(43), b.csrf, a.token]) {
+        const req = everywhere(a.token);
+        if (header !== undefined) req.set('X-CSRF-Token', header);
+        const res = await req.expect(403);
+        expect(res.body.error).toEqual({
+          code: 'CSRF_FAILED',
+          message: expect.any(String),
+          requestId: expect.any(String),
+        });
+      }
+      // Nothing happened: the session still works.
+      await session(a.token).expect(200);
+      await everywhere(a.token).set('X-CSRF-Token', a.csrf).set('Origin', TRUSTED).expect(204);
+      await session(a.token).expect(401);
+    });
+
+    it('rejects foreign and sibling-subdomain origins before any session or credential work', async () => {
+      const s = await signedIn('csrf.origin');
+      for (const origin of [
+        'https://evil.example',
+        'http://evil.localhost:3000', // a sibling host is the same site, but not the same origin
+        'http://localhost:3001',
+        'null',
+      ]) {
+        const out = await http()
+          .post('/api/v1/auth/logout')
+          .set('Cookie', `__Host-session=${s.token}`)
+          .set('X-CSRF-Token', s.csrf)
+          .set('Origin', origin)
+          .expect(403);
+        expect(out.body.error.code).toBe('CSRF_FAILED');
+        // Login CSRF: signing a victim into the attacker's account is refused too.
+        const signIn = await post('login', freshIp())
+          .set('Origin', origin)
+          .send({ email: uniqueEmail('x'), password: PASSWORD })
+          .expect(403);
+        expect(signIn.body.error.code).toBe('CSRF_FAILED');
+      }
+      await http()
+        .post('/api/v1/auth/logout')
+        .set('Cookie', `__Host-session=${s.token}`)
+        .set('X-CSRF-Token', s.csrf)
+        .set('Sec-Fetch-Site', 'cross-site')
+        .expect(403);
+      // The session survived every rejected attempt.
+      await session(s.token).expect(200);
+    });
+
+    it('rotates the CSRF token with the session at sign-in', async () => {
+      const email = uniqueEmail('csrf.rotate');
+      await register(email).expect(202);
+      const first = await login(email, PASSWORD).expect(200);
+      const oldToken = sessionTokenFrom(first.headers['set-cookie']);
+      const second = await login(email, PASSWORD, freshIp(), oldToken)
+        .set('Origin', TRUSTED)
+        .expect(200);
+      expect(second.body.csrfToken).not.toBe(first.body.csrfToken);
+      await session(oldToken).expect(401);
+    });
+
+    it('keys the default rate-limit budget by user once signed in', async () => {
+      const s = await signedIn('rl.user');
+      const res = await session(s.token).expect(200);
+      const keys = await scanKeys(redis, `${keyPrefix}auth:default:*`);
+      const userKey = `${keyPrefix}auth:default:${createHash('sha256').update(`u:${s.userId}`).digest('hex').slice(0, 32)}`;
+      expect(keys).toContain(userKey);
+      expect(res.headers['ratelimit-limit']).toBe('300');
+    });
   });
 });

@@ -44,7 +44,7 @@ describe('corsOptions (P1-08)', () => {
       origin: ['https://app.example'],
       credentials: true,
       methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
-      allowedHeaders: ['Accept', 'Accept-Language', 'Content-Type', 'X-Request-Id'],
+      allowedHeaders: ['Accept', 'Accept-Language', 'Content-Type', 'X-Request-Id', 'X-CSRF-Token'],
       exposedHeaders: [
         'x-request-id',
         'Retry-After',
