@@ -89,6 +89,7 @@ cross-origin. Every test also fails on any CSP violation, `console.error` or unc
 # PostgreSQL + Redis running, migrations applied (pnpm --filter @habit/api db:migrate:deploy)
 export DATABASE_URL=postgresql://… REDIS_URL=redis://127.0.0.1:6379
 pnpm build:deps                                                # the API the suite starts
+pnpm --filter @habit/worker build                              # the worker it starts (emails, P2-04)
 pnpm --filter @habit/web exec playwright install --only-shell chromium   # once per Playwright version
 pnpm --filter @habit/web build:e2e                             # web build pointing at the suite's API
 pnpm --filter @habit/web test:browser                          # report: playwright-report/, traces: test-results/
@@ -97,3 +98,9 @@ pnpm --filter @habit/web test:browser                          # report: playwri
 `build:e2e` bakes `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:4100/api/v1` into the bundle; the
 route tests (`test:e2e`) pass on that build too. Behind an HTTP proxy, set
 `NO_PROXY=127.0.0.1,localhost`.
+
+Since P2-04 (ADR-0021) the suite also starts the worker with `MAIL_TRANSPORT=outbox`: emails land
+as JSON files in `e2e/.outbox/` (gitignored, emptied per run) and tests open the links from there
+(`waitForEmails`, `verificationLinkIn` in `e2e/browser/fixtures.ts`). Each test presents its own
+client address to the API (`X-Forwarded-For`, API started with `TRUST_PROXY=1`), so the `auth`
+rate limit (10 per 5 minutes per address) applies per test rather than to the whole suite.

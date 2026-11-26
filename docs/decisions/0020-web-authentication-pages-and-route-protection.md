@@ -64,7 +64,8 @@ add their pages on this foundation when their endpoints land.
   `VALIDATION_FAILED` → a generic "check what you entered"; anything else → the app-wide
   `apiErrors.<CODE>` text. Sign-up's 202 shows a neutral confirmation: "If this email address isn't
   registered yet, your account is ready. Sign in …" — true for both cases, no sign-in. **P2-04
-  changes this copy to "check your email"** when verification mail exists.
+  changes this copy to "check your email"** when verification mail exists. _(Done in P2-04,
+  ADR-0021.)_
 - Sign-up sends the page's locale (language preference) and the browser's IANA time zone
   (validated with the API's `timeZoneSchema`, `UTC` fallback).
 - Full `auth.*` catalogues in `en.json` and `fa.json` (parity enforced); numbers in Persian copy
@@ -123,7 +124,8 @@ results; the API keeps zod's JIT.
   in revokes the presented session; signing out ends it).
 - The API's `auth` class (10 per 5 min per address) applies to the whole suite from 127.0.0.1, so
   each run gets its own rate-limit prefix and the suite has a documented budget
-  (`E2E_AUTH_BUDGET` = 9 today). The limiter is **not** disabled.
+  (`E2E_AUTH_BUDGET` = 9 today). The limiter is **not** disabled. _(Superseded in P2-04,
+  ADR-0021: per-test client addresses instead of a suite-wide budget.)_
 - Chromium logs every 401 as a console error; tests on signed-out pages declare exactly that
   message as expected (`expectedConsoleErrors`), everything else still fails the test.
 

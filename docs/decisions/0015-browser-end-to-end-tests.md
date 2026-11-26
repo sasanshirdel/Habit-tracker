@@ -81,5 +81,9 @@ browser or services and check the server's responses exactly.
   that sign in/out start signed out with their own account; each run uses its own rate-limit
   prefix and the suite stays within `E2E_AUTH_BUDGET` sign-ups/sign-ins (the `auth` limit is not
   switched off); signed-out pages may declare Chromium's 401 console message as expected.
+- Since P2-04 (ADR-0021): the suite also starts the built worker (`MAIL_TRANSPORT=outbox`, links
+  read from `apps/web/e2e/.outbox`), and `E2E_AUTH_BUDGET` is replaced by **per-test client
+  addresses**: the API trusts one proxy hop and each test's context sends its own
+  `X-Forwarded-For` on API requests, so the unchanged `auth` limit budgets each test separately.
 - The suite grows per phase toward the 15 PRD journeys (P12-01). New pages get the guard for free;
   a page that legitimately logs an error must fix it rather than opt out.
