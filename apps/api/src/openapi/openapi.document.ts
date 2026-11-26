@@ -3,6 +3,8 @@ import { METHOD_METADATA, PATH_METADATA, ROUTE_ARGS_METADATA } from '@nestjs/com
 import { RouteParamtypes } from '@nestjs/common/enums/route-paramtypes.enum.js';
 import { MetadataScanner, Reflector, type ModulesContainer } from '@nestjs/core';
 import { z } from 'zod';
+import { CSRF_HEADER_NAME } from '@habit/shared-types';
+import { isUnsafeMethod, routeAuthPolicy, type RouteAuthPolicy } from '../common/auth/index.js';
 import { REQUEST_ID_HEADER } from '../common/request/request-context.js';
 import { ZodValidationPipe } from '../common/validation/zod-validation.pipe.js';
 import { routeRateLimitPolicies } from '../rate-limit/rate-limit.guard.js';
@@ -15,7 +17,9 @@ import {
 } from './api-doc.decorator.js';
 import {
   apiErrorSchema,
+  csrfFailedErrorSchema,
   rateLimitedErrorSchema,
+  unauthenticatedErrorSchema,
   validationFailedErrorSchema,
 } from './common.schemas.js';
 import { componentIdOf, componentIds, componentSchema } from './schema-registry.js';
@@ -60,7 +64,11 @@ export interface OpenApiDocument {
   servers: { url: string; description: string }[];
   tags: { name: string; description?: string }[];
   paths: Record<string, Record<string, Json>>;
-  components: { schemas: Record<string, Json>; headers: Record<string, Json> };
+  components: {
+    schemas: Record<string, Json>;
+    headers: Record<string, Json>;
+    securitySchemes: Record<string, Json>;
+  };
 }
 
 export interface BuildOptions {
@@ -111,6 +119,39 @@ const HEADERS: Record<string, Json> = {
     schema: { type: 'integer', minimum: 1 },
   },
 };
+
+/**
+ * Authentication (P2-03, ADR-0019): the session cookie, plus the CSRF header on state-changing
+ * requests. Browsers send the cookie automatically (`credentials: 'include'`).
+ */
+export const SECURITY_SCHEMES: Record<string, Json> = {
+  sessionCookie: {
+    type: 'apiKey',
+    in: 'cookie',
+    name: '__Host-session',
+    description:
+      'Opaque session token set by `POST /auth/login` (`HttpOnly; Secure; SameSite=Lax`). ' +
+      '30 days absolute, 7 days idle.',
+  },
+  csrfToken: {
+    type: 'apiKey',
+    in: 'header',
+    name: CSRF_HEADER_NAME,
+    description:
+      'Session-bound CSRF token from `POST /auth/login` or `GET /auth/session`; required with the ' +
+      'session cookie on POST/PUT/PATCH/DELETE. Browsers must also send an allowed `Origin`.',
+  },
+};
+
+/** The operation's `security` requirement for its auth policy and method. */
+function securityFor(auth: RouteAuthPolicy, method: string): Json[] {
+  const session: Json = isUnsafeMethod(method)
+    ? { sessionCookie: [], csrfToken: [] }
+    : { sessionCookie: [] };
+  if (auth === 'required') return [session];
+  if (auth === 'optional') return [{}, session];
+  return [];
+}
 
 const RATE_LIMIT_HEADERS: Record<string, Json> = {
   'RateLimit-Limit': headerRef('RateLimitLimit'),
@@ -310,6 +351,8 @@ export function buildOpenApiDocument(
             args,
             pathParams: converted.params,
             policies: routeRateLimitPolicies(reflector, handler, controller),
+            auth: routeAuthPolicy(reflector, handler, controller),
+            method,
           });
           operations.push({ path: converted.path, method, object });
         } catch (error) {
@@ -336,7 +379,7 @@ export function buildOpenApiDocument(
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([name, description]) => (description ? { name, description } : { name })),
     paths,
-    components: { schemas: {}, headers: HEADERS },
+    components: { schemas: {}, headers: HEADERS, securitySchemes: SECURITY_SCHEMES },
   };
   document.components.schemas = reachableComponents(document, schemaOfComponents());
   return document;
@@ -348,6 +391,9 @@ interface OperationInput {
   args: Record<string, RouteArg>;
   pathParams: string[];
   policies: ReturnType<typeof routeRateLimitPolicies>;
+  auth: RouteAuthPolicy;
+  /** Lower-case HTTP method. */
+  method: string;
 }
 
 function zodPipeOf(arg: RouteArg): ZodValidationPipe<z.ZodType> | undefined {
@@ -455,6 +501,27 @@ function buildOperation(input: OperationInput): Json {
     };
     (responses['429'].headers as Json)['Retry-After'] = headerRef('RetryAfter');
   }
+  if (input.auth === 'required' && !responses['401']) {
+    responses['401'] = response(
+      {
+        description: 'Not signed in or the session ended (`UNAUTHENTICATED`).',
+        schema: unauthenticatedErrorSchema,
+      },
+      { rateLimitHeaders: false },
+    );
+  }
+  if (isUnsafeMethod(input.method) && !responses['403']) {
+    responses['403'] = response(
+      {
+        description:
+          input.auth === 'public'
+            ? 'Foreign `Origin` or cross-site request (`CSRF_FAILED`).'
+            : 'Foreign `Origin`/cross-site request, or missing/wrong `X-CSRF-Token` (`CSRF_FAILED`).',
+        schema: csrfFailedErrorSchema,
+      },
+      { rateLimitHeaders: false },
+    );
+  }
   if (policies.some((p) => p.onStoreFailure === 'deny') && !responses['503']) {
     responses['503'] = response(
       {
@@ -482,6 +549,8 @@ function buildOperation(input: OperationInput): Json {
     ...(parameters.length > 0 ? { parameters } : {}),
     ...(requestBody ? { requestBody } : {}),
     responses,
+    // Explicit on every operation (P2-03): `[]` = public, `[{}, …]` = session optional.
+    security: securityFor(input.auth, input.method),
     // Rate-limit classes the route counts against (ADR-0011); absent for exempt probes.
     ...(policies.length > 0
       ? {

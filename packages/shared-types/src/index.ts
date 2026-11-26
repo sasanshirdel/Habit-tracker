@@ -14,10 +14,12 @@ export type {
   ReadinessResponse,
 } from './health.js';
 export type { PageInfo, Paginated } from './pagination.js';
+export { CSRF_HEADER_NAME } from './auth.js';
 export type {
   AuthenticatedUser,
   LoginRequest,
   LoginResponse,
   RegisterRequest,
   RegistrationAcceptedResponse,
+  SessionResponse,
 } from './auth.js';

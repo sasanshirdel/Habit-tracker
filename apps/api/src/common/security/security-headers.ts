@@ -3,6 +3,7 @@ import type {
   CorsOptions,
   CorsOptionsDelegate,
 } from '@nestjs/common/interfaces/external/cors-options.interface.js';
+import { CSRF_HEADER_NAME } from '@habit/shared-types';
 import { REQUEST_ID_HEADER } from '../request/request-context.js';
 
 /**
@@ -76,7 +77,8 @@ export function corsOptions(origins: readonly string[]): CorsOptions {
     origin: [...origins],
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Accept', 'Accept-Language', 'Content-Type', 'X-Request-Id'],
+    // `X-CSRF-Token` since P2-03 (ADR-0019): the web app sends it on state-changing requests.
+    allowedHeaders: ['Accept', 'Accept-Language', 'Content-Type', 'X-Request-Id', CSRF_HEADER_NAME],
     exposedHeaders: [REQUEST_ID_HEADER, ...RATE_LIMIT_EXPOSED_HEADERS],
     maxAge: 600,
     optionsSuccessStatus: 204,

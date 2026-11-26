@@ -100,14 +100,25 @@ export class AuthService {
   }
 
   /**
-   * Ends every session of the user the presented session belongs to. Returns `false` when the
-   * token is not an active session (the caller answers 401).
+   * Ends every open session of the signed-in user (the `AuthGuard` has already resolved the
+   * presented session). Returns how many were ended.
    */
-  async logoutEverywhere(token: string | undefined): Promise<{ userId: string } | null> {
-    const session = await this.sessions.resolve(token);
-    if (!session) return null;
-    await this.sessions.revokeAllForUser(session.userId, 'sign_out_everywhere');
-    return { userId: session.userId };
+  async logoutEverywhere(userId: string): Promise<number> {
+    return this.sessions.revokeAllForUser(userId, 'sign_out_everywhere');
+  }
+
+  /**
+   * The signed-in account for `GET /auth/session`, or `null` if it disappeared between the guard's
+   * session check and this read (deleted concurrently).
+   */
+  async currentUser(userId: string): Promise<AuthenticatedUser | null> {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+      select: { id: true, email: true, emailVerifiedAt: true },
+    });
+    return user
+      ? { id: user.id, email: user.email, emailVerified: user.emailVerifiedAt !== null }
+      : null;
   }
 
   /** Re-hashes with the current parameters after a successful sign-in (best effort). */

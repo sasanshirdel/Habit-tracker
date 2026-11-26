@@ -4,7 +4,8 @@
  * P2-01 delivers the identity tables (users, profiles, preferences, password credentials,
  * sessions, single-use tokens — owned by this module) and the secret-token primitives. P2-02 adds
  * the Nest module with email/password registration, sign-in and sign-out (ADR-0018); P2-03 adds
- * the authentication guard on top of `SessionService`.
+ * the global deny-by-default `AuthGuard` with CSRF checks on top of `SessionService` (ADR-0019).
+ * Route markers (`@Public()`, `@CurrentUser()`) are platform code in `common/auth`.
  */
 export {
   IDENTITY_LIMITS,
@@ -13,6 +14,8 @@ export {
   SESSION_COOKIE_NAME,
   SESSION_IDLE_TIMEOUT_MS,
 } from './identity.constants.js';
+export { AuthGuard } from './auth.guard.js';
+export { CSRF_HEADER, CSRF_TOKEN_LENGTH, csrfTokenFor, csrfTokenMatches } from './csrf-token.js';
 export { IdentityModule } from './identity.module.js';
 export {
   LOGIN_LOCKOUT_POLICY,
@@ -21,6 +24,7 @@ export {
   type LoginThrottleStore,
 } from './login-throttle.js';
 export { ARGON2ID_PARAMS, PasswordHasher } from './password-hasher.js';
+export { RequestSessionResolver } from './request-session.resolver.js';
 export { SessionService, type ActiveSession } from './session.service.js';
 export {
   hashSecretToken,

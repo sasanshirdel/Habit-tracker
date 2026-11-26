@@ -9,11 +9,13 @@ export {
 export {
   apiErrorCodeSchema,
   apiErrorSchema,
+  csrfFailedErrorSchema,
   errorEnvelopeWith,
   pageInfoSchema,
   paginatedSchema,
   rateLimitErrorDetailsSchema,
   rateLimitedErrorSchema,
+  unauthenticatedErrorSchema,
   validationErrorDetailsSchema,
   validationFailedErrorSchema,
   validationIssueSchema,

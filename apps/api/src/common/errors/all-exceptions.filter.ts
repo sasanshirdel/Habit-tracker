@@ -21,6 +21,7 @@ const GENERIC_MESSAGES: Record<ApiErrorCode, string> = {
   UNAUTHENTICATED: 'Authentication required.',
   INVALID_CREDENTIALS: 'Invalid email or password.',
   FORBIDDEN: 'Not allowed.',
+  CSRF_FAILED: 'Request rejected: missing or invalid CSRF protection.',
   NOT_FOUND: 'Not found.',
   METHOD_NOT_ALLOWED: 'Method not allowed.',
   CONFLICT: 'Conflict.',

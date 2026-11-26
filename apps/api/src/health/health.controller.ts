@@ -1,5 +1,6 @@
 import { Controller, Get, HttpStatus } from '@nestjs/common';
 import type { HealthResponse, ReadinessErrorDetails, ReadinessResponse } from '@habit/shared-types';
+import { Public } from '../common/auth/index.js';
 import { ApiException } from '../common/errors/api-exception.js';
 import { DatabaseHealthIndicator } from '../database/index.js';
 import { RedisHealthIndicator } from '../queue/redis.health.js';
@@ -27,8 +28,11 @@ export type { HealthResponse, ReadinessResponse };
  * Exempt from rate limiting (P1-08): orchestrators and load balancers poll these every few seconds
  * from a handful of addresses, and a throttled probe would take healthy instances out of service.
  * They read no user data and are cheap (the readiness checks are time-bounded).
+ *
+ * `@Public()` (P2-03): probes never carry a session.
  */
 @ApiTag('Health', 'Liveness and readiness probes for orchestrators and load balancers.')
+@Public()
 @SkipRateLimit()
 @Controller('health')
 export class HealthController {
