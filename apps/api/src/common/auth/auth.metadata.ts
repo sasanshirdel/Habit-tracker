@@ -65,6 +65,36 @@ export function routeAuthPolicy(
 export interface RequestPrincipal {
   readonly userId: string;
   readonly sessionId: string;
+  /** Whether the account's email address is verified (P2-04), as of this request. */
+  readonly emailVerified: boolean;
+}
+
+export const VERIFIED_EMAIL_METADATA = 'habit:auth:verified-email';
+
+/**
+ * Restricts a protected route to accounts with a **verified email address** (backlog P2-04,
+ * ADR-0021): a signed-in user whose address is not verified gets 403 `EMAIL_NOT_VERIFIED`
+ * (checked by the global `AuthGuard` after authentication and CSRF). Unverified users can sign in
+ * and use their own data; features that reach other people or rely on the address — changing the
+ * address, accountability invitations, email notifications, billing — use this marker when they
+ * are built. Meaningless on `@Public()` routes (no principal), so the guard ignores it there.
+ */
+export function RequireVerifiedEmail(): MethodDecorator & ClassDecorator {
+  return SetMetadata(VERIFIED_EMAIL_METADATA, true);
+}
+
+/** Whether the route (handler or controller) carries {@link RequireVerifiedEmail}. */
+export function requiresVerifiedEmail(
+  reflector: Reflector,
+  handler: Handler,
+  controller: Controller,
+): boolean {
+  return (
+    reflector.getAllAndOverride<boolean | undefined>(VERIFIED_EMAIL_METADATA, [
+      handler,
+      controller,
+    ]) === true
+  );
 }
 
 /**

@@ -12,6 +12,7 @@ import {
   attachPrincipal,
   checkRequestOrigin,
   isUnsafeMethod,
+  requiresVerifiedEmail,
   routeAuthPolicy,
 } from '../../common/auth/index.js';
 import { ApiException } from '../../common/errors/api-exception.js';
@@ -38,6 +39,8 @@ const CSRF_HEADER_LOWER = CSRF_HEADER.toLowerCase();
  *    `@Public({ session: 'optional' })` ones): `X-CSRF-Token` must equal the session's token
  *    → else 403 `CSRF_FAILED`.
  * Then the principal is attached for `@CurrentUser()` and its id goes into the log context.
+ * 4. **Verified email** (P2-04): on routes marked `@RequireVerifiedEmail()`, an account whose
+ *    address is not verified → 403 `EMAIL_NOT_VERIFIED`.
  *
  * Logs (info) only the rejection reason and method — never cookies, tokens or origins (the access
  * line of the same request carries the route and status).
@@ -84,6 +87,17 @@ export class AuthGuard implements CanActivate {
     }
     attachPrincipal(req, principal);
     setRequestUserId(principal.userId);
+    if (
+      !principal.emailVerified &&
+      requiresVerifiedEmail(this.reflector, context.getHandler(), context.getClass())
+    ) {
+      // P2-04 (ADR-0021): signed in, but this feature needs a verified address.
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        'EMAIL_NOT_VERIFIED',
+        'Verify your email address first.',
+      );
+    }
     return true;
   }
 

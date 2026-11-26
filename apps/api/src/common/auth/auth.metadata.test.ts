@@ -34,7 +34,7 @@ describe('routeAuthPolicy', () => {
 });
 
 describe('owner scoping', () => {
-  const me = { userId: 'u-1', sessionId: 's-1' };
+  const me = { userId: 'u-1', sessionId: 's-1', emailVerified: true };
   it('ownedBy scopes a query to the signed-in user', () => {
     expect(ownedBy(me)).toEqual({ userId: 'u-1' });
   });

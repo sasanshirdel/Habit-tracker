@@ -11,6 +11,8 @@ import { hashSecretToken, issueSecretToken } from './secret-token.js';
 export interface ActiveSession {
   readonly sessionId: string;
   readonly userId: string;
+  /** Whether the account's email address is verified (P2-04), read with the session. */
+  readonly emailVerified: boolean;
 }
 
 /** Why sessions were ended (subset of `SessionRevocationReason` used so far). */
@@ -54,7 +56,7 @@ export class SessionService {
         expiresAt: true,
         lastUsedAt: true,
         revokedAt: true,
-        user: { select: { deletedAt: true } },
+        user: { select: { deletedAt: true, emailVerifiedAt: true } },
       },
     });
     if (
@@ -72,7 +74,11 @@ export class SessionService {
         data: { lastUsedAt: now },
       });
     }
-    return { sessionId: session.id, userId: session.userId };
+    return {
+      sessionId: session.id,
+      userId: session.userId,
+      emailVerified: session.user.emailVerifiedAt !== null,
+    };
   }
 
   /**

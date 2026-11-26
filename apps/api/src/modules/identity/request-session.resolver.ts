@@ -44,7 +44,13 @@ export class RequestSessionResolver implements SessionResolver {
     const session = await this.sessions.resolve(token);
     return {
       presented: true,
-      principal: session ? { userId: session.userId, sessionId: session.sessionId } : null,
+      principal: session
+        ? {
+            userId: session.userId,
+            sessionId: session.sessionId,
+            emailVerified: session.emailVerified,
+          }
+        : null,
       token: session ? token : undefined,
     };
   }
