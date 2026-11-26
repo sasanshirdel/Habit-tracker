@@ -35,7 +35,8 @@ CORS moved from `main.ts` into `configureApp` (tested). A per-request delegate g
 headers `Accept, Accept-Language, Content-Type, X-Request-Id` (explicit, not reflected), exposed
 headers `x-request-id` + rate-limit headers, preflight cache 10 min — and switches CORS **off**
 for every other origin (no `Access-Control-*` header at all). `CORS_ORIGINS` entries are validated
-URLs, so `*` is impossible with credentials. P2-03 adds the CSRF header to the allowed list.
+URLs, so `*` is impossible with credentials. P2-03 added `X-CSRF-Token` to the allowed request
+headers and reuses `CORS_ORIGINS` as the CSRF origin allow-list (ADR-0019).
 
 ### Rate limiting — global guard, named classes, Redis fixed windows
 
