@@ -467,7 +467,11 @@ describe('AuthService enumeration resistance (no database)', () => {
       user: { id: account.id, email: account.email, emailVerified: false },
     });
     expect(sessions.revokeToken).toHaveBeenCalledWith('previous-token', 'rotated');
-    expect(sessions.create).toHaveBeenCalledWith(account.id);
+    expect(sessions.create).toHaveBeenCalledWith(account.id, {
+      browser: 'unknown',
+      os: 'unknown',
+      device: 'unknown',
+    });
   });
 
   it('locks unknown and known addresses alike after repeated failures', async () => {

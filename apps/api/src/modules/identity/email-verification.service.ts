@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import type { ClientDescription } from '@habit/shared-types';
 import { PrismaService } from '../../database/index.js';
+import { UNKNOWN_CLIENT } from './client-description.js';
 import { EMAIL_VERIFICATION_POLICY } from './email-verification.policy.js';
 import { hashSecretToken, issueSecretToken } from './secret-token.js';
+import { SecurityEventService } from './security-events.service.js';
 
 export type ConfirmResult = 'verified' | 'invalid';
 
@@ -19,10 +22,15 @@ export type ConfirmResult = 'verified' | 'invalid';
  *   and deleted-account tokens all give `invalid`.
  * - **Race-safe:** consumption is a conditional update inside a transaction; of two concurrent
  *   confirmations exactly one succeeds.
+ * - **Audited:** a verification records an `email_verified` security event in the same
+ *   transaction (P2-08, ADR-0023).
  */
 @Injectable()
 export class EmailVerificationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: SecurityEventService,
+  ) {}
 
   /**
    * Creates a token for `email` (the account's current address) and invalidates every earlier
@@ -55,7 +63,11 @@ export class EmailVerificationService {
   }
 
   /** Verifies the address the presented token was issued for, at most once. */
-  async confirm(presented: unknown, now = new Date()): Promise<ConfirmResult> {
+  async confirm(
+    presented: unknown,
+    client: ClientDescription = UNKNOWN_CLIENT,
+    now = new Date(),
+  ): Promise<ConfirmResult> {
     const tokenHash = hashSecretToken(presented);
     if (!tokenHash) return 'invalid';
     return this.prisma.$transaction(async (tx) => {
@@ -87,13 +99,16 @@ export class EmailVerificationService {
         data: { consumedAt: now },
       });
       if (consumed.count !== 1) return 'invalid'; // used concurrently
-      await tx.user.updateMany({
+      const verified = await tx.user.updateMany({
         where: { id: row.userId, emailVerifiedAt: null },
         data: { emailVerifiedAt: now },
       });
       await tx.userToken.deleteMany({
         where: { userId: row.userId, purpose: 'email_verification', consumedAt: null },
       });
+      if (verified.count === 1) {
+        await this.events.record(tx, row.userId, 'email_verified', client, now);
+      }
       return 'verified';
     });
   }

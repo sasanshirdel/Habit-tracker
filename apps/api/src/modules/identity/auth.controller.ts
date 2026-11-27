@@ -37,6 +37,7 @@ import {
   type RegisterInput,
 } from './auth.schemas.js';
 import { AuthService } from './auth.service.js';
+import { describeClient } from './client-description.js';
 import { csrfTokenFor } from './csrf-token.js';
 import { LoginLockedError } from './login-throttle.js';
 import { PasswordRecoveryService } from './password-recovery.service.js';
@@ -55,7 +56,8 @@ const COOKIE_NOTE =
  * the CSRF token when a live session is presented), logout-everywhere and the session read are
  * protected. Email verification (P2-04, ADR-0021): confirm is public (origin check, `auth` class),
  * resend is protected. Password recovery (P2-05, ADR-0022): request and confirm are public
- * (origin check, `auth` class). Out of scope: the session list and security events (P2-08).
+ * (origin check, `auth` class). Sign-in, sign-out, verification and reset write security events
+ * (P2-08, ADR-0023); the session list and revocation are `AccountController`.
  */
 @ApiTag('Auth', 'Registration, sign-in and sign-out with email and password.')
 @Controller('auth')
@@ -130,7 +132,7 @@ export class AuthController {
   ): Promise<LoginResponse> {
     let result;
     try {
-      result = await this.auth.login(body, readSessionCookie(req));
+      result = await this.auth.login(body, readSessionCookie(req), describeClient(req));
     } catch (error) {
       if (error instanceof LoginLockedError) {
         res.setHeader('Retry-After', String(error.retryAfterSeconds));
@@ -164,7 +166,7 @@ export class AuthController {
     @Req() req: IncomingMessage,
     @Res({ passthrough: true }) res: ServerResponse,
   ): Promise<void> {
-    await this.auth.logout(readSessionCookie(req));
+    await this.auth.logout(readSessionCookie(req), describeClient(req));
     clearSessionCookie(res);
   }
 
@@ -180,9 +182,10 @@ export class AuthController {
   @Post('logout-everywhere')
   async logoutEverywhere(
     @CurrentUser() user: RequestPrincipal,
+    @Req() req: IncomingMessage,
     @Res({ passthrough: true }) res: ServerResponse,
   ): Promise<void> {
-    await this.auth.logoutEverywhere(user.userId);
+    await this.auth.logoutEverywhere(user.userId, describeClient(req));
     clearSessionCookie(res);
   }
 
@@ -231,8 +234,9 @@ export class AuthController {
   @Post('verification/confirm')
   async confirmEmail(
     @Body(new ZodValidationPipe(confirmEmailBodySchema)) body: ConfirmEmailInput,
+    @Req() req: IncomingMessage,
   ): Promise<EmailVerifiedResponse> {
-    const result = await this.auth.confirmEmail(body.token);
+    const result = await this.auth.confirmEmail(body.token, describeClient(req));
     if (result !== 'verified') {
       throw new ApiException(
         HttpStatus.BAD_REQUEST,
@@ -330,8 +334,13 @@ export class AuthController {
   @Post('password-reset/confirm')
   async resetPassword(
     @Body(new ZodValidationPipe(passwordResetConfirmBodySchema)) body: PasswordResetConfirmBody,
+    @Req() req: IncomingMessage,
   ): Promise<PasswordResetResponse> {
-    const result = await this.recovery.resetPassword(body.token, body.password);
+    const result = await this.recovery.resetPassword(
+      body.token,
+      body.password,
+      describeClient(req),
+    );
     if (result !== 'reset') {
       throw new ApiException(
         HttpStatus.BAD_REQUEST,

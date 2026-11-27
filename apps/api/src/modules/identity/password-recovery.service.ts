@@ -1,7 +1,9 @@
 import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
+import type { ClientDescription } from '@habit/shared-types';
 import { PrismaService } from '../../database/index.js';
 import { OutageLogger } from '../../queue/outage-logger.js';
 import { QueueProducer } from '../../queue/queue-producer.service.js';
+import { UNKNOWN_CLIENT } from './client-description.js';
 import { LoginThrottle, keyFor } from './login-throttle.js';
 import { PasswordHasher } from './password-hasher.js';
 import {
@@ -106,11 +108,15 @@ export class PasswordRecoveryService implements OnApplicationShutdown {
   }
 
   /** Sets a new password with an emailed reset token (see the class comment). */
-  async resetPassword(token: string, password: string): Promise<ResetPasswordOutcome> {
+  async resetPassword(
+    token: string,
+    password: string,
+    client: ClientDescription = UNKNOWN_CLIENT,
+  ): Promise<ResetPasswordOutcome> {
     // Hash only for a link that can still work (Argon2id is deliberately expensive).
     if (!(await this.tokens.isUsable(token))) return 'invalid';
     const passwordHash = await this.hasher.hash(password);
-    const result = await this.tokens.reset(token, passwordHash);
+    const result = await this.tokens.reset(token, passwordHash, client);
     if (result.kind !== 'reset') return 'invalid';
     this.logger.log({
       msg: 'password reset',

@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { AuthenticatedUser } from '@habit/shared-types';
+import type { AuthenticatedUser, ClientDescription } from '@habit/shared-types';
 import { PrismaService } from '../../database/index.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { QueueProducer } from '../../queue/queue-producer.service.js';
 import type { LoginInput, RegisterInput } from './auth.schemas.js';
+import { UNKNOWN_CLIENT } from './client-description.js';
 import { EmailVerificationService, type ConfirmResult } from './email-verification.service.js';
 import { VERIFICATION_EMAIL_JOB, registrationEmailJobId } from './email-verification.policy.js';
 import { LoginThrottle } from './login-throttle.js';
@@ -105,16 +106,24 @@ export class AuthService {
   }
 
   /** Consumes a verification token (P2-04); see `EmailVerificationService.confirm`. */
-  async confirmEmail(token: string): Promise<ConfirmResult> {
-    return this.verification.confirm(token);
+  async confirmEmail(
+    token: string,
+    client: ClientDescription = UNKNOWN_CLIENT,
+  ): Promise<ConfirmResult> {
+    return this.verification.confirm(token, client);
   }
 
   /**
    * Verifies the credentials and opens a session. `previousToken` (the cookie the browser already
    * had, if any) is revoked as `rotated`, so a session id planted before sign-in never becomes
-   * authenticated (session fixation).
+   * authenticated (session fixation). The new session carries the coarse `client` description and
+   * a `sign_in` security event is recorded with it (P2-08).
    */
-  async login(input: LoginInput, previousToken: string | undefined): Promise<LoginResult> {
+  async login(
+    input: LoginInput,
+    previousToken: string | undefined,
+    client: ClientDescription = UNKNOWN_CLIENT,
+  ): Promise<LoginResult> {
     await this.throttle.assertNotLocked(input.email);
 
     const user = await this.prisma.user.findFirst({
@@ -137,7 +146,7 @@ export class AuthService {
     await this.throttle.recordSuccess(input.email);
     if (verification.needsRehash) await this.upgradeHash(user.id, input.password);
     if (previousToken !== undefined) await this.sessions.revokeToken(previousToken, 'rotated');
-    const { token } = await this.sessions.create(user.id);
+    const { token } = await this.sessions.create(user.id, client);
     return {
       kind: 'signed-in',
       token,
@@ -145,17 +154,28 @@ export class AuthService {
     };
   }
 
-  /** Ends the presented session, if any (idempotent). */
-  async logout(token: string | undefined): Promise<void> {
-    if (token !== undefined) await this.sessions.revokeToken(token, 'sign_out');
+  /** Ends the presented session, if any (idempotent); records `sign_out` when one ended. */
+  async logout(
+    token: string | undefined,
+    client: ClientDescription = UNKNOWN_CLIENT,
+  ): Promise<void> {
+    if (token !== undefined) {
+      await this.sessions.revokeToken(token, 'sign_out', { event: 'sign_out', client });
+    }
   }
 
   /**
    * Ends every open session of the signed-in user (the `AuthGuard` has already resolved the
-   * presented session). Returns how many were ended.
+   * presented session) and records `signed_out_everywhere`. Returns how many were ended.
    */
-  async logoutEverywhere(userId: string): Promise<number> {
-    return this.sessions.revokeAllForUser(userId, 'sign_out_everywhere');
+  async logoutEverywhere(
+    userId: string,
+    client: ClientDescription = UNKNOWN_CLIENT,
+  ): Promise<number> {
+    return this.sessions.revokeAllForUser(userId, 'sign_out_everywhere', {
+      event: 'signed_out_everywhere',
+      client,
+    });
   }
 
   /**

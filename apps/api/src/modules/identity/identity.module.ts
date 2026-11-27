@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { SESSION_RESOLVER } from '../../common/auth/index.js';
 import { MailModule } from '../../mail/index.js';
+import { AccountController } from './account.controller.js';
 import { AuthController } from './auth.controller.js';
 import { AuthGuard } from './auth.guard.js';
 import { AuthService } from './auth.service.js';
@@ -15,6 +16,7 @@ import {
 } from './password-reset-email.handler.js';
 import { PasswordResetService } from './password-reset.service.js';
 import { RequestSessionResolver } from './request-session.resolver.js';
+import { SecurityEventService } from './security-events.service.js';
 import { SessionService } from './session.service.js';
 import { VerificationEmailHandler } from './verification-email.handler.js';
 import {
@@ -37,14 +39,16 @@ import {
  * email) lives here; the worker side (issuing tokens and sending the email) is
  * {@link IdentityJobsModule}, which the worker process imports. Password recovery (P2-05,
  * ADR-0022) is split the same way: request/reset routes here, reset-link and "password changed"
- * emails in the worker.
+ * emails in the worker. Session management and security events (P2-08, ADR-0023):
+ * `AccountController` and `SecurityEventService`.
  */
 @Global()
 @Module({
-  controllers: [AuthController],
+  controllers: [AuthController, AccountController],
   providers: [
     AuthService,
     SessionService,
+    SecurityEventService,
     PasswordHasher,
     LoginThrottle,
     RequestSessionResolver,
@@ -70,6 +74,7 @@ export class IdentityModule {}
 @Module({
   imports: [MailModule],
   providers: [
+    SecurityEventService,
     EmailVerificationService,
     VerificationEmailHandler,
     PasswordResetService,
