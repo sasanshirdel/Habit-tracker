@@ -60,6 +60,14 @@ security-settings.tsx` (devices with "This device", sign out one / all others be
   `useSecurityEvents` — infinite queries — `useRevokeSession`, `useRevokeOtherSessions`).
   Messages: `settings.*`. Playwright: `e2e/browser/sessions.spec.ts`.
 
+- **Settings → Profile / Preferences** (P2-07, ADR-0024): `/{locale}/settings/profile` (display
+  name) and `/{locale}/settings/preferences` (language, time zone, calendar, week start, theme) in
+  `components/settings/{profile,preferences}-settings.tsx`, on `lib/account/preferences.ts`
+  (`useProfile`, `usePreferences`, update mutations, `applyTheme`, `useDateDisplay` — the profile
+  time zone and `Intl` calendar for any date shown to a signed-in user). Saving a language moves to
+  that locale's route; the shell's theme switcher (`syncWithAccount`) follows and saves the
+  account theme. Playwright: `e2e/browser/profile-preferences.spec.ts`.
+
 - **Data layer** (P1-12, ADR-0014): `lib/api/client.ts` (`createApiClient`; the app's instance is
   `lib/api/api.ts`, base URL `NEXT_PUBLIC_API_BASE_URL`), `lib/api/errors.ts` (`ApiError`, client
   codes), `lib/api/query-client.ts` (TanStack Query defaults, `QueryProvider` in the locale layout),
