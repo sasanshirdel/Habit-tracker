@@ -348,6 +348,11 @@ describe('auth request schemas', () => {
     });
   });
 
+  it('treats a blank display name as none (same rule as PATCH /account/profile, P2-07)', () => {
+    expect(registerBodySchema.parse({ ...valid, displayName: '   ' }).displayName).toBeNull();
+    expect(registerBodySchema.parse(valid).displayName).toBeUndefined();
+  });
+
   it.each([
     ['unknown field', { ...valid, isAdmin: true }],
     ['short password', { ...valid, password: 'short' }],
@@ -355,7 +360,7 @@ describe('auth request schemas', () => {
     ['bad email', { ...valid, email: 'not-an-email' }],
     ['unsupported locale', { ...valid, locale: 'de' }],
     ['offset time zone', { ...valid, timezone: '+03:30' }],
-    ['empty display name', { ...valid, displayName: '   ' }],
+    ['display name with a line break', { ...valid, displayName: 'Sara\nAhmadi' }],
     ['long display name', { ...valid, displayName: 'x'.repeat(101) }],
     ['missing locale', { email: valid.email, password: valid.password, timezone: valid.timezone }],
   ])('rejects registration with %s', (_name, body) => {

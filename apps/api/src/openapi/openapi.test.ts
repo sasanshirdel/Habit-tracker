@@ -85,6 +85,8 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     expect(doc.openapi).toBe('3.1.1');
     expect(doc.servers).toEqual([{ url: '/api/v1', description: expect.any(String) }]);
     expect(Object.keys(doc.paths)).toEqual([
+      '/account/preferences',
+      '/account/profile',
       '/account/security-events',
       '/account/sessions',
       '/account/sessions/{id}',
@@ -103,7 +105,10 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     ]);
     expect(op(doc, '/health', 'get').operationId).toBe('getLiveness');
     expect(op(doc, '/health/ready', 'get').operationId).toBe('getReadiness');
-    expect(doc.tags.map((t) => t.name)).toEqual(['Account', 'Auth', 'Health']);
+    expect(doc.tags.map((t) => t.name)).toEqual(['Account', 'Auth', 'Health', 'Profile']);
+    // P2-07: profile and preferences are read with GET and changed with PATCH.
+    expect(op(doc, '/account/profile', 'patch').operationId).toBe('updateProfile');
+    expect(op(doc, '/account/preferences', 'patch').operationId).toBe('updatePreferences');
   });
 
   it('references the response components and keeps only reachable ones', () => {
@@ -144,6 +149,8 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'SecurityEventList',
       'SessionResponse',
       'UnauthenticatedError',
+      'UserPreferences',
+      'UserProfile',
       'ValidationErrorDetails',
       'ValidationFailedError',
       'ValidationIssue',

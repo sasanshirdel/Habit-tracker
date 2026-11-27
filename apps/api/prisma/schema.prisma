@@ -54,6 +54,23 @@ enum ThemePreference {
   @@map("theme_preference")
 }
 
+/// Calendar dates are shown in (P2-07, ADR-0024). Display only: storage stays UTC / ISO dates.
+enum CalendarSystem {
+  gregorian
+  solar_hijri
+
+  @@map("calendar_system")
+}
+
+/// First day of the week in weekly views (P2-07, ADR-0024).
+enum WeekStart {
+  saturday
+  sunday
+  monday
+
+  @@map("week_start")
+}
+
 /// What a single-use emailed token may be used for.
 enum UserTokenPurpose {
   email_verification
@@ -147,7 +164,8 @@ model User {
   @@map("users")
 }
 
-/// Public-facing profile details (avatar arrives with P2-07).
+/// Public-facing profile details, edited at `PATCH /account/profile` (P2-07). Avatar upload is a
+/// follow-up of P2-07 that waits for the object-storage decision (ROADMAP "Outstanding decisions" #3).
 model UserProfile {
   userId      String   @id @map("user_id") @db.Uuid
   /// 1..100 characters when set.
@@ -168,6 +186,11 @@ model UserPreference {
   /// IANA time zone name (validated by the application; 1..64 characters).
   timezone  String
   theme     ThemePreference @default(dark)
+  /// Set from the registration locale (fa → solar_hijri, en → gregorian); the default only
+  /// covers rows written before P2-07, which the migration backfilled the same way.
+  calendar  CalendarSystem  @default(gregorian)
+  /// Set from the registration locale (fa → saturday, en → monday), like `calendar`.
+  weekStart WeekStart       @default(monday) @map("week_start")
   createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 

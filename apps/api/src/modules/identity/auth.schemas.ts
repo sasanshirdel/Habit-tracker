@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  displayNameSchema,
   localeSchema,
   passwordResetRequestSchema,
   passwordResetSchema,
@@ -8,7 +9,6 @@ import {
   timeZoneSchema,
 } from '@habit/shared-validation';
 import { component, errorEnvelopeWith } from '../../openapi/index.js';
-import { IDENTITY_LIMITS } from './identity.constants.js';
 
 /**
  * Request and response schemas of the auth routes (backlog P2-02, ADR-0018). Request schemas are
@@ -29,13 +29,11 @@ export const registerBodySchema = z.strictObject({
   }),
   locale: localeSchema.meta({ description: 'Language the user registered in (`en` or `fa`).' }),
   timezone: timeZoneSchema.meta({ description: 'IANA time zone, e.g. `Asia/Tehran`.' }),
-  displayName: z
-    .string()
-    .trim()
-    .min(1)
-    .max(IDENTITY_LIMITS.displayNameMaxLength)
-    .optional()
-    .meta({ description: 'Optional, 1–100 characters after trimming.' }),
+  displayName: displayNameSchema.optional().meta({
+    description:
+      'Optional, up to 100 characters after the same normalisation as `PATCH /account/profile` ' +
+      '(NFKC, single spaces, trimmed); blank means none.',
+  }),
 });
 export type RegisterInput = z.output<typeof registerBodySchema>;
 

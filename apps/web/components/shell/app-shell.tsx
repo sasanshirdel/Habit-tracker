@@ -40,6 +40,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
             <div className="ms-auto flex items-center gap-2">
               <LanguageSwitcher />
               <ThemeSwitcher
+                syncWithAccount
                 initial={parseThemePreference(cookieStore.get(THEME_COOKIE)?.value)}
                 labels={{
                   label: tTheme('label'),
