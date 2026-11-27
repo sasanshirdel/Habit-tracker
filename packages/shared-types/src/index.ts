@@ -30,3 +30,23 @@ export type {
   SessionResponse,
   VerificationEmailAcceptedResponse,
 } from './auth.js';
+export {
+  CLIENT_BROWSERS,
+  CLIENT_DEVICES,
+  CLIENT_OSES,
+  ENDED_SESSION_RETENTION_DAYS,
+  SECURITY_EVENT_RETENTION_DAYS,
+  SECURITY_EVENT_TYPES,
+} from './account.js';
+export type {
+  AccountSession,
+  AccountSessionList,
+  ClientBrowser,
+  ClientDescription,
+  ClientDevice,
+  ClientOs,
+  RevokeOtherSessionsResponse,
+  SecurityEvent,
+  SecurityEventList,
+  SecurityEventType,
+} from './account.js';

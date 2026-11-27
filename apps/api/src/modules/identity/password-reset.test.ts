@@ -292,7 +292,11 @@ describe('PasswordRecoveryService', () => {
     const { service, hasher, tokens, queue, loginThrottle } = setup();
     expect(await service.resetPassword('t', 'new password 1')).toBe('reset');
     expect(hasher.hash).toHaveBeenCalledWith('new password 1');
-    expect(tokens.reset).toHaveBeenCalledWith('t', '$argon2id$v=19$stub');
+    expect(tokens.reset).toHaveBeenCalledWith('t', '$argon2id$v=19$stub', {
+      browser: 'unknown',
+      os: 'unknown',
+      device: 'unknown',
+    });
     expect(loginThrottle.recordSuccess).toHaveBeenCalledWith('sara@example.com');
     expect(queue.enqueue).toHaveBeenCalledWith(
       PASSWORD_CHANGED_EMAIL_JOB,

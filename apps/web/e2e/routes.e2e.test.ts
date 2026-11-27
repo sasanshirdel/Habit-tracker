@@ -225,6 +225,17 @@ describe('application shell (P1-11)', () => {
       },
     );
 
+    it(`/${locale}/settings/security (P2-08) renders inside the shell behind the auth gate`, async () => {
+      const res = await get(`/${locale}/settings/security`);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(htmlTag(html)).toContain(`dir="${dir}"`);
+      expect(html).toContain('data-auth-gate="checking"');
+      // No user data and no page content in the server HTML.
+      expect(html).not.toContain('data-sessions');
+      expect(html).toMatch(/<meta name="robots" content="noindex, nofollow"/);
+    });
+
     it('has the landmarks: skip link first, labelled navigation, banner, main', async () => {
       const html = await (await get(`/${locale}/habits`)).text();
       const body = html.slice(html.indexOf('<body'));

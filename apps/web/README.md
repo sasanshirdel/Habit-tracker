@@ -53,6 +53,13 @@ Next.js 16 App Router frontend, bilingual from the first page:
   `signOut`), `lib/auth/redirect.ts` (`safeNextPath`: `next` only for in-app section paths),
   `components/auth/account-menu.tsx` (banner: who is signed in, sign out). Messages: `auth.*`.
 
+- **Settings → Sessions and security** (P2-08, ADR-0023): `/{locale}/settings/security`
+  (`app/[locale]/(app)/settings/security`, linked from `/settings`), `components/settings/
+security-settings.tsx` (devices with "This device", sign out one / all others behind a
+  confirmation dialog, recent security activity) on `lib/auth/account.ts` (`useAccountSessions`,
+  `useSecurityEvents` — infinite queries — `useRevokeSession`, `useRevokeOtherSessions`).
+  Messages: `settings.*`. Playwright: `e2e/browser/sessions.spec.ts`.
+
 - **Data layer** (P1-12, ADR-0014): `lib/api/client.ts` (`createApiClient`; the app's instance is
   `lib/api/api.ts`, base URL `NEXT_PUBLIC_API_BASE_URL`), `lib/api/errors.ts` (`ApiError`, client
   codes), `lib/api/query-client.ts` (TanStack Query defaults, `QueryProvider` in the locale layout),

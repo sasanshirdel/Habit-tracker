@@ -69,8 +69,60 @@ enum SessionRevocationReason {
   rotated
   password_changed
   account_deleted
+  /// Ended from another session's device list (P2-08): one session, or "all other devices".
+  revoked_by_user
 
   @@map("session_revocation_reason")
+}
+
+/// Coarse browser family derived from the User-Agent at sign-in (P2-08, ADR-0023). Never the raw
+/// header or a version.
+enum ClientBrowser {
+  chrome
+  edge
+  firefox
+  safari
+  opera
+  samsung_internet
+  unknown
+
+  @@map("client_browser")
+}
+
+/// Coarse operating-system family (P2-08, ADR-0023).
+enum ClientOs {
+  windows
+  macos
+  ios
+  android
+  linux
+  chromeos
+  unknown
+
+  @@map("client_os")
+}
+
+/// Coarse device class (P2-08, ADR-0023).
+enum ClientDevice {
+  desktop
+  mobile
+  tablet
+  unknown
+
+  @@map("client_device")
+}
+
+/// What a security event records (P2-08, ADR-0023).
+enum SecurityEventType {
+  sign_in
+  sign_out
+  signed_out_everywhere
+  signed_out_other_sessions
+  session_revoked
+  password_reset
+  email_verified
+
+  @@map("security_event_type")
 }
 
 /// A customer account (ADR-0005: never an administrator; staff use a separate identity table).
@@ -90,6 +142,7 @@ model User {
   passwordCredential UserPasswordCredential?
   sessions           UserSession[]
   tokens             UserToken[]
+  securityEvents     UserSecurityEvent[]
 
   @@map("users")
 }
@@ -149,12 +202,36 @@ model UserSession {
   expiresAt     DateTime                 @map("expires_at") @db.Timestamptz(3)
   revokedAt     DateTime?                @map("revoked_at") @db.Timestamptz(3)
   revokedReason SessionRevocationReason? @map("revoked_reason")
+  /// Coarse client description from the User-Agent at sign-in (P2-08, ADR-0023). No raw user
+  /// agent and no IP address are stored.
+  clientBrowser ClientBrowser            @default(unknown) @map("client_browser")
+  clientOs      ClientOs                 @default(unknown) @map("client_os")
+  clientDevice  ClientDevice             @default(unknown) @map("client_device")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
   @@map("user_sessions")
+}
+
+/// A security-relevant event of a customer account, shown to the user (P2-08, ADR-0023). Written in
+/// the same transaction as the change it records; kept for the retention window only. Holds no IP
+/// address, user agent, email or token.
+model UserSecurityEvent {
+  id            String            @id @default(uuid(7)) @db.Uuid
+  userId        String            @map("user_id") @db.Uuid
+  type          SecurityEventType
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  clientBrowser ClientBrowser     @default(unknown) @map("client_browser")
+  clientOs      ClientOs          @default(unknown) @map("client_os")
+  clientDevice  ClientDevice      @default(unknown) @map("client_device")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("user_security_events")
 }
 
 /// Single-use emailed token for email verification (P2-04) or password reset (P2-05). Only the

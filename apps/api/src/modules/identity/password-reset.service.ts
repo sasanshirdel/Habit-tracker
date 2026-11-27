@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import type { ClientDescription } from '@habit/shared-types';
 import { PrismaService } from '../../database/index.js';
+import { UNKNOWN_CLIENT } from './client-description.js';
 import { PASSWORD_RESET_POLICY } from './password-reset.policy.js';
 import { hashSecretToken, issueSecretToken } from './secret-token.js';
+import { SecurityEventService } from './security-events.service.js';
 
 /** Outcome of presenting a reset token with a new password. */
 export type PasswordResetResult =
@@ -64,11 +67,15 @@ const ROW_SELECT = {
  * - **One transaction** for a successful reset: consume the token, store the new Argon2id hash
  *   (creating the credential if the account had none), revoke **every** open session
  *   (`password_changed`), delete the other unused reset tokens, and mark the address verified
- *   (the token proves control of it; unused verification links are then deleted).
+ *   (the token proves control of it; unused verification links are then deleted), and record a
+ *   `password_reset` security event (P2-08, ADR-0023).
  */
 @Injectable()
 export class PasswordResetService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: SecurityEventService,
+  ) {}
 
   /**
    * Creates a reset token for `email` (the account's current address) and invalidates every
@@ -119,6 +126,7 @@ export class PasswordResetService {
   async reset(
     presented: unknown,
     passwordHash: string,
+    client: ClientDescription = UNKNOWN_CLIENT,
     now = new Date(),
   ): Promise<PasswordResetResult> {
     const tokenHash = hashSecretToken(presented);
@@ -154,6 +162,7 @@ export class PasswordResetService {
         where: { id: row.userId, emailVerifiedAt: null },
         data: { emailVerifiedAt: now },
       });
+      await this.events.record(tx, row.userId, 'password_reset', client, now);
       return {
         kind: 'reset',
         userId: row.userId,

@@ -85,6 +85,10 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     expect(doc.openapi).toBe('3.1.1');
     expect(doc.servers).toEqual([{ url: '/api/v1', description: expect.any(String) }]);
     expect(Object.keys(doc.paths)).toEqual([
+      '/account/security-events',
+      '/account/sessions',
+      '/account/sessions/{id}',
+      '/account/sessions/revoke-others',
       '/auth/login',
       '/auth/logout',
       '/auth/logout-everywhere',
@@ -99,7 +103,7 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     ]);
     expect(op(doc, '/health', 'get').operationId).toBe('getLiveness');
     expect(op(doc, '/health/ready', 'get').operationId).toBe('getReadiness');
-    expect(doc.tags.map((t) => t.name)).toEqual(['Auth', 'Health']);
+    expect(doc.tags.map((t) => t.name)).toEqual(['Account', 'Auth', 'Health']);
   });
 
   it('references the response components and keeps only reachable ones', () => {
@@ -111,9 +115,12 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'application/json': { schema: { $ref: '#/components/schemas/NotReadyError' } },
     });
     expect(Object.keys(doc.components.schemas)).toEqual([
+      'AccountSession',
+      'AccountSessionList',
       'ApiError',
       'ApiErrorCode',
       'AuthenticatedUser',
+      'ClientDescription',
       'CsrfFailedError',
       'DependencyStatus',
       'EmailVerifiedResponse',
@@ -121,7 +128,9 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'InvalidCredentialsError',
       'InvalidTokenError',
       'LoginResponse',
+      'NotFoundError',
       'NotReadyError',
+      'PageInfo',
       'PasswordResetAcceptedResponse',
       'PasswordResetResponse',
       'RateLimitErrorDetails',
@@ -130,6 +139,9 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'ReadinessErrorDetails',
       'ReadinessResponse',
       'RegistrationAcceptedResponse',
+      'RevokeOtherSessionsResponse',
+      'SecurityEvent',
+      'SecurityEventList',
       'SessionResponse',
       'UnauthenticatedError',
       'ValidationErrorDetails',
@@ -137,8 +149,8 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'ValidationIssue',
       'VerificationEmailAcceptedResponse',
     ]);
-    // Unused components (PageInfo) are pruned.
-    expect(doc.components.schemas.PageInfo).toBeUndefined();
+    // Unused components are pruned; PageInfo is reachable since the P2-08 lists.
+    expect(doc.components.schemas.PageInfo).toBeDefined();
   });
 
   it('declares the session cookie and CSRF header and states security on every operation (P2-03)', () => {

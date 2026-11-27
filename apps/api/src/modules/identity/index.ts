@@ -6,7 +6,7 @@
  * the Nest module with email/password registration, sign-in and sign-out (ADR-0018); P2-03 adds
  * the global deny-by-default `AuthGuard` with CSRF checks on top of `SessionService` (ADR-0019).
  * P2-04 adds email verification and the worker-side `IdentityJobsModule` (ADR-0021); P2-05 adds
- * password recovery (ADR-0022).
+ * password recovery (ADR-0022); P2-08 adds session management and security events (ADR-0023).
  * Route markers (`@Public()`, `@CurrentUser()`) are platform code in `common/auth`.
  */
 export {
@@ -77,7 +77,13 @@ export {
 } from './login-throttle.js';
 export { ARGON2ID_PARAMS, PasswordHasher } from './password-hasher.js';
 export { RequestSessionResolver } from './request-session.resolver.js';
-export { SessionService, type ActiveSession } from './session.service.js';
+export {
+  ENDED_SESSION_RETENTION_MS,
+  SessionService,
+  type ActiveSession,
+} from './session.service.js';
+export { SECURITY_EVENT_RETENTION_MS, SecurityEventService } from './security-events.service.js';
+export { UNKNOWN_CLIENT, describeClient, describeUserAgent } from './client-description.js';
 export {
   hashSecretToken,
   isWellFormedSecretToken,
