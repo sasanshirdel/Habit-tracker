@@ -121,7 +121,7 @@ test('desktop · /en: see devices → sign out one → sign out all others; acti
   );
   await dialog.getByRole('button', { name: m('en', 'sessions.revokeConfirm') }).click();
   expect((await revoked).status()).toBe(204);
-  await expect(page.getByText(m('en', 'sessions.revoked'))).toBeVisible();
+  await expect(page.getByText(m('en', 'sessions.revoked'), { exact: true })).toBeVisible();
   await expect(sessions).toHaveCount(1);
   await expect(page.locator('[data-only-this-device]')).toBeVisible();
   await expectSignedOut(phone.page, 'en');
@@ -144,7 +144,7 @@ test('desktop · /en: see devices → sign out one → sign out all others; acti
   await page.locator('[data-revoke-others]').click();
   const others = page.getByRole('dialog', { name: m('en', 'sessions.revokeOthersTitle') });
   await others.getByRole('button', { name: m('en', 'sessions.revokeOthersConfirm') }).click();
-  await expect(page.getByText('2 devices were signed out.')).toBeVisible();
+  await expect(page.getByText('2 devices were signed out.', { exact: true })).toBeVisible();
   await expect(sessions).toHaveCount(1);
   await expectSignedOut(laptop.page, 'en');
   await expectSignedOut(tablet.page, 'en');
@@ -189,7 +189,7 @@ test('phone · /fa: the page is Persian and right-to-left; keyboard reaches the 
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: m('fa', 'sessions.revokeConfirm') }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByText(m('fa', 'sessions.revoked'))).toBeVisible();
+  await expect(page.getByText(m('fa', 'sessions.revoked'), { exact: true })).toBeVisible();
   await expect(page.locator('[data-only-this-device]')).toBeVisible();
   await expectSignedOut(laptop.page, 'fa');
   await laptop.context.close();
