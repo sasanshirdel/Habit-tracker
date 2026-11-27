@@ -167,6 +167,14 @@ describe('ResetPasswordForm (P2-05)', () => {
     const confirm = screen.getByLabelText(en.fields.confirmPassword);
     expect(confirm.getAttribute('aria-invalid')).toBe('true');
     expect(http.publicPost).not.toHaveBeenCalled();
+
+    // Fixing the repeat field and pressing the button again sends it.
+    http.publicPost.mockResolvedValue({ status: 'password-reset' });
+    await user.clear(confirm);
+    await user.type(confirm, NEW_PASSWORD);
+    await user.click(screen.getByRole('button', { name: en.resetPassword.submit }));
+    expect(await screen.findByRole('heading', { name: en.resetPassword.doneTitle })).toBeTruthy();
+    expect(http.publicPost).toHaveBeenCalledOnce();
   });
 
   it('a missing or malformed token → "this link doesn\'t work" with a way to ask again (fa)', async () => {

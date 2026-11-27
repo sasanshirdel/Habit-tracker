@@ -45,7 +45,9 @@ export function SignUpForm({ next }: { next: string | null }) {
     resolver: schemaResolver<SignUpFields, SignUpCredentials>(signUpCredentialsSchema),
     defaultValues: { email: '', password: '' },
     mode: 'onSubmit',
-    reValidateMode: 'onBlur',
+    // After a failed submit, re-check while typing, not on blur: a message vanishing on blur moves
+    // the submit button between mouse-down and mouse-up and the click is lost (found in P2-05).
+    reValidateMode: 'onChange',
   });
 
   useEffect(() => {

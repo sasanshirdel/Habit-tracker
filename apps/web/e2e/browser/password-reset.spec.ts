@@ -127,7 +127,7 @@ test('desktop · /en: forgot password → emailed link → new password → othe
   await page.getByRole('link', { name: t.resetPassword!.signIn! }).click();
   await expect(page).toHaveURL('/en/auth/sign-in');
   await fillSignIn(page, 'en', email, oldPassword);
-  await expect(page.getByRole('alert')).toHaveText(t.errors!.invalidCredentials!);
+  await expect(page.getByText(t.errors!.invalidCredentials!)).toBeVisible();
   await fillSignIn(page, 'en', email, newPassword);
   await expect(page).toHaveURL('/en/overview');
   // Resetting proved the address: no verification reminder.

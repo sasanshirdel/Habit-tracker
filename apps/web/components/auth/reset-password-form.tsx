@@ -84,7 +84,9 @@ export function ResetPasswordForm() {
     resolver: schemaResolver<ResetFields, PasswordResetInput>(resetFormSchema),
     defaultValues: { password: '', confirm: '' },
     mode: 'onSubmit',
-    reValidateMode: 'onBlur',
+    // After a failed submit, re-check while typing (not on blur): clearing the "don't match"
+    // message on blur would move the button away between mouse-down and mouse-up, eating the click.
+    reValidateMode: 'onChange',
   });
 
   useEffect(() => {

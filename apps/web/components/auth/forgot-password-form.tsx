@@ -42,7 +42,9 @@ export function ForgotPasswordForm() {
     resolver: schemaResolver<ForgotFields, PasswordResetRequestInput>(passwordResetRequestSchema),
     defaultValues: { email: '' },
     mode: 'onSubmit',
-    reValidateMode: 'onBlur',
+    // After a failed submit, re-check while typing, not on blur: a message vanishing on blur moves
+    // the submit button between mouse-down and mouse-up and the click is lost (found in P2-05).
+    reValidateMode: 'onChange',
   });
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export function ForgotPasswordForm() {
         >
           {t('forgotPassword.sentTitle')}
         </h2>
-        <p className="text-text-secondary">
+        <p className="text-text-secondary wrap-anywhere">
           {t('forgotPassword.sentBody', {
             email: isolateBidi(sentTo),
             minutes: PASSWORD_RESET_LINK_MINUTES,

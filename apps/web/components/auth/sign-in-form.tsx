@@ -43,7 +43,9 @@ export function SignInForm({ next }: { next: string | null }) {
     resolver: schemaResolver<SignInFields, SignInCredentials>(signInCredentialsSchema),
     defaultValues: { email: '', password: '' },
     mode: 'onSubmit',
-    reValidateMode: 'onBlur',
+    // After a failed submit, re-check while typing, not on blur: a message vanishing on blur moves
+    // the submit button between mouse-down and mouse-up and the click is lost (found in P2-05).
+    reValidateMode: 'onChange',
   });
 
   const signedIn = session.data?.status === 'signed-in';
