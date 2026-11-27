@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { AuthenticatedUser, ClientDescription } from '@habit/shared-types';
+import { defaultDisplayPreferencesFor } from '@habit/shared-validation';
 import { PrismaService } from '../../database/index.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { QueueProducer } from '../../queue/queue-producer.service.js';
@@ -58,7 +59,13 @@ export class AuthService {
         data: {
           email: input.email,
           profile: { create: { displayName: input.displayName ?? null } },
-          preference: { create: { locale: input.locale, timezone: input.timezone } },
+          preference: {
+            create: {
+              locale: input.locale,
+              timezone: input.timezone,
+              ...defaultDisplayPreferencesFor(input.locale),
+            },
+          },
           passwordCredential: { create: { passwordHash } },
         },
         select: { id: true },

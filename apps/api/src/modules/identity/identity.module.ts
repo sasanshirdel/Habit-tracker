@@ -9,6 +9,8 @@ import { AuthService } from './auth.service.js';
 import { EmailVerificationService } from './email-verification.service.js';
 import { LOGIN_THROTTLE_STORE, LoginThrottle, RedisLoginThrottleStore } from './login-throttle.js';
 import { PasswordHasher } from './password-hasher.js';
+import { ProfileController } from './profile.controller.js';
+import { ProfileService } from './profile.service.js';
 import { PasswordRecoveryService } from './password-recovery.service.js';
 import {
   PasswordChangedEmailHandler,
@@ -40,15 +42,17 @@ import {
  * {@link IdentityJobsModule}, which the worker process imports. Password recovery (P2-05,
  * ADR-0022) is split the same way: request/reset routes here, reset-link and "password changed"
  * emails in the worker. Session management and security events (P2-08, ADR-0023):
- * `AccountController` and `SecurityEventService`.
+ * `AccountController` and `SecurityEventService`. Profile and preferences (P2-07, ADR-0024):
+ * `ProfileController` and `ProfileService`.
  */
 @Global()
 @Module({
-  controllers: [AuthController, AccountController],
+  controllers: [AuthController, AccountController, ProfileController],
   providers: [
     AuthService,
     SessionService,
     SecurityEventService,
+    ProfileService,
     PasswordHasher,
     LoginThrottle,
     RequestSessionResolver,

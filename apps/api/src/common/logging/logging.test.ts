@@ -40,6 +40,8 @@ describe('isSensitiveKey', () => {
   it.each([
     'password',
     'newPassword',
+    'displayName',
+    'display_name',
     'password_confirmation',
     'clientSecret',
     'accessToken',
