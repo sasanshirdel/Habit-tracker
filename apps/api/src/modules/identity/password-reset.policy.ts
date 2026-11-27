@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PASSWORD_RESET_LINK_MINUTES } from '@habit/shared-validation';
 import { defineJob } from '../../queue/job-definition.js';
 import type { EmailSendLimits } from './verification-resend-throttle.js';
 
@@ -7,8 +8,11 @@ import type { EmailSendLimits } from './verification-resend-throttle.js';
  * decisions for the owner in ADR-0022.
  */
 export const PASSWORD_RESET_POLICY = {
-  /** A reset link works once, for this long (OWASP: short-lived; 30 min fits "check mail now"). */
-  tokenLifetimeMs: 30 * 60 * 1000,
+  /**
+   * A reset link works once, for this long (OWASP: short-lived; 30 min fits "check mail now").
+   * Shared with the web page's copy through `PASSWORD_RESET_LINK_MINUTES`.
+   */
+  tokenLifetimeMs: PASSWORD_RESET_LINK_MINUTES * 60 * 1000,
   /** A reset email is sent to one address at most once per this many seconds… */
   requestCooldownSeconds: 60,
   /** …and at most this many times per hour, however often the public form is sent. */
