@@ -414,6 +414,32 @@ describe('auth pages (P2-09)', () => {
     },
   );
 
+  it.each(['en', 'fa'] as const)(
+    'forgot-password (/%s, P2-05): localized form; reset-password: noindex, no form in the server HTML',
+    async (locale) => {
+      const forgot = await get(`/${locale}/auth/forgot-password`);
+      expect(forgot.status).toBe(200);
+      const forgotHtml = await forgot.text();
+      expect(htmlTag(forgotHtml)).toContain(`dir="${locale === 'fa' ? 'rtl' : 'ltr'}"`);
+      expect(forgotHtml).toContain('type="email"');
+      expect(forgotHtml).not.toMatch(/<meta name="robots" content="noindex/);
+
+      const reset = await get(`/${locale}/auth/reset-password`);
+      expect(reset.status).toBe(200);
+      const html = await reset.text();
+      expect(htmlTag(html)).toContain(`dir="${locale === 'fa' ? 'rtl' : 'ltr'}"`);
+      expect(html).toMatch(/<meta name="robots" content="noindex, nofollow"/);
+      expect(html).toContain('data-reset-step="reading"');
+      // The token lives in the URL fragment, read by the browser only: no form until then.
+      expect(html).not.toContain('data-reset-step="ready"');
+    },
+  );
+
+  it('the sign-in page links to the forgot-password page (P2-05)', async () => {
+    const html = await (await get('/en/auth/sign-in')).text();
+    expect(html).toContain('href="/en/auth/forgot-password"');
+  });
+
   it('/{locale}/auth itself is not a page', async () => {
     expect((await get('/en/auth')).status).toBe(404);
   });

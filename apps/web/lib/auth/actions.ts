@@ -2,6 +2,8 @@ import type {
   AuthenticatedUser,
   EmailVerifiedResponse,
   LoginResponse,
+  PasswordResetAcceptedResponse,
+  PasswordResetResponse,
   RegisterRequest,
   RegistrationAcceptedResponse,
   VerificationEmailAcceptedResponse,
@@ -85,4 +87,32 @@ export async function confirmEmail(
  */
 export async function resendVerificationEmail(): Promise<VerificationEmailAcceptedResponse> {
   return api.post<VerificationEmailAcceptedResponse>('/auth/verification/resend');
+}
+
+/**
+ * `POST /auth/password-reset/request` (P2-05, ADR-0022): asks for a reset link. Always 202 for a
+ * well-formed address — whether it has an account is never revealed, so the page's confirmation
+ * is worded for both cases.
+ */
+export async function requestPasswordReset(email: string): Promise<PasswordResetAcceptedResponse> {
+  return publicApi.post<PasswordResetAcceptedResponse>('/auth/password-reset/request', { email });
+}
+
+/**
+ * `POST /auth/password-reset/confirm` with the token from the emailed link and the new password.
+ * The API ends every session of the account and does not sign in, so afterwards the cached session
+ * is re-checked (a tab of this browser that was signed in to that account is signed out). A dead
+ * link is `ApiError` `INVALID_TOKEN`.
+ */
+export async function resetPassword(
+  queryClient: QueryClient,
+  token: string,
+  password: string,
+): Promise<PasswordResetResponse> {
+  const result = await publicApi.post<PasswordResetResponse>('/auth/password-reset/confirm', {
+    token,
+    password,
+  });
+  await queryClient.invalidateQueries({ queryKey: sessionQueryKey });
+  return result;
 }

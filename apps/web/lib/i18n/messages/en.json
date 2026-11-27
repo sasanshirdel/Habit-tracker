@@ -150,7 +150,8 @@
       "submit": "Sign in",
       "submitting": "Signing in…",
       "noAccount": "New here?",
-      "createAccount": "Create an account"
+      "createAccount": "Create an account",
+      "forgotPassword": "Forgot your password?"
     },
     "signUp": {
       "title": "Create your account",
@@ -167,7 +168,9 @@
     "fields": {
       "email": "Email",
       "password": "Password",
-      "showPassword": "Show password"
+      "showPassword": "Show password",
+      "newPassword": "New password",
+      "confirmPassword": "Repeat new password"
     },
     "validation": {
       "emailRequired": "Enter your email address.",
@@ -175,7 +178,9 @@
       "passwordRequired": "Enter your password.",
       "passwordTooShort": "Use at least {min, number} characters.",
       "passwordTooLong": "Use at most {max, number} characters.",
-      "summary": "{count, plural, one {Fix # field to continue.} other {Fix # fields to continue.}}"
+      "summary": "{count, plural, one {Fix # field to continue.} other {Fix # fields to continue.}}",
+      "passwordsDontMatch": "The passwords don't match.",
+      "confirmRequired": "Repeat your new password."
     },
     "errors": {
       "invalidCredentials": "The email or password is incorrect.",
@@ -213,6 +218,30 @@
       "resend": "Send a new link",
       "resending": "Sending…",
       "sent": "We've sent a new link. It can take a few minutes to arrive."
+    },
+    "forgotPassword": {
+      "title": "Reset your password",
+      "description": "Enter the email address of your account and we'll send you a link to choose a new password.",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "sentTitle": "Check your email",
+      "sentBody": "If {email} belongs to an account, we've sent it a link to choose a new password. The link works for {minutes, number} minutes. If nothing arrives within a few minutes, check your spam folder and that the address is spelled correctly.",
+      "backToSignIn": "Back to sign in",
+      "rememberIt": "Remembered your password?",
+      "signIn": "Sign in"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "description": "Choose a new password for your account. Changing it signs you out on every device.",
+      "reading": "Reading your link…",
+      "submit": "Change password",
+      "submitting": "Changing password…",
+      "doneTitle": "Password changed",
+      "doneBody": "Your new password is set and every device has been signed out. Sign in with your new password.",
+      "signIn": "Sign in",
+      "invalidTitle": "This link doesn't work",
+      "invalidBody": "It may have expired, been used already, or been replaced by a newer link. Ask for a new one.",
+      "requestNew": "Ask for a new link"
     }
   }
 }

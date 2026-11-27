@@ -63,20 +63,24 @@ export function EmailField({
   );
 }
 
-/** The password field of the auth forms (P2-09), with a show/hide toggle. */
+/**
+ * The password field of the auth forms (P2-09), with a show/hide toggle. `label` overrides
+ * "Password" (the reset page's "New password" / "Repeat new password", P2-05).
+ */
 export function PasswordField({
   registration,
   error,
   hint,
   autoComplete,
-}: FieldProps & { autoComplete: 'current-password' | 'new-password' }) {
+  label,
+}: FieldProps & { autoComplete: 'current-password' | 'new-password'; label?: string }) {
   const t = useTranslations('auth.fields');
   const id = useId();
   const errorId = `${id}-error`;
   const hintId = `${id}-hint`;
   return (
     <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>{t('password')}</Label>
+      <Label htmlFor={id}>{label ?? t('password')}</Label>
       <PasswordInput
         id={id}
         autoComplete={autoComplete}
