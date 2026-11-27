@@ -17,9 +17,12 @@ export type { PageInfo, Paginated } from './pagination.js';
 export { CSRF_HEADER_NAME } from './auth.js';
 export type {
   AuthenticatedUser,
+  ConfirmEmailRequest,
+  EmailVerifiedResponse,
   LoginRequest,
   LoginResponse,
   RegisterRequest,
   RegistrationAcceptedResponse,
   SessionResponse,
+  VerificationEmailAcceptedResponse,
 } from './auth.js';

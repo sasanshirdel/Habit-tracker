@@ -400,6 +400,20 @@ describe('auth pages (P2-09)', () => {
     });
   });
 
+  it.each(['en', 'fa'] as const)(
+    'verify-email (/%s, P2-04): noindex, localized, and the server HTML holds no confirm action yet',
+    async (locale) => {
+      const res = await get(`/${locale}/auth/verify-email`);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(htmlTag(html)).toContain(`dir="${locale === 'fa' ? 'rtl' : 'ltr'}"`);
+      expect(html).toMatch(/<meta name="robots" content="noindex, nofollow"/);
+      expect(html).toContain('data-verify-step="reading"');
+      // The token lives in the URL fragment, read by the browser only: nothing to render here.
+      expect(html).not.toContain('data-verify-step="ready"');
+    },
+  );
+
   it('/{locale}/auth itself is not a page', async () => {
     expect((await get('/en/auth')).status).toBe(404);
   });

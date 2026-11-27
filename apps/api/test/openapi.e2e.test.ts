@@ -66,6 +66,8 @@ describe('GET /api/docs/openapi.json when enabled (NODE_ENV=test, API_DOCS_ENABL
       '/auth/logout-everywhere',
       '/auth/register',
       '/auth/session',
+      '/auth/verification/confirm',
+      '/auth/verification/resend',
       '/health',
       '/health/ready',
     ]);

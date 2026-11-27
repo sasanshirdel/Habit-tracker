@@ -1,8 +1,10 @@
 import type {
   AuthenticatedUser,
+  EmailVerifiedResponse,
   LoginResponse,
   RegisterRequest,
   RegistrationAcceptedResponse,
+  VerificationEmailAcceptedResponse,
 } from '@habit/shared-types';
 import type { SignInCredentials } from '@habit/shared-validation';
 import type { QueryClient } from '@tanstack/react-query';
@@ -58,4 +60,29 @@ export async function signOut(queryClient: QueryClient): Promise<void> {
   csrfTokens.remember(null);
   dropUserData(queryClient);
   setSession(queryClient, { status: 'signed-out', reason: 'signed-out' });
+}
+
+/**
+ * `POST /auth/verification/confirm` (P2-04, ADR-0021) with the token from the emailed link. Needs
+ * no session (CSRF-less client, like sign-in). Afterwards the cached session — if this tab is
+ * signed in — is re-checked so "verified" shows everywhere. A bad link is `ApiError`
+ * `INVALID_TOKEN`.
+ */
+export async function confirmEmail(
+  queryClient: QueryClient,
+  token: string,
+): Promise<EmailVerifiedResponse> {
+  const result = await publicApi.post<EmailVerifiedResponse>('/auth/verification/confirm', {
+    token,
+  });
+  await queryClient.invalidateQueries({ queryKey: sessionQueryKey });
+  return result;
+}
+
+/**
+ * `POST /auth/verification/resend` (signed in, CSRF-protected): emails a new link, replacing the
+ * earlier ones. Too soon/too often → `ApiError` `RATE_LIMITED` with `policy: verification-email`.
+ */
+export async function resendVerificationEmail(): Promise<VerificationEmailAcceptedResponse> {
+  return api.post<VerificationEmailAcceptedResponse>('/auth/verification/resend');
 }

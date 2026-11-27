@@ -1,6 +1,6 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { E2E_API_BASE_URL } from './env';
+import { E2E_API_BASE_URL, E2E_OUTBOX_DIR } from './env';
 
 const appDir = join(import.meta.dirname, '..', '..');
 
@@ -10,6 +10,9 @@ const appDir = join(import.meta.dirname, '..', '..');
  * on the web origin and the status tests would fail for an unrelated-looking reason.
  */
 export default function globalSetup(): void {
+  // Emails of earlier runs (P2-04). The worker recreates the directory on its next send.
+  rmSync(E2E_OUTBOX_DIR, { recursive: true, force: true });
+
   const chunks = join(appDir, '.next', 'static', 'chunks');
   if (!existsSync(join(appDir, '.next', 'BUILD_ID')) || !existsSync(chunks)) {
     throw new Error('No production build: run `pnpm --filter @habit/web build:e2e` first.');

@@ -212,6 +212,10 @@ jobs:
       - name: Build shared packages and the API
         run: pnpm build:deps
 
+      # The suite starts the worker too (P2-04: it sends the verification emails to a file outbox).
+      - name: Build the worker
+        run: pnpm --filter @habit/worker build
+
       # The browser reaches the API cross-origin at the suite's fixed address
       # (apps/web/e2e/browser/env.ts); NEXT_PUBLIC_API_BASE_URL is inlined at build time.
       - name: Build the web app for the suite

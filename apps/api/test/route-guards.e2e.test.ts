@@ -22,6 +22,7 @@ import { configureApp } from '../src/app.factory.js';
 import {
   CurrentUser,
   Public,
+  RequireVerifiedEmail,
   routeAuthPolicy,
   type RequestPrincipal,
   type RouteAuthPolicy,
@@ -54,6 +55,8 @@ const PUBLIC_ROUTES: Record<string, Exclude<RouteAuthPolicy, 'required'>> = {
   'POST /auth/register': 'public',
   'POST /auth/login': 'public',
   'POST /auth/logout': 'optional',
+  // P2-04 (ADR-0021): the emailed link's token is the credential; origin-checked, `auth` class.
+  'POST /auth/verification/confirm': 'public',
 };
 
 const METHODS: Partial<Record<RequestMethod, string>> = {
@@ -137,8 +140,14 @@ async function bootstrap(rootModule: Type<unknown>): Promise<INestApplication> {
 const LIVE = 'live-session-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const OTHER = 'other-session-token-bbbbbbbbbbbbbbbbbbbbbbbbbbb';
 const sessionsByToken = new Map<string, ActiveSession>([
-  [LIVE, { sessionId: 's-live', userId: '0190a000-0000-7000-8000-000000000001' }],
-  [OTHER, { sessionId: 's-other', userId: '0190a000-0000-7000-8000-000000000002' }],
+  [
+    LIVE,
+    { sessionId: 's-live', userId: '0190a000-0000-7000-8000-000000000001', emailVerified: true },
+  ],
+  [
+    OTHER,
+    { sessionId: 's-other', userId: '0190a000-0000-7000-8000-000000000002', emailVerified: false },
+  ],
 ]);
 let lookups = 0;
 const sessionStub = {
@@ -226,6 +235,12 @@ class MatrixController {
   @Post('public')
   open(): { ok: true } {
     return { ok: true };
+  }
+
+  @RequireVerifiedEmail()
+  @Get('verified-only')
+  verifiedOnly(@CurrentUser() user: RequestPrincipal): { userId: string } {
+    return { userId: user.userId };
   }
 
   @Public({ session: 'optional' })
@@ -343,6 +358,26 @@ describe('authorization matrix (test routes, stubbed sessions)', () => {
       .set('Origin', 'https://attacker.example')
       .expect(403);
     expect(lookups).toBe(0);
+  });
+
+  it('@RequireVerifiedEmail(): 401 signed out, 403 EMAIL_NOT_VERIFIED unverified, 200 verified', async () => {
+    const http = () => request(app.getHttpServer());
+    await http().get('/api/v1/matrix/verified-only').expect(401);
+    const unverified = await http()
+      .get('/api/v1/matrix/verified-only')
+      .set('Cookie', `__Host-session=${OTHER}`)
+      .expect(403);
+    expect(unverified.body.error.code).toBe('EMAIL_NOT_VERIFIED');
+    // Unverified users still reach ordinary protected routes (ADR-0021 interim policy).
+    await http()
+      .get('/api/v1/matrix/protected')
+      .set('Cookie', `__Host-session=${OTHER}`)
+      .expect(200);
+    const verified = await http()
+      .get('/api/v1/matrix/verified-only')
+      .set('Cookie', COOKIE.live!)
+      .expect(200);
+    expect(verified.body).toEqual({ userId: sessionsByToken.get(LIVE)!.userId });
   });
 
   it('looks a session up once per request (rate limiter and guard share it)', async () => {

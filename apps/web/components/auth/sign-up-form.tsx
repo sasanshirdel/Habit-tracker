@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form';
 import { signUp } from '@/lib/auth/actions';
 import { signInHref } from '@/lib/auth/redirect';
 import { browserTimeZone } from '@/lib/auth/time-zone';
+import { isolateBidi } from '@/lib/i18n/bidi';
 import { schemaResolver } from '@/lib/forms/schema-resolver';
 import type { Locale } from '@/lib/i18n/config';
 import { Link } from '@/lib/i18n/navigation';
@@ -23,9 +24,9 @@ type SignUpFields = { email: string; password: string };
 /**
  * Sign-up form (backlog P2-09). Posts to `POST /auth/register` with the page's locale (stored as
  * the language preference) and the browser's time zone. The API answers 202 whether or not the
- * address was free, so the confirmation is worded for both cases and does not sign in (ADR-0018).
- * Until email verification exists (P2-04) the next step is "sign in"; P2-04 changes this copy to
- * "check your email".
+ * address was free, so the confirmation is worded for both cases and does not sign in (ADR-0018):
+ * since P2-04 the API emails every address something — a verification link, or a "you already
+ * have an account" notice — so the copy says "check your email" (ADR-0021).
  */
 export function SignUpForm({ next }: { next: string | null }) {
   const t = useTranslations('auth');
@@ -33,7 +34,7 @@ export function SignUpForm({ next }: { next: string | null }) {
   const authError = useAuthErrorMessage();
   const fieldError = useFieldErrorMessage();
   const [formError, setFormError] = useState<string | null>(null);
-  const [accepted, setAccepted] = useState(false);
+  const [accepted, setAccepted] = useState<string | null>(null);
   const acceptedHeading = useRef<HTMLHeadingElement>(null);
   const {
     register,
@@ -55,13 +56,13 @@ export function SignUpForm({ next }: { next: string | null }) {
     setFormError(null);
     try {
       await signUp({ ...credentials, locale, timezone: browserTimeZone() });
-      setAccepted(true);
+      setAccepted(credentials.email);
     } catch (error) {
       setFormError(authError(error));
     }
   });
 
-  if (accepted) {
+  if (accepted !== null) {
     return (
       <div data-auth-step="accepted" className="flex flex-col gap-4">
         <h2
@@ -71,7 +72,9 @@ export function SignUpForm({ next }: { next: string | null }) {
         >
           {t('signUp.acceptedTitle')}
         </h2>
-        <p className="text-text-secondary">{t('signUp.acceptedBody')}</p>
+        <p className="text-text-secondary">
+          {t('signUp.acceptedBody', { email: isolateBidi(accepted) })}
+        </p>
         <Button asChild size="lg">
           <Link href={signInHref(next)}>{t('signUp.acceptedAction')}</Link>
         </Button>

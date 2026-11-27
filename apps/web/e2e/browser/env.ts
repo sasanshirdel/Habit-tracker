@@ -25,12 +25,26 @@ export const SHARED_ACCOUNT = `${import.meta.dirname}/../.auth/account.json`;
 export const SIGNED_OUT = { cookies: [], origins: [] };
 
 /**
- * Budget of the API's `auth` rate-limit class (10 requests per 5 minutes per address; ADR-0011)
- * that one run may spend: every register/login in the suite comes from 127.0.0.1. Each run gets
- * its own counter namespace (playwright.config.ts), so reruns do not add up; keep the suite at or
- * below this number (setup 2 + csrf 2 + auth journeys 5 = 9).
+ * Client addresses (P2-04). Every register/sign-in/verification request of the suite reaches the
+ * API from 127.0.0.1, and the `auth` rate-limit class allows 10 per 5 minutes per address, which
+ * capped the whole suite at 9 such requests (P2-09's `E2E_AUTH_BUDGET`). The API under test trusts
+ * one proxy hop (`TRUST_PROXY=1`, playwright.config.ts) and each test sends its own
+ * `X-Forwarded-For` (fixtures.ts), like distinct clients behind a load balancer: the limiter stays
+ * on with production limits, and each test has its own budget of 10 per 5 minutes.
  */
-export const E2E_AUTH_BUDGET = 9;
+export function clientAddressFor(testId: string): string {
+  let hash = 2166136261;
+  for (const ch of testId) hash = Math.imul(hash ^ ch.charCodeAt(0), 16777619) >>> 0;
+  // 10.0.0.0/8 (private): never a real client of this API.
+  return `10.${(hash >>> 16) & 255}.${(hash >>> 8) & 255}.${hash & 255}`;
+}
+
+/**
+ * Where the worker under test writes emails (`MAIL_TRANSPORT=outbox`, P2-04) and tests read them.
+ * Gitignored, emptied by the global setup; files are only ever matched by a test's unique address.
+ */
+export const E2E_OUTBOX_DIR = `${import.meta.dirname}/../.outbox`;
+
 export const E2E_QUEUE_PREFIX = 'habit:e2e:q';
 
 export const locales = ['fa', 'en'] as const;

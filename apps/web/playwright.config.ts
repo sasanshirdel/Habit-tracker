@@ -3,6 +3,7 @@ import {
   E2E_API_BASE_URL,
   E2E_API_ORIGIN,
   E2E_API_PORT,
+  E2E_OUTBOX_DIR,
   E2E_QUEUE_PREFIX,
   E2E_RATE_LIMIT_PREFIX,
   E2E_WEB_ORIGIN,
@@ -22,10 +23,11 @@ import {
 const isCI = !!process.env.CI;
 
 /**
- * A fresh rate-limit namespace per run (P2-09): the suite's sign-ups and sign-ins all come from
- * 127.0.0.1 and the `auth` class allows 10 per 5 minutes, so counters from a previous run must
- * not count against this one (`E2E_AUTH_BUDGET` in e2e/browser/env.ts). Computed once here, in
- * the runner process that starts the API.
+ * A fresh rate-limit namespace per run (P2-09), so counters of a previous run never count against
+ * this one. Since P2-04 every test also presents its own client address to the API (see
+ * `TRUST_PROXY` below and `clientAddressFor` in e2e/browser/env.ts), so the `auth` class
+ * (10 per 5 minutes per address, unchanged) budgets each test separately instead of the whole
+ * suite. Computed once here, in the runner process that starts the API.
  */
 const rateLimitPrefix = `${E2E_RATE_LIMIT_PREFIX}:${Date.now().toString(36)}`;
 
@@ -91,8 +93,34 @@ export default defineConfig({
         DATABASE_URL: requireEnv('DATABASE_URL'),
         REDIS_URL: requireEnv('REDIS_URL'),
         RATE_LIMIT_PREFIX: rateLimitPrefix,
+        // One trusted hop: the client address comes from X-Forwarded-For, which the suite sets per
+        // test on API requests (P2-04) — as a load balancer would. Never more than the real hops.
+        TRUST_PROXY: '1',
         QUEUE_PREFIX: E2E_QUEUE_PREFIX,
         LOG_LEVEL: 'warn',
+      },
+    },
+    {
+      // Sends the emails the API queues (P2-04): the built worker on the same Redis queues, with
+      // the file outbox instead of a mail server, so tests can open the links (ADR-0021).
+      name: 'worker',
+      command: 'node dist/main.js',
+      cwd: '../worker',
+      wait: { stdout: /Consuming queue \\?"email/ },
+      reuseExistingServer: !isCI,
+      timeout: 60_000,
+      stdout: 'ignore',
+      stderr: 'pipe',
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
+      env: {
+        NODE_ENV: 'production',
+        DATABASE_URL: requireEnv('DATABASE_URL'),
+        REDIS_URL: requireEnv('REDIS_URL'),
+        QUEUE_PREFIX: E2E_QUEUE_PREFIX,
+        MAIL_TRANSPORT: 'outbox',
+        MAIL_OUTBOX_DIR: E2E_OUTBOX_DIR,
+        WEB_APP_URL: E2E_WEB_ORIGIN,
+        LOG_LEVEL: 'info',
       },
     },
     {

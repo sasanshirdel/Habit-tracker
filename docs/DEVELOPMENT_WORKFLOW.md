@@ -33,25 +33,29 @@ with `ERR_PNPM_IGNORED_BUILDS`, review the package's script before adding it to 
 Documented in [`.env.example`](../.env.example) (placeholders only). The API and the worker validate
 their env at boot (`apps/api/src/config/env.ts`) and exit on invalid config without printing values.
 
-| Variable                                                                | Used by             | Required                         | Description                                      |
-| ----------------------------------------------------------------------- | ------------------- | -------------------------------- | ------------------------------------------------ |
-| `NODE_ENV`                                                              | api, worker         | no (`development`)               | `development` / `test` / `production`            |
-| `API_PORT`                                                              | api                 | no (`4000`)                      | HTTP port                                        |
-| `CORS_ORIGINS`                                                          | api                 | no (`http://localhost:3000`)     | Comma-separated allowed browser origins          |
-| `RATE_LIMIT_ENABLED`                                                    | api                 | no (`true`)                      | `false` only for local load tests (P1-08)        |
-| `RATE_LIMIT_PREFIX`                                                     | api                 | no (`habit:rl`)                  | Namespace of rate-limit counter keys in Redis    |
-| `TRUST_PROXY`                                                           | api                 | no (`0`, 0–5)                    | Trusted reverse-proxy hops for the client IP     |
-| `API_DOCS_ENABLED`                                                      | api                 | no (on unless production)        | Serve `/api/docs/openapi.json` (P1-06, ADR-0012) |
-| `DATABASE_URL`                                                          | api, worker, prisma | **yes** (refuses to boot)        | PostgreSQL URL (`postgres://` / `postgresql://`) |
-| `REDIS_URL`                                                             | api, worker         | **yes** (refuses to boot, P1-03) | Redis URL (`redis://`, or `rediss://` for TLS)   |
-| `QUEUE_PREFIX`                                                          | api, worker         | no (`habit:q`)                   | Namespace of all BullMQ keys                     |
-| `WORKER_CONCURRENCY`                                                    | worker              | no (`5`, 1–50)                   | Parallel jobs per queue per worker process       |
-| `WORKER_SHUTDOWN_TIMEOUT_MS`                                            | worker              | no (`25000`, 1000–600000)        | Graceful-shutdown wait for in-flight jobs        |
-| `LOG_LEVEL`                                                             | api, worker         | no (`debug` in dev, else `info`) | `trace`/`debug`/`info`/`warn`/`error`/`fatal`    |
-| `LOG_FORMAT`                                                            | api, worker         | no (`json`)                      | `json` (one object per line) or `pretty` (local) |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT` | docker-compose      | for `dev:services`               | Local dev database only                          |
-| `REDIS_PORT`                                                            | docker-compose      | no (`6379`)                      | Local Redis port                                 |
-| `NEXT_PUBLIC_API_BASE_URL`                                              | web                 | Phase 1+                         | Public API base URL (never a secret)             |
+| Variable                                                                | Used by             | Required                         | Description                                                  |
+| ----------------------------------------------------------------------- | ------------------- | -------------------------------- | ------------------------------------------------------------ |
+| `NODE_ENV`                                                              | api, worker         | no (`development`)               | `development` / `test` / `production`                        |
+| `API_PORT`                                                              | api                 | no (`4000`)                      | HTTP port                                                    |
+| `CORS_ORIGINS`                                                          | api                 | no (`http://localhost:3000`)     | Comma-separated allowed browser origins                      |
+| `RATE_LIMIT_ENABLED`                                                    | api                 | no (`true`)                      | `false` only for local load tests (P1-08)                    |
+| `RATE_LIMIT_PREFIX`                                                     | api                 | no (`habit:rl`)                  | Namespace of rate-limit counter keys in Redis                |
+| `TRUST_PROXY`                                                           | api                 | no (`0`, 0–5)                    | Trusted reverse-proxy hops for the client IP                 |
+| `API_DOCS_ENABLED`                                                      | api                 | no (on unless production)        | Serve `/api/docs/openapi.json` (P1-06, ADR-0012)             |
+| `DATABASE_URL`                                                          | api, worker, prisma | **yes** (refuses to boot)        | PostgreSQL URL (`postgres://` / `postgresql://`)             |
+| `REDIS_URL`                                                             | api, worker         | **yes** (refuses to boot, P1-03) | Redis URL (`redis://`, or `rediss://` for TLS)               |
+| `QUEUE_PREFIX`                                                          | api, worker         | no (`habit:q`)                   | Namespace of all BullMQ keys                                 |
+| `WORKER_CONCURRENCY`                                                    | worker              | no (`5`, 1–50)                   | Parallel jobs per queue per worker process                   |
+| `WORKER_SHUTDOWN_TIMEOUT_MS`                                            | worker              | no (`25000`, 1000–600000)        | Graceful-shutdown wait for in-flight jobs                    |
+| `MAIL_TRANSPORT`                                                        | worker              | no (`log`)                       | `log` or `outbox` — dev/test only (ADR-0021)                 |
+| `MAIL_OUTBOX_DIR`                                                       | worker              | with `MAIL_TRANSPORT=outbox`     | Directory the outbox writes JSON emails to                   |
+| `MAIL_FROM`                                                             | worker              | no (placeholder sender)          | Sender of every email (no line breaks)                       |
+| `WEB_APP_URL`                                                           | worker              | no (`http://localhost:3000`)     | Origin emailed links point to (https; http only on loopback) |
+| `LOG_LEVEL`                                                             | api, worker         | no (`debug` in dev, else `info`) | `trace`/`debug`/`info`/`warn`/`error`/`fatal`                |
+| `LOG_FORMAT`                                                            | api, worker         | no (`json`)                      | `json` (one object per line) or `pretty` (local)             |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT` | docker-compose      | for `dev:services`               | Local dev database only                                      |
+| `REDIS_PORT`                                                            | docker-compose      | no (`6379`)                      | Local Redis port                                             |
+| `NEXT_PUBLIC_API_BASE_URL`                                              | web                 | Phase 1+                         | Public API base URL (never a secret)                         |
 
 Every new variable must be added to `.env.example`, this table, and the env schema in the same PR.
 

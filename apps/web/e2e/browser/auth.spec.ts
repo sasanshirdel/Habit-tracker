@@ -18,7 +18,8 @@ import { UNAUTHENTICATED_CONSOLE_ERROR, expect, messages, openApp, test } from '
  *
  * The signed-out session check answers 401, which Chromium logs as a console error: that one
  * message is expected; any other console error, page error or CSP violation still fails.
- * Rate-limit budget: these tests spend 5 of `E2E_AUTH_BUDGET` (2 + 2 + 1).
+ * Rate limits: each test presents its own client address (P2-04, `clientAddressFor`), so the
+ * `auth` class (10 per 5 minutes) budgets each test on its own.
  */
 test.use({ expectedConsoleErrors: [UNAUTHENTICATED_CONSOLE_ERROR] });
 

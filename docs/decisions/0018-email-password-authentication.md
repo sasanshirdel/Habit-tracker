@@ -127,6 +127,11 @@ including these, and the deny-by-default `AuthGuard`/`@CurrentUser()` built on
 all; session token on logout with a live session and on logout-everywhere, which is now a protected
 route using `@CurrentUser()`); sign-in returns the session's `csrfToken`; `GET /auth/session` added.
 
+**Update (P2-04, ADR-0021):** registration now queues one email job for the account the address
+belongs to (verification link, or a "you already have an account" notice for a verified address;
+nothing for a soft-deleted one) — at most once per account per 15 minutes; the 202 is unchanged.
+Sign-in and `GET /auth/session` report `emailVerified`; unverified accounts may sign in (interim).
+
 ## Alternatives considered
 
 - **`argon2` / `@node-rs/argon2` / `hash-wasm`** — see the table above.

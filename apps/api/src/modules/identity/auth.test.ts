@@ -416,7 +416,12 @@ describe('AuthService enumeration resistance (no database)', () => {
     const prisma = {
       user: { findFirst: vi.fn(async () => user) },
     } as unknown as PrismaService;
-    return { service: new AuthService(prisma, hasher, throttle, sessions), verify, sessions };
+    const unused = {} as never; // queue, verification and resend throttle: not used by sign-in
+    return {
+      service: new AuthService(prisma, hasher, throttle, sessions, unused, unused, unused),
+      verify,
+      sessions,
+    };
   }
   const account = {
     id: '0190d7a0-0000-7000-8000-000000000001',

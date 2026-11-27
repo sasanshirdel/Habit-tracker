@@ -93,3 +93,41 @@ export const invalidCredentialsErrorSchema = component(
       '401 `INVALID_CREDENTIALS`: identical for an unknown address and a wrong password.',
   },
 );
+
+// --- Email verification (P2-04, ADR-0021) ---
+
+export const confirmEmailBodySchema = z.strictObject({
+  token: z
+    .string()
+    .min(1)
+    .max(128)
+    .meta({
+      description:
+        'The token from the emailed link (`…/auth/verify-email#token=…`). Malformed, unknown, ' +
+        'expired, used and superseded tokens all get the same 400 `INVALID_TOKEN`.',
+    }),
+});
+export type ConfirmEmailInput = z.output<typeof confirmEmailBodySchema>;
+
+export const emailVerifiedResponseSchema = component(
+  z.strictObject({ status: z.literal('verified') }),
+  { id: 'EmailVerifiedResponse', description: 'The address the link was sent to is verified.' },
+);
+
+export const verificationEmailAcceptedResponseSchema = component(
+  z.strictObject({ status: z.literal('accepted') }),
+  {
+    id: 'VerificationEmailAcceptedResponse',
+    description:
+      'A new link will be emailed unless the address is already verified; earlier links stop working.',
+  },
+);
+
+export const invalidTokenErrorSchema = component(
+  errorEnvelopeWith(z.literal('INVALID_TOKEN'), z.unknown().optional()),
+  {
+    id: 'InvalidTokenError',
+    description:
+      '400 `INVALID_TOKEN`: the link is unknown, malformed, expired, already used or superseded by a newer one — indistinguishable on purpose.',
+  },
+);

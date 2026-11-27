@@ -2,9 +2,10 @@ import type { DefaultJobOptions } from 'bullmq';
 
 /**
  * Queue names. One queue per kind of workload, so a slow workload (e.g. AI calls) cannot starve
- * another (e.g. notifications). New queues are added by the phase that needs them.
+ * another (e.g. notifications). New queues are added by the phase that needs them: `email`
+ * (P2-04) carries transactional email, so a backlog of other work never delays a sign-up link.
  */
-export const QUEUE_NAMES = ['system'] as const;
+export const QUEUE_NAMES = ['system', 'email'] as const;
 export type QueueName = (typeof QUEUE_NAMES)[number];
 
 /**

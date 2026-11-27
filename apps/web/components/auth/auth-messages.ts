@@ -9,6 +9,8 @@ import { isApiError } from '@/lib/api/errors';
 
 /** The lockout policy name the API reports in `details.policy` (ADR-0018). */
 export const LOGIN_LOCKOUT_POLICY = 'login-account';
+/** Per-account limit on new verification links (`details.policy`, ADR-0021). */
+export const VERIFICATION_EMAIL_POLICY = 'verification-email';
 
 function minutesFrom(seconds: number | undefined): number {
   return Math.max(1, Math.ceil((seconds ?? 60) / 60));
@@ -34,9 +36,9 @@ export function useAuthErrorMessage(): (error: unknown) => string {
         case 'RATE_LIMITED': {
           const policy = (error.details as { policy?: unknown } | undefined)?.policy;
           const minutes = minutesFrom(error.retryAfterSeconds);
-          return policy === LOGIN_LOCKOUT_POLICY
-            ? t('locked', { minutes })
-            : t('tooManyAttempts', { minutes });
+          if (policy === LOGIN_LOCKOUT_POLICY) return t('locked', { minutes });
+          if (policy === VERIFICATION_EMAIL_POLICY) return t('resendTooSoon', { minutes });
+          return t('tooManyAttempts', { minutes });
         }
         case 'VALIDATION_FAILED':
           return t('invalidInput');

@@ -90,6 +90,8 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       '/auth/logout-everywhere',
       '/auth/register',
       '/auth/session',
+      '/auth/verification/confirm',
+      '/auth/verification/resend',
       '/health',
       '/health/ready',
     ]);
@@ -112,8 +114,10 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'AuthenticatedUser',
       'CsrfFailedError',
       'DependencyStatus',
+      'EmailVerifiedResponse',
       'HealthResponse',
       'InvalidCredentialsError',
+      'InvalidTokenError',
       'LoginResponse',
       'NotReadyError',
       'RateLimitErrorDetails',
@@ -127,6 +131,7 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'ValidationErrorDetails',
       'ValidationFailedError',
       'ValidationIssue',
+      'VerificationEmailAcceptedResponse',
     ]);
     // Unused components (PageInfo) are pruned.
     expect(doc.components.schemas.PageInfo).toBeUndefined();
