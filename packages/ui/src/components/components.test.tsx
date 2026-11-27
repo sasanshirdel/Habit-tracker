@@ -23,6 +23,7 @@ import { EmptyState } from './empty-state.js';
 import { Alert } from './alert.js';
 import { Input } from './input.js';
 import { Label } from './label.js';
+import { NativeSelect } from './native-select.js';
 import { PasswordInput } from './password-input.js';
 import { Skeleton } from './skeleton.js';
 import { Toaster, dismissToast, toast } from './toast.js';
@@ -89,6 +90,27 @@ describe('Input and Skeleton', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.className).toContain('aria-invalid:border-danger');
     expect(input.getAttribute('dir')).toBe('auto');
+  });
+
+  it('native select: labelled, keyboard-native, invalid state, chevron hidden (P2-07)', async () => {
+    const onChange = vi.fn();
+    render(
+      <>
+        <Label htmlFor="week">Week starts on</Label>
+        <NativeSelect id="week" aria-invalid defaultValue="monday" onChange={onChange}>
+          <option value="saturday">Saturday</option>
+          <option value="monday">Monday</option>
+        </NativeSelect>
+      </>,
+    );
+    const select = screen.getByRole('combobox', { name: 'Week starts on' }) as HTMLSelectElement;
+    expect(select.value).toBe('monday');
+    expect(select.className).toContain('aria-invalid:border-danger');
+    expect(select.className).toContain('pe-9');
+    await userEvent.selectOptions(select, 'saturday');
+    expect(select.value).toBe('saturday');
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(select.parentElement?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('hides the skeleton from assistive technology', () => {
