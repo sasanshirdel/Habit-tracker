@@ -16,5 +16,6 @@ export {
   isWeekStart,
   weekStarts,
   type CalendarSystem,
+  type IntlCalendar,
   type WeekStart,
 } from './calendar.js';

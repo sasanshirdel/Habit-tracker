@@ -34,13 +34,16 @@ export function defaultWeekStartFor(locale: Locale): WeekStart {
   return defaultWeekStarts[locale];
 }
 
-const intlCalendars: Record<CalendarSystem, string> = {
+/** `Intl` calendar identifiers of {@link calendarSystems}. */
+export type IntlCalendar = 'gregory' | 'persian';
+
+const intlCalendars: Record<CalendarSystem, IntlCalendar> = {
   gregorian: 'gregory',
   solar_hijri: 'persian',
 };
 
 /** The `calendar` option of `Intl.DateTimeFormat` for a preference (`gregory` | `persian`). */
-export function getIntlCalendar(calendar: CalendarSystem): string {
+export function getIntlCalendar(calendar: CalendarSystem): IntlCalendar {
   return intlCalendars[calendar];
 }
 
