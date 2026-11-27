@@ -243,5 +243,79 @@
       "invalidBody": "It may have expired, been used already, or been replaced by a newer link. Ask for a new one.",
       "requestNew": "Ask for a new link"
     }
+  },
+  "settings": {
+    "more": "Profile, preferences, notifications, privacy, billing, integrations and accountability settings will be added here.",
+    "security": {
+      "title": "Sessions and security",
+      "summary": "See where you're signed in, sign out other devices and review recent security activity.",
+      "client": "{browser} on {os}",
+      "browsers": {
+        "chrome": "Chrome",
+        "edge": "Edge",
+        "firefox": "Firefox",
+        "safari": "Safari",
+        "opera": "Opera",
+        "samsung_internet": "Samsung Internet",
+        "unknown": "Unknown browser"
+      },
+      "oses": {
+        "windows": "Windows",
+        "macos": "macOS",
+        "ios": "iOS",
+        "android": "Android",
+        "linux": "Linux",
+        "chromeos": "ChromeOS",
+        "unknown": "an unknown system"
+      },
+      "devices": {
+        "desktop": "computer",
+        "mobile": "phone",
+        "tablet": "tablet",
+        "unknown": "device"
+      },
+      "sessions": {
+        "title": "Where you're signed in",
+        "description": "Browsers and devices signed in to your account. Sign out any you don't recognise, then change your password.",
+        "loading": "Loading your sessions…",
+        "thisDevice": "This device",
+        "activeNow": "Active now",
+        "lastActive": "Last active {ago}",
+        "signedIn": "Signed in {when}",
+        "revoke": "Sign out",
+        "revokeLabel": "Sign out {client}",
+        "revokeTitle": "Sign out this device?",
+        "revokeDescription": "{client} will be signed out the next time it connects. Signing in there again needs your password.",
+        "revokeConfirm": "Sign out device",
+        "revoking": "Signing out…",
+        "revoked": "The device was signed out.",
+        "revokeFailed": "We couldn't sign out. Check your connection and try again.",
+        "revokeOthers": "Sign out of all other devices",
+        "revokeOthersTitle": "Sign out of all other devices?",
+        "revokeOthersDescription": "Every other browser and device will be signed out. You stay signed in here.",
+        "revokeOthersConfirm": "Sign out other devices",
+        "revokedOthers": "{count, plural, =0 {No other devices were signed in.} one {# device was signed out.} other {# devices were signed out.}}",
+        "onlyThisDevice": "You're only signed in on this device.",
+        "cancel": "Cancel",
+        "showMore": "Show more",
+        "privacy": "For each sign-in we keep only the browser, operating system and device type — never your IP address or location."
+      },
+      "activity": {
+        "title": "Recent security activity",
+        "description": "Sign-ins and security changes to your account from the last {days, number} days.",
+        "loading": "Loading your security activity…",
+        "empty": "No security activity yet.",
+        "showMore": "Show more",
+        "events": {
+          "sign_in": "Signed in",
+          "sign_out": "Signed out",
+          "signed_out_everywhere": "Signed out everywhere",
+          "signed_out_other_sessions": "Signed out all other devices",
+          "session_revoked": "Signed out a device",
+          "password_reset": "Password changed with a reset link",
+          "email_verified": "Email address verified"
+        }
+      }
+    }
   }
 }

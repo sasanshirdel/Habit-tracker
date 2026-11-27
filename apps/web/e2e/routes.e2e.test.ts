@@ -192,6 +192,7 @@ describe('application shell (P1-11)', () => {
     'insights',
     'coach',
     'settings',
+    'settings/security',
   ];
 
   /** The opening tag and contents of the first `<nav>` carrying `data-nav="…"`. */
