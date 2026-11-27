@@ -22,5 +22,6 @@ new ADR that supersedes the old one (and mark the old one `Superseded by ADR-NNN
 | [0015](0015-browser-end-to-end-tests.md)                     | Browser end-to-end tests with Playwright                         | Accepted          |
 | [0016](0016-architecture-boundary-check.md)                  | Architecture boundary check                                      | Accepted          |
 | [0017](0017-identity-data-model.md)                          | Identity data model                                              | Accepted          |
+| [0018](0018-email-password-authentication.md)                | Email/password registration and sign-in                          | Accepted          |
 
 New ADRs: copy [`TEMPLATE.md`](TEMPLATE.md), use the next number, open it in the same PR as the change.

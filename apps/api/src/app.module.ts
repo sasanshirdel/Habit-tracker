@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { validateEnv } from './config/env.js';
 import { DatabaseModule } from './database/index.js';
 import { HealthModule } from './health/health.module.js';
+import { IdentityModule } from './modules/identity/index.js';
 import { QueueModule } from './queue/queue.module.js';
 import { RateLimitModule } from './rate-limit/rate-limit.module.js';
 
@@ -22,6 +23,7 @@ import { RateLimitModule } from './rate-limit/rate-limit.module.js';
     // guards (P2-03): global guards run in registration order, and the limiter must run first.
     RateLimitModule,
     HealthModule,
+    IdentityModule,
   ],
 })
 export class AppModule {}

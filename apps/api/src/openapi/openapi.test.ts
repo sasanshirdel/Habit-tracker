@@ -80,14 +80,21 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     doc = await documentFor(AppModule);
   }, 30_000);
 
-  it('builds, is structurally valid and documents both health probes', () => {
+  it('builds, is structurally valid and documents the health probes and auth routes', () => {
     expect(validateOpenApiDocument(doc)).toEqual([]);
     expect(doc.openapi).toBe('3.1.1');
     expect(doc.servers).toEqual([{ url: '/api/v1', description: expect.any(String) }]);
-    expect(Object.keys(doc.paths)).toEqual(['/health', '/health/ready']);
+    expect(Object.keys(doc.paths)).toEqual([
+      '/auth/login',
+      '/auth/logout',
+      '/auth/logout-everywhere',
+      '/auth/register',
+      '/health',
+      '/health/ready',
+    ]);
     expect(op(doc, '/health', 'get').operationId).toBe('getLiveness');
     expect(op(doc, '/health/ready', 'get').operationId).toBe('getReadiness');
-    expect(doc.tags.map((t) => t.name)).toEqual(['Health']);
+    expect(doc.tags.map((t) => t.name)).toEqual(['Auth', 'Health']);
   });
 
   it('references the response components and keeps only reachable ones', () => {
@@ -101,15 +108,25 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     expect(Object.keys(doc.components.schemas)).toEqual([
       'ApiError',
       'ApiErrorCode',
+      'AuthenticatedUser',
       'DependencyStatus',
       'HealthResponse',
+      'InvalidCredentialsError',
+      'LoginResponse',
       'NotReadyError',
+      'RateLimitErrorDetails',
+      'RateLimitedError',
       'ReadinessChecks',
       'ReadinessErrorDetails',
       'ReadinessResponse',
+      'RegistrationAcceptedResponse',
+      'UnauthenticatedError',
+      'ValidationErrorDetails',
+      'ValidationFailedError',
+      'ValidationIssue',
     ]);
-    // Unused components (validation/rate-limit errors, PageInfo) are pruned.
-    expect(doc.components.schemas.ValidationFailedError).toBeUndefined();
+    // Unused components (PageInfo) are pruned.
+    expect(doc.components.schemas.PageInfo).toBeUndefined();
   });
 
   it('documents probes as exempt from rate limiting (no 429, no rate-limit headers)', () => {

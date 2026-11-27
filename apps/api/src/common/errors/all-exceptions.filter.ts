@@ -19,6 +19,7 @@ const GENERIC_MESSAGES: Record<ApiErrorCode, string> = {
   INVALID_CURSOR: 'Invalid pagination cursor.',
   MALFORMED_REQUEST_BODY: 'Request body is not valid JSON.',
   UNAUTHENTICATED: 'Authentication required.',
+  INVALID_CREDENTIALS: 'Invalid email or password.',
   FORBIDDEN: 'Not allowed.',
   NOT_FOUND: 'Not found.',
   METHOD_NOT_ALLOWED: 'Method not allowed.',
