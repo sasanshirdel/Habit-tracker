@@ -8,6 +8,8 @@ import {
   emailAddressSchema,
   newPasswordSchema,
   normalizePassword,
+  passwordResetRequestSchema,
+  passwordResetSchema,
   signInCredentialsSchema,
   signUpCredentialsSchema,
 } from './index.js';
@@ -126,5 +128,25 @@ describe('signInCredentialsSchema / signUpCredentialsSchema (P2-09)', () => {
   it('never echo the password in an issue', () => {
     const result = signUpCredentialsSchema.safeParse({ email: 'x', password: 'hunter2' });
     expect(JSON.stringify(result.error?.issues)).not.toContain('hunter2');
+  });
+});
+
+describe('password reset schemas (P2-05)', () => {
+  it('request: normalises the address like sign-in', () => {
+    expect(passwordResetRequestSchema.parse({ email: ' Sara@Example.COM ' })).toEqual({
+      email: 'sara@example.com',
+    });
+    expect(passwordResetRequestSchema.safeParse({ email: 'nope' }).success).toBe(false);
+  });
+
+  it('new password: the registration policy (NFKC, 8–128 code points), never echoed', () => {
+    const short = passwordResetSchema.safeParse({ password: 'hunter2' });
+    expect(short.error?.issues[0]).toMatchObject({ code: 'too_small', path: ['password'] });
+    expect(JSON.stringify(short.error?.issues)).not.toContain('hunter2');
+    const long = passwordResetSchema.safeParse({ password: 'x'.repeat(PASSWORD_MAX_LENGTH + 1) });
+    expect(long.error?.issues[0]).toMatchObject({ code: 'too_big' });
+    expect(passwordResetSchema.parse({ password: 'ｐａｓｓｗｏｒｄ１' })).toEqual({
+      password: 'password1',
+    });
   });
 });

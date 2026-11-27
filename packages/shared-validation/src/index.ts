@@ -20,8 +20,12 @@ export {
   emailAddressSchema,
   newPasswordSchema,
   normalizePassword,
+  passwordResetRequestSchema,
+  passwordResetSchema,
   signInCredentialsSchema,
   signUpCredentialsSchema,
+  type PasswordResetInput,
+  type PasswordResetRequestInput,
   type SignInCredentials,
   type SignUpCredentials,
 } from './credentials.js';
