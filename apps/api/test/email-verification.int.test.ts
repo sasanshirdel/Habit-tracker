@@ -73,7 +73,7 @@ describe('email verification (real PostgreSQL + Redis + worker)', () => {
     const queue = app.get(QueueProducer).queue('email');
     for (let i = 0; i < 400; i++) {
       const counts = await queue.getJobCounts('waiting', 'active', 'delayed');
-      if (counts.waiting + counts.active + counts.delayed === 0) return;
+      if ((counts.waiting ?? 0) + (counts.active ?? 0) + (counts.delayed ?? 0) === 0) return;
       await new Promise((r) => setTimeout(r, 25));
     }
     throw new Error('email queue did not drain');
