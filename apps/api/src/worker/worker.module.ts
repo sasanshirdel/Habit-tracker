@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { validateWorkerEnv } from '../config/env.js';
 import { DatabaseModule } from '../database/index.js';
 import {
+  AccountDeletedEmailHandler,
+  AccountPurgeHandler,
   IdentityJobsModule,
   PasswordChangedEmailHandler,
   PasswordResetEmailHandler,
@@ -28,7 +30,8 @@ import { WorkerHost } from './worker-host.service.js';
     }),
     DatabaseModule,
     QueueModule,
-    // Feature modules' job handlers (P2-04 verification/registration, P2-05 password emails).
+    // Feature modules' job handlers (P2-04 verification/registration, P2-05 password emails,
+    // P2-10 account-deleted email and account purge).
     IdentityJobsModule,
   ],
   providers: [
@@ -40,12 +43,23 @@ import { WorkerHost } from './worker-host.service.js';
         verificationEmail: VerificationEmailHandler,
         passwordResetEmail: PasswordResetEmailHandler,
         passwordChangedEmail: PasswordChangedEmailHandler,
-      ): JobHandler[] => [noop, verificationEmail, passwordResetEmail, passwordChangedEmail],
+        accountDeletedEmail: AccountDeletedEmailHandler,
+        accountPurge: AccountPurgeHandler,
+      ): JobHandler[] => [
+        noop,
+        verificationEmail,
+        passwordResetEmail,
+        passwordChangedEmail,
+        accountDeletedEmail,
+        accountPurge,
+      ],
       inject: [
         SystemNoopJobHandler,
         VerificationEmailHandler,
         PasswordResetEmailHandler,
         PasswordChangedEmailHandler,
+        AccountDeletedEmailHandler,
+        AccountPurgeHandler,
       ],
     },
     WorkerHost,

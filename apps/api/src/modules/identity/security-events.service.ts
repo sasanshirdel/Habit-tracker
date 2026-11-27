@@ -50,6 +50,19 @@ export class SecurityEventService {
     });
   }
 
+  /**
+   * Records an event that has no other write to share a transaction with (P2-10: a data export
+   * reads only), applying the same retention purge as {@link record}.
+   */
+  async recordNow(
+    userId: string,
+    type: SecurityEventType,
+    client: ClientDescription,
+    now = new Date(),
+  ): Promise<void> {
+    await this.prisma.$transaction((tx) => this.record(tx, userId, type, client, now));
+  }
+
   /** The account's events within the retention window, newest first (keyset on the UUIDv7 id). */
   async list(
     userId: string,

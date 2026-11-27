@@ -22,6 +22,7 @@ export const IDENTITY_EMAIL_TEMPLATES = {
   alreadyRegistered: 'identity.already-registered',
   passwordReset: 'identity.password-reset',
   passwordChanged: 'identity.password-changed',
+  accountDeleted: 'identity.account-deleted',
 } as const;
 
 interface VerifyCopy {
@@ -66,6 +67,18 @@ interface PasswordChangedCopy {
   signedOut: string;
   action: string;
   notYou: string;
+  footer: string;
+}
+
+interface AccountDeletedCopy {
+  subject: string;
+  preheader: string;
+  heading: string;
+  intro: string;
+  restore: (date: string) => string;
+  action: string;
+  notYou: string;
+  linkFallback: string;
   footer: string;
 }
 
@@ -191,6 +204,38 @@ export const PASSWORD_CHANGED_COPY: Record<EmailLocale, PasswordChangedCopy> = {
   },
 };
 
+// --- Account deletion (P2-10, ADR-0025) ---
+
+export const ACCOUNT_DELETED_COPY: Record<EmailLocale, AccountDeletedCopy> = {
+  en: {
+    subject: 'Your account was deleted',
+    preheader: 'You can still restore your Habit Tracker account for a limited time.',
+    heading: 'Your account was deleted',
+    intro:
+      'Your Habit Tracker account was deleted at your request and every device was signed out.',
+    restore: (date) =>
+      `Changed your mind? You can restore the account until ${date}. After that, the account and all of its data are permanently erased and cannot be recovered.`,
+    action: 'Restore my account',
+    notYou:
+      "If you didn't delete your account, restore it with the button above, then reset your password from the sign-in page and make sure your email account is secure.",
+    linkFallback: "If the button doesn't work, copy this link into your browser:",
+    footer: 'You received this email because this address belonged to a Habit Tracker account.',
+  },
+  fa: {
+    subject: 'حساب شما حذف شد',
+    preheader: 'هنوز برای مدت محدودی می‌توانید حساب ردیاب عادت خود را بازگردانید.',
+    heading: 'حساب شما حذف شد',
+    intro: 'حساب ردیاب عادت شما به درخواست خودتان حذف شد و همهٔ دستگاه‌ها از حساب خارج شدند.',
+    restore: (date) =>
+      `نظرتان تغییر کرد؟ تا ${date} می‌توانید حساب را بازگردانید. پس از آن، حساب و همهٔ داده‌های آن برای همیشه پاک می‌شود و قابل بازیابی نیست.`,
+    action: 'بازگرداندن حساب',
+    notYou:
+      'اگر شما حساب خود را حذف نکرده‌اید، با دکمهٔ بالا آن را بازگردانید، سپس از صفحهٔ ورود رمز عبور را بازنشانی کنید و از امنیت حساب ایمیل خود مطمئن شوید.',
+    linkFallback: 'اگر دکمه کار نمی‌کند، این پیوند را در مرورگر خود باز کنید:',
+    footer: 'این ایمیل را دریافت کرده‌اید چون این نشانی متعلق به یک حساب در ردیاب عادت بود.',
+  },
+};
+
 const NUMBER_LOCALE: Record<EmailLocale, string> = { en: 'en-US', fa: 'fa-IR' };
 
 function formatNumber(locale: EmailLocale, value: number): string {
@@ -217,6 +262,32 @@ export function signInLink(webAppUrl: string, locale: EmailLocale): string {
  */
 export function passwordResetLink(webAppUrl: string, locale: EmailLocale, token: string): string {
   return `${webAppUrl}/${locale}/auth/reset-password#token=${token}`;
+}
+
+/**
+ * Link to the web app's restore page, with the token in the URL **fragment** (same pattern and
+ * reasons as {@link verificationLink}): the page asks the user to confirm with a button.
+ */
+export function accountRestoreLink(webAppUrl: string, locale: EmailLocale, token: string): string {
+  return `${webAppUrl}/${locale}/auth/restore-account#token=${token}`;
+}
+
+/**
+ * The purge date as the account holder reads it: their language, time zone and calendar
+ * (P2-07). Falls back to UTC for a time zone the runtime does not know.
+ */
+export function formatPurgeDate(
+  date: Date,
+  locale: EmailLocale,
+  timeZone: string,
+  calendar: 'gregorian' | 'solar_hijri',
+): string {
+  const tag = `${NUMBER_LOCALE[locale]}-u-ca-${calendar === 'solar_hijri' ? 'persian' : 'gregory'}`;
+  try {
+    return new Intl.DateTimeFormat(tag, { dateStyle: 'long', timeZone }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat(tag, { dateStyle: 'long', timeZone: 'UTC' }).format(date);
+  }
 }
 
 function message(to: string, template: string, content: EmailContent): EmailMessage {
@@ -296,6 +367,27 @@ export function passwordChangedMessage(input: {
     intro: [copy.intro, copy.signedOut],
     action: { label: copy.action, url: input.signInUrl },
     outro: [copy.notYou],
+    footer: copy.footer,
+  });
+}
+
+export function accountDeletedMessage(input: {
+  to: string;
+  locale: EmailLocale;
+  url: string;
+  /** The purge date, already formatted for the reader ({@link formatPurgeDate}). */
+  restoreUntil: string;
+}): EmailMessage {
+  const copy = ACCOUNT_DELETED_COPY[input.locale];
+  return message(input.to, IDENTITY_EMAIL_TEMPLATES.accountDeleted, {
+    locale: input.locale,
+    subject: copy.subject,
+    preheader: copy.preheader,
+    heading: copy.heading,
+    intro: [copy.intro, copy.restore(input.restoreUntil)],
+    action: { label: copy.action, url: input.url },
+    outro: [copy.notYou],
+    linkFallback: copy.linkFallback,
     footer: copy.footer,
   });
 }
