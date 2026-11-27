@@ -97,6 +97,9 @@ the address it was sent to in `user_tokens.email`.
   (→ Sign in) and "This link doesn't work" (→ Ask for a new link), headings focused; network and
   rate-limit errors keep the form. Afterwards the cached session is re-checked.
 - Logical CSS only, fa/en messages with identical keys, Persian digits via ICU `number`.
+- All auth forms (sign-in, sign-up, forgot, reset) now re-validate **on change** after a failed
+  submit instead of on blur: a field message that disappeared on blur moved the submit button
+  between mouse-down and mouse-up, so the click was lost (found by the browser suite).
 
 ### No new dependency, no migration
 
