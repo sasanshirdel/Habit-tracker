@@ -169,3 +169,23 @@ export function verificationLinkIn(email: OutboxEmail): string {
   if (!match) throw new Error(`no verification link in ${email.template}`);
   return match[1]!;
 }
+
+/** The password-reset link in an email's plain-text part (P2-05). */
+export function passwordResetLinkIn(email: OutboxEmail): string {
+  const match = /(https?:\/\/\S+\/auth\/reset-password#token=[A-Za-z0-9_-]{43})/.exec(email.text);
+  if (!match) throw new Error(`no password-reset link in ${email.template}`);
+  return match[1]!;
+}
+
+/** Waits until an email with `template` reached `address` and returns the newest one. */
+export async function waitForTemplate(address: string, template: string): Promise<OutboxEmail> {
+  await expect
+    .poll(() => outboxFor(address).filter((email) => email.template === template).length, {
+      timeout: 15_000,
+      message: `${template} email to ${address}`,
+    })
+    .toBeGreaterThanOrEqual(1);
+  return outboxFor(address)
+    .filter((email) => email.template === template)
+    .at(-1)!;
+}

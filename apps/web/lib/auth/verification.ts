@@ -17,6 +17,12 @@ export function verificationTokenFromHash(hash: string): string | null {
   return token !== null && TOKEN.test(token) ? token : null;
 }
 
+/**
+ * The token of a password-reset link (`/{locale}/auth/reset-password#token=…`, P2-05, ADR-0022):
+ * same shape, same fragment pattern, same rules as the verification link.
+ */
+export const resetTokenFromHash = verificationTokenFromHash;
+
 /** Removes the fragment from the address bar without navigating (keeps the router's state). */
 export function removeHashFromAddressBar(): void {
   if (!window.location.hash) return;

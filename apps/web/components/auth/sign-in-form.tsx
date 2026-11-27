@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { signIn } from '@/lib/auth/actions';
-import { afterSignInPath, signUpHref } from '@/lib/auth/redirect';
+import { afterSignInPath, forgotPasswordHref, signUpHref } from '@/lib/auth/redirect';
 import { useSession } from '@/lib/auth/session';
 import { schemaResolver } from '@/lib/forms/schema-resolver';
 import { Link, useRouter } from '@/lib/i18n/navigation';
@@ -22,6 +22,7 @@ type SignInFields = { email: string; password: string };
  * (sanitised) `next` page or the app's home. A wrong address and a wrong password get the same
  * message (the API cannot tell them apart either); the password is cleared and focused for the
  * next try. A visitor who is already signed in is sent on without seeing the form submit.
+ * "Forgot your password?" leads to the reset request page (P2-05).
  */
 export function SignInForm({ next }: { next: string | null }) {
   const t = useTranslations('auth');
@@ -42,7 +43,9 @@ export function SignInForm({ next }: { next: string | null }) {
     resolver: schemaResolver<SignInFields, SignInCredentials>(signInCredentialsSchema),
     defaultValues: { email: '', password: '' },
     mode: 'onSubmit',
-    reValidateMode: 'onBlur',
+    // After a failed submit, re-check while typing, not on blur: a message vanishing on blur moves
+    // the submit button between mouse-down and mouse-up and the click is lost (found in P2-05).
+    reValidateMode: 'onChange',
   });
 
   const signedIn = session.data?.status === 'signed-in';
@@ -81,6 +84,14 @@ export function SignInForm({ next }: { next: string | null }) {
         registration={register('password')}
         error={fieldError('password', errors.password, getValues('password'))}
       />
+      <p className="-mt-2 text-end text-sm">
+        <Link
+          href={forgotPasswordHref}
+          className="font-medium text-accent underline-offset-4 hover:underline"
+        >
+          {t('signIn.forgotPassword')}
+        </Link>
+      </p>
       <Button type="submit" size="lg" aria-disabled={isSubmitting || signedIn}>
         {isSubmitting ? t('signIn.submitting') : t('signIn.submit')}
       </Button>

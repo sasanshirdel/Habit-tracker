@@ -5,6 +5,7 @@ import {
   type EmailMessage,
 } from '../../mail/index.js';
 import { EMAIL_VERIFICATION_POLICY } from './email-verification.policy.js';
+import { PASSWORD_RESET_POLICY } from './password-reset.policy.js';
 
 /**
  * Identity emails in English and Persian (backlog P2-04, ADR-0021). Copy lives here, next to the
@@ -19,6 +20,8 @@ import { EMAIL_VERIFICATION_POLICY } from './email-verification.policy.js';
 export const IDENTITY_EMAIL_TEMPLATES = {
   verifyEmail: 'identity.verify-email',
   alreadyRegistered: 'identity.already-registered',
+  passwordReset: 'identity.password-reset',
+  passwordChanged: 'identity.password-changed',
 } as const;
 
 interface VerifyCopy {
@@ -38,6 +41,29 @@ interface AlreadyRegisteredCopy {
   preheader: string;
   heading: string;
   intro: string;
+  action: string;
+  notYou: string;
+  footer: string;
+}
+
+interface PasswordResetCopy {
+  subject: string;
+  preheader: string;
+  heading: string;
+  intro: string;
+  action: string;
+  expiry: (minutes: string) => string;
+  ignore: string;
+  linkFallback: string;
+  footer: string;
+}
+
+interface PasswordChangedCopy {
+  subject: string;
+  preheader: string;
+  heading: string;
+  intro: string;
+  signedOut: string;
   action: string;
   notYou: string;
   footer: string;
@@ -103,6 +129,68 @@ export const ALREADY_REGISTERED_COPY: Record<EmailLocale, AlreadyRegisteredCopy>
   },
 };
 
+// --- Password recovery (P2-05, ADR-0022) ---
+
+export const PASSWORD_RESET_COPY: Record<EmailLocale, PasswordResetCopy> = {
+  en: {
+    subject: 'Reset your password',
+    preheader: 'Choose a new password for your Habit Tracker account.',
+    heading: 'Reset your password',
+    intro:
+      'We received a request to reset the password of the Habit Tracker account with this email address. Use the button below to choose a new password.',
+    action: 'Choose a new password',
+    expiry: (minutes) =>
+      `This link works once and expires in ${minutes} minutes. Choosing a new password signs you out on every device.`,
+    ignore:
+      "If you didn't ask to reset your password, you can ignore this email. Your password stays the same.",
+    linkFallback: "If the button doesn't work, copy this link into your browser:",
+    footer:
+      'You received this email because someone asked to reset the password of a Habit Tracker account with this address.',
+  },
+  fa: {
+    subject: 'بازنشانی رمز عبور',
+    preheader: 'برای حساب ردیاب عادت خود رمز عبور تازه‌ای انتخاب کنید.',
+    heading: 'بازنشانی رمز عبور',
+    intro:
+      'درخواستی برای بازنشانی رمز عبور حساب ردیاب عادت با این نشانی ایمیل دریافت کردیم. با دکمهٔ زیر رمز عبور تازه‌ای انتخاب کنید.',
+    action: 'انتخاب رمز عبور تازه',
+    expiry: (minutes) =>
+      `این پیوند فقط یک بار کار می‌کند و پس از ${minutes} دقیقه منقضی می‌شود. با انتخاب رمز عبور تازه، از همهٔ دستگاه‌ها خارج می‌شوید.`,
+    ignore:
+      'اگر شما درخواست بازنشانی رمز عبور نداده‌اید، این ایمیل را نادیده بگیرید. رمز عبور شما تغییری نمی‌کند.',
+    linkFallback: 'اگر دکمه کار نمی‌کند، این پیوند را در مرورگر خود باز کنید:',
+    footer:
+      'این ایمیل را دریافت کرده‌اید چون کسی خواسته است رمز عبور حسابی در ردیاب عادت با این نشانی بازنشانی شود.',
+  },
+};
+
+export const PASSWORD_CHANGED_COPY: Record<EmailLocale, PasswordChangedCopy> = {
+  en: {
+    subject: 'Your password was changed',
+    preheader: 'The password of your Habit Tracker account was just changed.',
+    heading: 'Your password was changed',
+    intro: 'The password of your Habit Tracker account was just changed with a reset link.',
+    signedOut:
+      'For your security, every device that was signed in has been signed out. Sign in again with your new password.',
+    action: 'Sign in',
+    notYou:
+      'If you didn\'t change your password, reset it again right away from the sign-in page ("Forgot your password?") and make sure your email account is secure.',
+    footer: 'You received this email because this address belongs to a Habit Tracker account.',
+  },
+  fa: {
+    subject: 'رمز عبور شما تغییر کرد',
+    preheader: 'رمز عبور حساب ردیاب عادت شما همین حالا تغییر کرد.',
+    heading: 'رمز عبور شما تغییر کرد',
+    intro: 'رمز عبور حساب ردیاب عادت شما همین حالا با پیوند بازنشانی تغییر کرد.',
+    signedOut:
+      'برای امنیت شما، همهٔ دستگاه‌هایی که وارد حساب بودند خارج شدند. با رمز عبور تازه دوباره وارد شوید.',
+    action: 'ورود',
+    notYou:
+      'اگر شما رمز عبور را تغییر نداده‌اید، فوراً از صفحهٔ ورود («رمز عبور را فراموش کرده‌اید؟») دوباره آن را بازنشانی کنید و از امنیت حساب ایمیل خود مطمئن شوید.',
+    footer: 'این ایمیل را دریافت کرده‌اید چون این نشانی متعلق به یک حساب در ردیاب عادت است.',
+  },
+};
+
 const NUMBER_LOCALE: Record<EmailLocale, string> = { en: 'en-US', fa: 'fa-IR' };
 
 function formatNumber(locale: EmailLocale, value: number): string {
@@ -121,6 +209,14 @@ export function verificationLink(webAppUrl: string, locale: EmailLocale, token: 
 
 export function signInLink(webAppUrl: string, locale: EmailLocale): string {
   return `${webAppUrl}/${locale}/auth/sign-in`;
+}
+
+/**
+ * Link to the web app's reset page, with the token in the URL **fragment** (same pattern and
+ * reasons as {@link verificationLink}): the page asks for the new password and posts both.
+ */
+export function passwordResetLink(webAppUrl: string, locale: EmailLocale, token: string): string {
+  return `${webAppUrl}/${locale}/auth/reset-password#token=${token}`;
 }
 
 function message(to: string, template: string, content: EmailContent): EmailMessage {
@@ -160,6 +256,44 @@ export function alreadyRegisteredMessage(input: {
     preheader: copy.preheader,
     heading: copy.heading,
     intro: [copy.intro],
+    action: { label: copy.action, url: input.signInUrl },
+    outro: [copy.notYou],
+    footer: copy.footer,
+  });
+}
+
+export function passwordResetMessage(input: {
+  to: string;
+  locale: EmailLocale;
+  url: string;
+}): EmailMessage {
+  const copy = PASSWORD_RESET_COPY[input.locale];
+  const minutes = PASSWORD_RESET_POLICY.tokenLifetimeMs / 60_000;
+  return message(input.to, IDENTITY_EMAIL_TEMPLATES.passwordReset, {
+    locale: input.locale,
+    subject: copy.subject,
+    preheader: copy.preheader,
+    heading: copy.heading,
+    intro: [copy.intro],
+    action: { label: copy.action, url: input.url },
+    outro: [copy.expiry(formatNumber(input.locale, minutes)), copy.ignore],
+    linkFallback: copy.linkFallback,
+    footer: copy.footer,
+  });
+}
+
+export function passwordChangedMessage(input: {
+  to: string;
+  locale: EmailLocale;
+  signInUrl: string;
+}): EmailMessage {
+  const copy = PASSWORD_CHANGED_COPY[input.locale];
+  return message(input.to, IDENTITY_EMAIL_TEMPLATES.passwordChanged, {
+    locale: input.locale,
+    subject: copy.subject,
+    preheader: copy.preheader,
+    heading: copy.heading,
+    intro: [copy.intro, copy.signedOut],
     action: { label: copy.action, url: input.signInUrl },
     outro: [copy.notYou],
     footer: copy.footer,

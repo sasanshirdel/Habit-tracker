@@ -26,5 +26,6 @@ new ADR that supersedes the old one (and mark the old one `Superseded by ADR-NNN
 | [0019](0019-csrf-and-deny-by-default-authentication.md)       | CSRF protection and deny-by-default authentication               | Accepted          |
 | [0020](0020-web-authentication-pages-and-route-protection.md) | Web authentication pages and client-side route protection        | Accepted          |
 | [0021](0021-email-verification-and-transactional-email.md)    | Email verification and the transactional email foundation        | Accepted          |
+| [0022](0022-password-recovery.md)                             | Password recovery                                                | Accepted          |
 
 New ADRs: copy [`TEMPLATE.md`](TEMPLATE.md), use the next number, open it in the same PR as the change.

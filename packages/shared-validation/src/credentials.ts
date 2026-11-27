@@ -118,3 +118,26 @@ export const signUpCredentialsSchema = z.object({
   password: newPasswordSchema,
 });
 export type SignUpCredentials = z.output<typeof signUpCredentialsSchema>;
+
+/**
+ * How long an emailed password-reset link works, in minutes (P2-05, ADR-0022; interim, owner may
+ * change it). The API's token lifetime and the web page's "the link works for N minutes" both read
+ * it.
+ */
+export const PASSWORD_RESET_LINK_MINUTES = 30;
+
+/**
+ * The forgot-password form and `POST /auth/password-reset/request` (backlog P2-05, ADR-0022): the
+ * address to send a reset link to. Same normalisation as sign-in, so the per-address limit and the
+ * account lookup see the address the way the database compares it.
+ */
+export const passwordResetRequestSchema = z.object({ email: emailAddressSchema });
+export type PasswordResetRequestInput = z.output<typeof passwordResetRequestSchema>;
+
+/**
+ * The new password of the reset-password form and of `POST /auth/password-reset/confirm`
+ * (P2-05): the same policy as registration ({@link newPasswordSchema}). The API's body adds the
+ * token; the web form adds a "repeat the password" field checked in the browser only.
+ */
+export const passwordResetSchema = z.object({ password: newPasswordSchema });
+export type PasswordResetInput = z.output<typeof passwordResetSchema>;

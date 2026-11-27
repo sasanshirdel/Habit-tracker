@@ -160,7 +160,8 @@ results; the API keeps zod's JIT.
   content; route tests assert the server HTML holds only the placeholder.
 - Open for the owner: ROADMAP #10 (still interim), the 202 copy until P2-04, and option (b) with
   the deployment decision.
-- Follow-ups: verify/reset pages (P2-04/P2-05), settings and sessions pages with "sign out
+- Follow-ups: verify/reset pages (P2-04/P2-05 — _done: verify-email in ADR-0021,
+  forgot-password/reset-password in ADR-0022_), settings and sessions pages with "sign out
   everywhere" (P2-07/P2-08), reacting to a 401 from any API call by re-checking the session
   (today the session is re-checked on focus and after 60 s), field-level mapping of server
   `VALIDATION_FAILED` details.

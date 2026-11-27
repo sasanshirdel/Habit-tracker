@@ -210,4 +210,84 @@ describe('auth routes (no database)', () => {
       expect(res.body.error.code).toBe('UNAUTHENTICATED');
     });
   });
+
+  describe('password recovery (P2-05)', () => {
+    const GARBAGE_TOKEN = 'not-a-real-reset-token-but-secret-looking';
+    const NEW_PASSWORD = 'Brand-New-Secret-Passw0rd';
+
+    it('request: 202 with the same body for any well-formed address; validates the body', async () => {
+      for (const email of [SECRET_EMAIL, 'Nobody.Here@Example.com']) {
+        const res = await http()
+          .post('/api/v1/auth/password-reset/request')
+          .send({ email })
+          .expect(202);
+        expect(res.body).toEqual({ status: 'accepted' });
+      }
+      for (const body of [{}, { email: 'not-an-email' }, { email: SECRET_EMAIL, extra: 1 }]) {
+        const res = await http().post('/api/v1/auth/password-reset/request').send(body).expect(400);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+        expect(JSON.stringify(res.body)).not.toContain(SECRET_EMAIL);
+      }
+    });
+
+    it('request: public but origin-checked; counts against the auth class', async () => {
+      const foreign = await http()
+        .post('/api/v1/auth/password-reset/request')
+        .set('Origin', 'https://attacker.example')
+        .send({ email: SECRET_EMAIL })
+        .expect(403);
+      expect(foreign.body.error.code).toBe('CSRF_FAILED');
+      for (let i = 0; i < 10; i++) {
+        await http().post('/api/v1/auth/password-reset/request').send({ email: SECRET_EMAIL });
+      }
+      const limited = await http()
+        .post('/api/v1/auth/password-reset/request')
+        .send({ email: SECRET_EMAIL })
+        .expect(429);
+      expect(limited.body.error.details.policy).toBe('auth');
+    });
+
+    it('confirm: a malformed token is 400 INVALID_TOKEN; the password policy is checked first', async () => {
+      const bad = await http()
+        .post('/api/v1/auth/password-reset/confirm')
+        .send({ token: GARBAGE_TOKEN, password: NEW_PASSWORD })
+        .expect(400);
+      expect(bad.body.error.code).toBe('INVALID_TOKEN');
+      const short = await http()
+        .post('/api/v1/auth/password-reset/confirm')
+        .send({ token: GARBAGE_TOKEN, password: 'short' })
+        .expect(400);
+      expect(short.body.error).toMatchObject({ code: 'VALIDATION_FAILED' });
+      expect(short.body.error.details.issues).toEqual([
+        { field: 'body.password', code: 'too_small', message: expect.any(String) },
+      ]);
+      for (const body of [
+        { token: GARBAGE_TOKEN },
+        { password: NEW_PASSWORD },
+        { token: '', password: NEW_PASSWORD },
+        { token: GARBAGE_TOKEN, password: NEW_PASSWORD, email: SECRET_EMAIL },
+      ]) {
+        const res = await http().post('/api/v1/auth/password-reset/confirm').send(body).expect(400);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+      }
+    });
+
+    it('confirm: origin-checked; never echoes or logs the token, password or address', async () => {
+      const foreign = await http()
+        .post('/api/v1/auth/password-reset/confirm')
+        .set('Origin', 'https://attacker.example')
+        .send({ token: GARBAGE_TOKEN, password: NEW_PASSWORD })
+        .expect(403);
+      expect(foreign.body.error.code).toBe('CSRF_FAILED');
+      await http()
+        .post('/api/v1/auth/password-reset/confirm')
+        .send({ token: GARBAGE_TOKEN, password: 'short' });
+      await http().post('/api/v1/auth/password-reset/request').send({ email: SECRET_EMAIL });
+      await new Promise((r) => setTimeout(r, 50));
+      const text = lines.join('\n');
+      for (const secret of [GARBAGE_TOKEN, NEW_PASSWORD, SECRET_EMAIL]) {
+        expect(text).not.toContain(secret);
+      }
+    });
+  });
 });

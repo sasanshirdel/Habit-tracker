@@ -58,3 +58,6 @@ export function signUpHref(next?: string | null): string {
   const safe = safeNextPath(next);
   return safe ? `/auth/sign-up?${NEXT_PARAM}=${encodeURIComponent(safe)}` : '/auth/sign-up';
 }
+
+/** The forgot-password page (locale-less, P2-05): where a reset link is asked for. */
+export const forgotPasswordHref = '/auth/forgot-password';

@@ -57,6 +57,10 @@ const PUBLIC_ROUTES: Record<string, Exclude<RouteAuthPolicy, 'required'>> = {
   'POST /auth/logout': 'optional',
   // P2-04 (ADR-0021): the emailed link's token is the credential; origin-checked, `auth` class.
   'POST /auth/verification/confirm': 'public',
+  // P2-05 (ADR-0022): anyone can ask for a reset link (identical 202 for every address, per-address
+  // limit) and the emailed token is the credential of the reset; origin-checked, `auth` class.
+  'POST /auth/password-reset/request': 'public',
+  'POST /auth/password-reset/confirm': 'public',
 };
 
 const METHODS: Partial<Record<RequestMethod, string>> = {
