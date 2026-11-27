@@ -61,6 +61,8 @@ describe('GET /api/docs/openapi.json when enabled (NODE_ENV=test, API_DOCS_ENABL
     expect(doc.openapi).toBe('3.1.1');
     expect(doc.servers).toEqual([{ url: '/api/v1', description: expect.any(String) }]);
     expect(Object.keys(doc.paths)).toEqual([
+      '/account/preferences',
+      '/account/profile',
       '/account/security-events',
       '/account/sessions',
       '/account/sessions/{id}',
