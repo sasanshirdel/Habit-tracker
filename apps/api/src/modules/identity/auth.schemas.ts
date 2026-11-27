@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import {
   localeSchema,
+  passwordResetRequestSchema,
+  passwordResetSchema,
   signInCredentialsSchema,
   signUpCredentialsSchema,
   timeZoneSchema,
@@ -129,5 +131,46 @@ export const invalidTokenErrorSchema = component(
     id: 'InvalidTokenError',
     description:
       '400 `INVALID_TOKEN`: the link is unknown, malformed, expired, already used or superseded by a newer one — indistinguishable on purpose.',
+  },
+);
+
+// --- Password recovery (P2-05, ADR-0022) ---
+
+export const passwordResetRequestBodySchema = z.strictObject({
+  email: passwordResetRequestSchema.shape.email.meta({
+    description: 'Trimmed and lower-cased before use. At most 254 characters.',
+  }),
+});
+export type PasswordResetRequestBody = z.output<typeof passwordResetRequestBodySchema>;
+
+export const passwordResetAcceptedResponseSchema = component(
+  z.strictObject({ status: z.literal('accepted') }),
+  {
+    id: 'PasswordResetAcceptedResponse',
+    description:
+      'Same answer for every well-formed address — registered or not, deleted, or asked for too often. If the address belongs to an account, a reset link is on its way.',
+  },
+);
+
+export const passwordResetConfirmBodySchema = z.strictObject({
+  token: confirmEmailBodySchema.shape.token.meta({
+    description:
+      'The token from the emailed link (`…/auth/reset-password#token=…`). Malformed, unknown, ' +
+      'expired, used and superseded tokens all get the same 400 `INVALID_TOKEN`.',
+  }),
+  password: passwordResetSchema.shape.password.meta({
+    description:
+      'The new password: 8–128 characters (Unicode code points after NFKC normalisation), like ' +
+      'registration. A policy violation is 400 `VALIDATION_FAILED` and leaves the link usable.',
+  }),
+});
+export type PasswordResetConfirmBody = z.output<typeof passwordResetConfirmBodySchema>;
+
+export const passwordResetResponseSchema = component(
+  z.strictObject({ status: z.literal('password-reset') }),
+  {
+    id: 'PasswordResetResponse',
+    description:
+      'The new password is set; every session of the account has ended (sign in again — this response does not sign in) and the address counts as verified.',
   },
 );

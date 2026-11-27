@@ -10,16 +10,30 @@ import {
 } from './email-verification.policy.js';
 
 /**
- * Per-account limit on "send me a new verification link" (backlog P2-04, ADR-0021), on top of the
- * per-address `auth` class: one request per {@link EMAIL_VERIFICATION_POLICY.resendCooldownSeconds}
- * and at most {@link EMAIL_VERIFICATION_POLICY.resendMaxPerHour} per hour, keyed by the opaque user
- * id (the route is signed-in only, so there is nothing to enumerate). Fails closed (503) without
- * Redis, like the other auth limits.
+ * Per-subject limits on emails a request can trigger: a cooldown between two sends plus an hourly
+ * cap, in Redis (fixed hour window started by the first send). Used for "send me a new
+ * verification link" (backlog P2-04, ADR-0021; keyed by the opaque user id) and, since P2-05
+ * (ADR-0022), for password-reset requests (keyed by a truncated SHA-256 of the submitted address).
+ * A refused request does not count.
  */
+export interface EmailSendLimits {
+  /** Policy name: part of the Redis key and `details.policy` of a 429. */
+  readonly policy: string;
+  readonly cooldownMs: number;
+  readonly maxPerHour: number;
+}
+
 export interface ResendThrottleStore {
   /** Takes one slot; returns 0 when allowed, else the milliseconds until the next one. */
-  take(key: string): Promise<number>;
+  take(key: string, limits: EmailSendLimits): Promise<number>;
 }
+
+/** The verification resend limits (P2-04): 1/min and 5/h per account. */
+export const VERIFICATION_RESEND_LIMITS: EmailSendLimits = {
+  policy: VERIFICATION_EMAIL_POLICY_NAME,
+  cooldownMs: EMAIL_VERIFICATION_POLICY.resendCooldownSeconds * 1000,
+  maxPerHour: EMAIL_VERIFICATION_POLICY.resendMaxPerHour,
+};
 
 export const RESEND_THROTTLE_STORE = Symbol('RESEND_THROTTLE_STORE');
 const TIMEOUT_MS = 250;
@@ -53,12 +67,12 @@ export class RedisResendThrottleStore implements ResendThrottleStore {
     private readonly redis: RedisConnection,
     config: ConfigService<Env, true>,
   ) {
-    this.prefix = `${config.get('RATE_LIMIT_PREFIX', { infer: true })}:${VERIFICATION_EMAIL_POLICY_NAME}`;
+    this.prefix = config.get('RATE_LIMIT_PREFIX', { infer: true });
   }
 
-  async take(key: string): Promise<number> {
+  async take(key: string, limits: EmailSendLimits): Promise<number> {
     if (!this.redis.isReady) throw new ResendThrottleUnavailableError('not connected');
-    const { resendCooldownSeconds, resendMaxPerHour } = EMAIL_VERIFICATION_POLICY;
+    const prefix = `${this.prefix}:${limits.policy}`;
     let timer: NodeJS.Timeout | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => reject(new ResendThrottleUnavailableError('timeout')), TIMEOUT_MS);
@@ -68,11 +82,11 @@ export class RedisResendThrottleStore implements ResendThrottleStore {
         this.redis.client.eval(
           TAKE_SCRIPT,
           2,
-          `${this.prefix}:cooldown:${key}`,
-          `${this.prefix}:hour:${key}`,
-          String(resendCooldownSeconds * 1000),
+          `${prefix}:cooldown:${key}`,
+          `${prefix}:hour:${key}`,
+          String(limits.cooldownMs),
           String(HOUR_MS),
-          String(resendMaxPerHour),
+          String(limits.maxPerHour),
         ),
         timeout,
       ]);
@@ -93,17 +107,17 @@ export class MemoryResendThrottleStore implements ResendThrottleStore {
 
   constructor(private readonly now: () => number = Date.now) {}
 
-  async take(key: string): Promise<number> {
+  async take(key: string, limits: EmailSendLimits): Promise<number> {
     const now = this.now();
-    const { resendCooldownSeconds, resendMaxPerHour } = EMAIL_VERIFICATION_POLICY;
-    let entry = this.entries.get(key);
+    const id = `${limits.policy}:${key}`;
+    let entry = this.entries.get(id);
     if (!entry || entry.hourEnds <= now) entry = { cooldownUntil: 0, count: 0, hourEnds: 0 };
     if (entry.cooldownUntil > now) return entry.cooldownUntil - now;
-    if (entry.count >= resendMaxPerHour) return entry.hourEnds - now;
+    if (entry.count >= limits.maxPerHour) return entry.hourEnds - now;
     if (entry.count === 0) entry.hourEnds = now + HOUR_MS;
     entry.count += 1;
-    entry.cooldownUntil = now + resendCooldownSeconds * 1000;
-    this.entries.set(key, entry);
+    entry.cooldownUntil = now + limits.cooldownMs;
+    this.entries.set(id, entry);
     return 0;
   }
 }
@@ -128,7 +142,7 @@ export class VerificationResendThrottle {
   async take(userId: string): Promise<void> {
     let waitMs: number;
     try {
-      waitMs = await this.store.take(userId);
+      waitMs = await this.store.take(userId, VERIFICATION_RESEND_LIMITS);
       this.outage.ready();
     } catch (error) {
       this.outage.error(error);

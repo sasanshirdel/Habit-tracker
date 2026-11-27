@@ -3,6 +3,8 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, Res } from '@ne
 import type {
   EmailVerifiedResponse,
   LoginResponse,
+  PasswordResetAcceptedResponse,
+  PasswordResetResponse,
   RegistrationAcceptedResponse,
   SessionResponse,
   VerificationEmailAcceptedResponse,
@@ -22,6 +24,12 @@ import {
   type ConfirmEmailInput,
   loginBodySchema,
   loginResponseSchema,
+  passwordResetAcceptedResponseSchema,
+  passwordResetConfirmBodySchema,
+  passwordResetRequestBodySchema,
+  passwordResetResponseSchema,
+  type PasswordResetConfirmBody,
+  type PasswordResetRequestBody,
   registerBodySchema,
   registrationAcceptedResponseSchema,
   sessionResponseSchema,
@@ -31,6 +39,7 @@ import {
 import { AuthService } from './auth.service.js';
 import { csrfTokenFor } from './csrf-token.js';
 import { LoginLockedError } from './login-throttle.js';
+import { PasswordRecoveryService } from './password-recovery.service.js';
 import { ResendThrottledError } from './verification-resend-throttle.js';
 import { clearSessionCookie, readSessionCookie, setSessionCookie } from './session-cookie.js';
 
@@ -45,13 +54,16 @@ const COOKIE_NOTE =
  * `@Public()` (origin check only), logout is public with an optional session (origin check, plus
  * the CSRF token when a live session is presented), logout-everywhere and the session read are
  * protected. Email verification (P2-04, ADR-0021): confirm is public (origin check, `auth` class),
- * resend is protected. Out of scope: password recovery (P2-05), the session list and security
- * events (P2-08).
+ * resend is protected. Password recovery (P2-05, ADR-0022): request and confirm are public
+ * (origin check, `auth` class). Out of scope: the session list and security events (P2-08).
  */
 @ApiTag('Auth', 'Registration, sign-in and sign-out with email and password.')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly recovery: PasswordRecoveryService,
+  ) {}
 
   @ApiDoc({
     operationId: 'register',
@@ -265,5 +277,68 @@ export class AuthController {
       throw error;
     }
     return { status: 'accepted' };
+  }
+
+  @ApiDoc({
+    operationId: 'requestPasswordReset',
+    summary: 'Email a password-reset link',
+    description:
+      'Answers 202 at once with the same body for every well-formed address; the rest happens ' +
+      'after the response, so neither the answer nor its timing says whether an account exists. ' +
+      'If the address belongs to an account that is not deleted, a reset link is emailed in the ' +
+      'account language — at most once a minute and 5 times an hour per address (more requests ' +
+      'are accepted and silently dropped). A link works once, for 30 minutes, and only the newest ' +
+      'one works. Rate-limit class `auth` (per client address, fails closed).',
+    responses: {
+      202: { description: 'Accepted.', schema: passwordResetAcceptedResponseSchema },
+    },
+  })
+  @Public()
+  @RateLimit('auth')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Post('password-reset/request')
+  requestPasswordReset(
+    @Body(new ZodValidationPipe(passwordResetRequestBodySchema)) body: PasswordResetRequestBody,
+  ): PasswordResetAcceptedResponse {
+    // Deliberately not awaited: see PasswordRecoveryService (no enumeration by timing).
+    void this.recovery.requestReset(body.email);
+    return { status: 'accepted' };
+  }
+
+  @ApiDoc({
+    operationId: 'resetPassword',
+    summary: 'Set a new password with a reset link',
+    description:
+      'Consumes the token from the emailed link and sets the new password (Argon2id). Every ' +
+      'session of the account ends (`password_changed`), other reset links stop working, the ' +
+      'address counts as verified, the sign-in lockout of the address is cleared and a "your ' +
+      'password was changed" email is sent. Does not sign in. Needs no session; the web page ' +
+      'posts it when the user presses the button. Rate-limit class `auth`.',
+    responses: {
+      200: { description: 'Password changed.', schema: passwordResetResponseSchema },
+      400: {
+        description:
+          'Invalid, expired, used or superseded link (`INVALID_TOKEN`), or a body that breaks the ' +
+          'rules — e.g. a too-short password (`VALIDATION_FAILED`; the link stays usable).',
+        schema: invalidTokenErrorSchema,
+      },
+    },
+  })
+  @Public()
+  @RateLimit('auth')
+  @HttpCode(HttpStatus.OK)
+  @Post('password-reset/confirm')
+  async resetPassword(
+    @Body(new ZodValidationPipe(passwordResetConfirmBodySchema)) body: PasswordResetConfirmBody,
+  ): Promise<PasswordResetResponse> {
+    const result = await this.recovery.resetPassword(body.token, body.password);
+    if (result !== 'reset') {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        'INVALID_TOKEN',
+        'The link is invalid, expired or already used.',
+      );
+    }
+    return { status: 'password-reset' };
   }
 }
