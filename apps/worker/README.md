@@ -24,6 +24,11 @@ configuration stops the process with exit code 1, naming the variable but never 
 Logs are structured JSON lines on stdout (P1-07, ADR-0010), the same format as the API; lines
 logged while a job runs carry `jobId`, `jobName` and `attempt` (never the payload).
 
+Jobs it runs for the identity module: verification / password-reset / password-changed / account
+deleted emails, and `identity.account-purge` (P2-10, ADR-0025), which erases accounts whose 30-day
+restore window has passed. There is no job scheduler yet: until there is, the deployment must
+enqueue `identity.account-purge` (empty payload, idempotent) once a day.
+
 The worker has no health endpoint yet; liveness is the process itself. Job/queue monitoring arrives
 with system management (P10-12) and observability (P12-05).
 

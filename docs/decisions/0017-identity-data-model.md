@@ -101,7 +101,8 @@ tables and four enum types.
 
 1. **Email stays reserved while an account is soft-deleted.** Safest interim: a deleted account
    cannot be taken over by re-registration during the restore window. The window length and what
-   happens after it belong to P2-10.
+   happens after it belong to P2-10. _Resolved by ADR-0025 (P2-10):_ 30-day grace period with an
+   emailed restore link; afterwards the purge erases the account and the address is free again.
 2. **No default locale** — the API must store the language the user registered in; the theme
    defaults to `dark` (ADR-0013).
 3. **No IP/user-agent on sessions** until P2-08 decides what the session list shows and how long
