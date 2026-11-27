@@ -97,3 +97,24 @@ export const currentPasswordSchema = z
   .min(1)
   .max(PASSWORD_INPUT_MAX_LENGTH)
   .transform(normalizePassword);
+
+/**
+ * The credentials of the sign-in form and of `POST /auth/login` (P2-09): email + current
+ * password. The API's `loginBodySchema` is this shape made strict; the web form validates with it
+ * for immediate feedback only. Non-strict here so a form can carry UI-only fields.
+ */
+export const signInCredentialsSchema = z.object({
+  email: emailAddressSchema,
+  password: currentPasswordSchema,
+});
+export type SignInCredentials = z.output<typeof signInCredentialsSchema>;
+
+/**
+ * The credentials of the sign-up form and of `POST /auth/register` (P2-09): email + a password
+ * that meets the policy. The API's `registerBodySchema` adds locale, time zone and display name.
+ */
+export const signUpCredentialsSchema = z.object({
+  email: emailAddressSchema,
+  password: newPasswordSchema,
+});
+export type SignUpCredentials = z.output<typeof signUpCredentialsSchema>;

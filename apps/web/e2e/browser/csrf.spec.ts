@@ -1,4 +1,4 @@
-import { E2E_API_BASE_URL } from './env';
+import { E2E_API_BASE_URL, SIGNED_OUT } from './env';
 import { cspViolations, expect, test } from './fixtures';
 
 /**
@@ -10,6 +10,8 @@ import { cspViolations, expect, test } from './fixtures';
  * automatic console guard is off here; CSP violations are still asserted.
  */
 test.use({ allowPageErrors: true });
+// Its own account and session: signing in would revoke the shared session of the other tests.
+test.use({ storageState: SIGNED_OUT });
 
 interface Result {
   status: number;

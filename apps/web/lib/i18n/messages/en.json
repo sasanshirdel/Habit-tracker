@@ -7,7 +7,8 @@
     "heading": "Build better habits.",
     "subheading": "Foundation build — product features arrive in later phases.",
     "today": "Today is {date, date, long}.",
-    "openApp": "Open the app",
+    "signUp": "Create an account",
+    "signIn": "Sign in",
     "status": "System status"
   },
   "language": {
@@ -139,5 +140,56 @@
     "down": "Unavailable",
     "allReady": "All dependencies are operational.",
     "notReady": "Some dependencies are unavailable."
+  },
+  "auth": {
+    "signIn": {
+      "title": "Sign in",
+      "description": "Welcome back. Sign in with your email and password.",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "noAccount": "New here?",
+      "createAccount": "Create an account"
+    },
+    "signUp": {
+      "title": "Create your account",
+      "description": "Start building better habits. It takes less than a minute.",
+      "submit": "Create account",
+      "submitting": "Creating account…",
+      "passwordHint": "At least {min, number} characters. A long phrase is easier to remember than a complex word.",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "acceptedTitle": "Request received",
+      "acceptedBody": "If this email address isn't registered yet, your account is ready. Sign in with your email and password to continue.",
+      "acceptedAction": "Continue to sign in"
+    },
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "showPassword": "Show password"
+    },
+    "validation": {
+      "emailRequired": "Enter your email address.",
+      "emailInvalid": "Enter a valid email address, like name@example.com.",
+      "passwordRequired": "Enter your password.",
+      "passwordTooShort": "Use at least {min, number} characters.",
+      "passwordTooLong": "Use at most {max, number} characters.",
+      "summary": "{count, plural, one {Fix # field to continue.} other {Fix # fields to continue.}}"
+    },
+    "errors": {
+      "invalidCredentials": "The email or password is incorrect.",
+      "locked": "Too many unsuccessful sign-in attempts. For your security, wait {minutes, plural, one {# minute} other {# minutes}} and try again.",
+      "tooManyAttempts": "Too many attempts from this device. Wait {minutes, plural, one {# minute} other {# minutes}} and try again.",
+      "invalidInput": "Some of the information you entered is not valid. Check it and try again."
+    },
+    "session": {
+      "checking": "Checking your session…",
+      "account": "Account",
+      "signedInAs": "Signed in as {email}",
+      "signOut": "Sign out",
+      "signingOut": "Signing out…",
+      "signedOut": "You've signed out.",
+      "signOutFailed": "We couldn't sign you out. Check your connection and try again.",
+      "checkFailed": "We couldn't check whether you're signed in."
+    }
   }
 }

@@ -2,6 +2,7 @@ import { THEME_COOKIE, parseThemePreference } from '@habit/ui';
 import { getTranslations } from 'next-intl/server';
 import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
+import { AccountMenu } from '@/components/auth/account-menu';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { Brand } from './brand';
 import { LanguageSwitcher } from './language-switcher';
@@ -17,9 +18,9 @@ export const MAIN_ID = 'main';
  * from `md`, bottom bar below), a banner with the language and theme switchers, and the `main`
  * region pages render into. Landmarks: `banner`, `navigation` (labelled), `main`.
  *
- * It shows navigation only — no user data and no access control. The API is the authority (deny by
- * default since P2-03); the page-level sign-in redirect comes with P2-09 (ADR-0019). Nothing here
- * pretends to authorize.
+ * The chrome shows navigation only; the account menu (P2-09) appears once the session is known, and
+ * the `(app)` layout's `AuthGate` holds page content back until then (ADR-0020). The API is the
+ * authority (deny by default since P2-03). Nothing here pretends to authorize.
  */
 export async function AppShell({ children }: { children: ReactNode }) {
   const [t, tTheme, cookieStore] = await Promise.all([
@@ -47,6 +48,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
                   system: tTheme('system'),
                 }}
               />
+              <AccountMenu />
             </div>
           </header>
           <main

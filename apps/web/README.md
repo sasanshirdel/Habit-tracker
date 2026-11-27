@@ -40,10 +40,18 @@ Next.js 16 App Router frontend, bilingual from the first page:
   - Sections, their order, their mobile slot and whether their icon flips in RTL live in
     `lib/navigation/sections.ts`; labels are `nav.*` messages, placeholder copy `sections.*`.
   - Each section page is a placeholder (`components/shell/section-page.tsx`: heading +
-    `EmptyState`), `noindex`. **No page-level sign-in redirect yet** — the API denies by default
-    since P2-03; P2-09 adds a client-side redirect from `GET /auth/session` (a server-side check is
-    impossible while the API cookie is host-only on another origin, ADR-0019). Overview is at `/{locale}/overview` (interim, see ROADMAP
-    decision #10).
+    `EmptyState`), `noindex`. Page content sits behind `components/auth/auth-gate.tsx` (P2-09,
+    ADR-0020): it renders only after `GET /auth/session` confirmed a session, otherwise the visitor
+    goes to `/{locale}/auth/sign-in?next=…` (a server-side check is impossible while the API cookie
+    is host-only on another origin, ADR-0019). UX only — never put user data in a page component.
+    Overview is at `/{locale}/overview` (interim, see ROADMAP decision #10).
+
+- **Auth pages** (P2-09, ADR-0020): `/{locale}/auth/sign-in` and `/{locale}/auth/sign-up`
+  (`app/[locale]/auth`), React Hook Form with the shared credential schemas
+  (`lib/forms/schema-resolver.ts`), `lib/auth/session.ts` (`useSession`: signed in / signed out /
+  error), `lib/auth/actions.ts` (`signUp`, `signIn` — keeps the CSRF token in memory — and
+  `signOut`), `lib/auth/redirect.ts` (`safeNextPath`: `next` only for in-app section paths),
+  `components/auth/account-menu.tsx` (banner: who is signed in, sign out). Messages: `auth.*`.
 
 - **Data layer** (P1-12, ADR-0014): `lib/api/client.ts` (`createApiClient`; the app's instance is
   `lib/api/api.ts`, base URL `NEXT_PUBLIC_API_BASE_URL`), `lib/api/errors.ts` (`ApiError`, client

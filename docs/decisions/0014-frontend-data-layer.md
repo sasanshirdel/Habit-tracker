@@ -65,7 +65,7 @@ the browser must never hold a token. Backlog P1-12 (#16).
 ## Consequences
 
 - Features write `queryOptions` with the shared client and get retries, cancellation and localized
-  errors for free; field-level `VALIDATION_FAILED` issues are mapped by forms in Phase 2 (P2-09).
+  errors for free; field-level `VALIDATION_FAILED` issues are mapped by forms in Phase 2 (P2-09 shows a generic form-level message; per-field mapping of server issues is a follow-up, ADR-0020).
 - `NEXT_PUBLIC_API_BASE_URL` is required in any deployment where the API is not reverse-proxied at
   `/api/v1` on the web origin (the fallback); it also feeds the CSP `connect-src`.
 - Adding an API error code needs an `apiErrors` message in both catalogues (enforced).

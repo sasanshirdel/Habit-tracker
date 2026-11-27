@@ -109,4 +109,5 @@ Functional, integration, E2E (all 15 PRD journeys), security, performance, acces
 7. **Redis vs Valkey** for production (licensing).
 8. **Calendar display** for Persian users (Solar Hijri default?). Interim: `Intl`'s locale default — Solar Hijri for `fa` — set in `apps/web/lib/i18n/formats.ts` (P1-10).
 9. **Repository visibility**: PRD says private initially — confirm current GitHub visibility.
-10. **Overview URL**: ARCHITECTURE §7 maps both the dashboard and the public landing page to `/{locale}`. Interim (P1-11): landing at `/{locale}`, Overview at `/{locale}/overview`; revisit with auth (P2-09) — redirect signed-in users, or swap.
+10. **Overview URL**: ARCHITECTURE §7 maps both the dashboard and the public landing page to `/{locale}`. Interim (P1-11, kept in P2-09): landing at `/{locale}` with **Create an account** / **Sign in**, Overview at `/{locale}/overview` (`appHomeHref`); a signed-in visitor opening sign-in is sent to the overview, the landing page itself makes no session call. Options for the owner: keep; redirect signed-in visitors from `/{locale}` (costs a session check per landing visit); or swap (dashboard at `/{locale}`, landing elsewhere). ADR-0020.
+11. **Web route protection** (ADR-0019 #1 → ADR-0020): client-side `AuthGate` for now; a server-side check needs the API under the web origin — decide with the deployment target (#3).

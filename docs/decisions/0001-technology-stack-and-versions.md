@@ -31,7 +31,7 @@ PRD §5.2 recommends a stack but explicitly says: _"Do not select a library sole
 | `eslint-plugin-react-hooks`               | 7.1.1                                    | 2026-04-17 | Declares ESLint 10 support.                                                                                                             |
 | shadcn/ui CLI (`shadcn`)                  | 4.23.0 (**deferred to Phase 1**)         | 2026-10-27 | Copies component source into the repo; nothing to install in Phase 0.                                                                   |
 | next-intl                                 | 4.16.0 (**deferred to Phase 1**)         | 2026-11-23 | Peers support Next 16 / React 19. Published <24h before the check; Phase 1 must re-verify. See ADR-0004.                                |
-| TanStack Query, React Hook Form, Recharts | 5.108.4 / 7.92.0 / 3.11.1 (**deferred**) | —          | Recorded for reference only; added when first needed. TanStack Query added in P1-12 (addendum below).                                   |
+| TanStack Query, React Hook Form, Recharts | 5.108.4 / 7.92.0 / 3.11.1 (**deferred**) | —          | Recorded for reference only; added when first needed. TanStack Query added in P1-12, React Hook Form in P2-09 (addenda below).          |
 
 ### Backend (`apps/api`)
 
@@ -224,3 +224,17 @@ time scripts dependencies optionalDependencies engines` on 2026-11-26 (UTC+03:30
 concerns for CI and Docker), `@node-rs/argon2` 2.2.2 (13 platform-specific prebuilt binaries), and
 `hash-wasm` 4.13.0 (WASM). `pnpm-workspace.yaml`, `package.json` files and the lockfile are
 unchanged. Parameters and rationale: [ADR-0018](0018-email-password-authentication.md).
+
+## Addendum — Phase 2, P2-09 auth pages (2026-11-26)
+
+| Package           | Installed  | Published  | Where / notes                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------- | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `react-hook-form` | **7.92.0** | 2026-11-11 | `apps/web` only. Form state, validation timing and focus management for the auth forms and the larger forms to come (backlog choice, deferred list above). MIT, one maintainer (bluebill1049), actively released; **no dependencies**, peer `react ^16.8 … ^19` (React 19.3.1 here), no install script. `latest` at the check; older than pnpm's minimum release age. |
+
+Checked with `npm view react-hook-form version time dependencies peerDependencies license
+maintainers` on 2026-11-26 (UTC+03:30); pinned exactly, lockfile updated by `pnpm add --save-exact`.
+**Not added:** `@hookform/resolvers` 7.0.9 (2026-11-24) — supports zod 4, but declares ~20 optional
+peer dependencies and depends on `@standard-schema/utils`; a 25-line in-repo resolver over the
+shared schemas does the one thing needed (`apps/web/lib/forms/schema-resolver.ts`). `apps/web`
+does not depend on `zod` directly (the schemas come from `@habit/shared-validation`, already an
+allowed edge). Usage: [ADR-0020](0020-web-authentication-pages-and-route-protection.md).

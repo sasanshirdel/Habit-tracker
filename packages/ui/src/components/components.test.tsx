@@ -20,7 +20,10 @@ import {
   DropdownMenuTrigger,
 } from './dropdown-menu.js';
 import { EmptyState } from './empty-state.js';
+import { Alert } from './alert.js';
 import { Input } from './input.js';
+import { Label } from './label.js';
+import { PasswordInput } from './password-input.js';
 import { Skeleton } from './skeleton.js';
 import { Toaster, dismissToast, toast } from './toast.js';
 import { UiProvider } from './ui-provider.js';
@@ -243,5 +246,55 @@ describe('Toaster', () => {
     expect(screen.queryByText('Toast 1')).toBeNull();
     expect(screen.getByText('Toast 4')).toBeTruthy();
     expect(document.querySelectorAll('[data-slot="toast"]').length).toBe(3);
+  });
+});
+
+describe('form primitives (P2-09)', () => {
+  it('Label names its control', () => {
+    render(
+      <>
+        <Label htmlFor="email">Email</Label>
+        <Input id="email" type="email" />
+      </>,
+    );
+    expect(screen.getByLabelText('Email')).toHaveProperty('id', 'email');
+  });
+
+  it('PasswordInput toggles visibility with a pressed-state button and keeps value and focus', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <Label htmlFor="pw">Password</Label>
+        <PasswordInput id="pw" autoComplete="current-password" toggleLabel="Show password" />
+      </>,
+    );
+    const field = screen.getByLabelText('Password') as HTMLInputElement;
+    expect(field.type).toBe('password');
+    expect(field.getAttribute('autocomplete')).toBe('current-password');
+    expect(field.getAttribute('dir')).toBe('ltr');
+    // The wrapper is LTR too, so the toggle and the reserved padding are on the same side in RTL.
+    expect(field.closest('[data-slot="password-input"]')?.getAttribute('dir')).toBe('ltr');
+    await user.type(field, 's3cret');
+    const toggle = screen.getByRole('button', { name: 'Show password' });
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(toggle.getAttribute('aria-controls')).toBe('pw');
+    expect(toggle.getAttribute('type')).toBe('button');
+    await user.click(toggle);
+    expect(field.type).toBe('text');
+    expect(field.value).toBe('s3cret');
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    await user.click(toggle);
+    expect(field.type).toBe('password');
+  });
+
+  it('Alert uses role=alert for errors and role=status otherwise', () => {
+    render(
+      <>
+        <Alert tone="danger">Wrong</Alert>
+        <Alert tone="success">Done</Alert>
+      </>,
+    );
+    expect(screen.getByRole('alert').textContent).toBe('Wrong');
+    expect(screen.getByRole('status').textContent).toBe('Done');
   });
 });

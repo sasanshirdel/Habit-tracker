@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { directionOf, locales, viewports } from './env';
-import { expect, messages, test } from './fixtures';
+import { expect, messages, openApp, test } from './fixtures';
 
 /**
  * Keyboard journey through the shell (P1-11 criteria moved to P1-13): skip link → main, the
@@ -16,7 +16,7 @@ for (const locale of locales) {
     test.use({ viewport: viewports.phone });
 
     test('skip link, then the "More" sheet by keyboard only', async ({ page }) => {
-      await page.goto(`/${locale}/overview`);
+      await openApp(page, `/${locale}/overview`);
 
       // The skip link is the first stop and becomes visible when focused.
       await page.keyboard.press('Tab');
@@ -87,7 +87,7 @@ for (const locale of locales) {
     test('the focused skip link appears at the inline start and sidebar links navigate', async ({
       page,
     }) => {
-      await page.goto(`/${locale}/overview`);
+      await openApp(page, `/${locale}/overview`);
       await page.keyboard.press('Tab');
       const skip = page.getByRole('link', { name: t.shell!.skipToContent! });
       await expect(skip).toBeFocused();

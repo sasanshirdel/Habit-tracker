@@ -7,6 +7,7 @@ import type {
   RegistrationAcceptedResponse,
 } from '@habit/shared-types';
 import type { Locale } from '@habit/localization';
+import { signInCredentialsSchema, signUpCredentialsSchema } from '@habit/shared-validation';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { z } from 'zod';
 import { ApiException } from '../../common/errors/api-exception.js';
@@ -359,6 +360,24 @@ describe('auth request schemas', () => {
     ['missing locale', { email: valid.email, password: valid.password, timezone: valid.timezone }],
   ])('rejects registration with %s', (_name, body) => {
     expect(registerBodySchema.safeParse(body).success).toBe(false);
+  });
+
+  it('accepts exactly what the shared form schemas accept (web forms, P2-09)', () => {
+    const cases = [
+      { email: 'a@example.com', password: 'x' },
+      { email: 'a@example.com', password: '' },
+      { email: ' A@Example.com ', password: 'correct horse' },
+      { email: 'nope', password: 'correct horse' },
+      { email: 'a@example.com', password: 'x'.repeat(129) },
+    ];
+    for (const credentials of cases) {
+      expect(loginBodySchema.safeParse(credentials).success).toBe(
+        signInCredentialsSchema.safeParse(credentials).success,
+      );
+      expect(
+        registerBodySchema.safeParse({ ...credentials, locale: 'en', timezone: 'UTC' }).success,
+      ).toBe(signUpCredentialsSchema.safeParse(credentials).success);
+    }
   });
 
   it('bounds but does not policy-check the sign-in password', () => {

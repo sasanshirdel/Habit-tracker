@@ -163,6 +163,8 @@ client now accepts an async token source and, on 403 `CSRF_FAILED`, forgets the 
    serve the API under the web origin (`/api/v1` reverse proxy, ADR-0014 fallback), then the
    layout can forward the cookie server-side. Recommendation: (a) now, revisit with the
    deployment decision (P12). The placeholder pages still show no user data.
+   **Resolved in P2-09 with option (a)** — see [ADR-0020](0020-web-authentication-pages-and-route-protection.md);
+   option (b) stays open with the deployment decision.
 2. **`CORS_ORIGINS` doubles as the CSRF trust list.** Intentional (one list of origins we own);
    the owner should treat edits to it as security changes.
 
