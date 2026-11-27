@@ -30,3 +30,20 @@ export {
   type SignInCredentials,
   type SignUpCredentials,
 } from './credentials.js';
+export {
+  DISPLAY_NAME_INPUT_MAX_LENGTH,
+  DISPLAY_NAME_MAX_LENGTH,
+  calendarSystemSchema,
+  defaultDisplayPreferencesFor,
+  displayNameSchema,
+  normalizeDisplayName,
+  preferencesSchema,
+  preferencesUpdateSchema,
+  profileUpdateSchema,
+  themePreferenceSchema,
+  weekStartSchema,
+  type PreferencesInput,
+  type PreferencesUpdate,
+  type ProfileUpdate,
+  type ProfileUpdateInput,
+} from './profile.js';

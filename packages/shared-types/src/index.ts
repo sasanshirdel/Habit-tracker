@@ -50,3 +50,13 @@ export type {
   SecurityEventList,
   SecurityEventType,
 } from './account.js';
+export type {
+  CalendarPreference,
+  LocalePreference,
+  ThemePreferenceValue,
+  UpdatePreferencesRequest,
+  UpdateProfileRequest,
+  UserPreferences,
+  UserProfile,
+  WeekStartPreference,
+} from './profile.js';

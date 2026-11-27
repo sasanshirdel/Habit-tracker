@@ -15,8 +15,8 @@ export interface RegisterRequest {
   locale: 'en' | 'fa';
   /** IANA time zone, e.g. `Asia/Tehran` (habit days are computed in it). */
   timezone: string;
-  /** Optional, 1..100 characters. */
-  displayName?: string;
+  /** Optional, up to 100 characters after normalisation; blank or `null` means none (P2-07). */
+  displayName?: string | null;
 }
 
 /**
