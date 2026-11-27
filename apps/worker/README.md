@@ -16,7 +16,7 @@ Configuration: `NODE_ENV`, `DATABASE_URL`, `REDIS_URL`, `QUEUE_PREFIX`, `WORKER_
 `LOG_LEVEL`, `LOG_FORMAT` (see `.env.example` and docs/DEVELOPMENT_WORKFLOW.md).
 
 Queues consumed: `system` and, since P2-04, `email` (verification and "already registered"
-emails, ADR-0021). Emails are only logged (`MAIL_TRANSPORT=log`, default) or written as JSON files
+emails, ADR-0021; password-reset links and "password changed" notices since P2-05, ADR-0022). Emails are only logged (`MAIL_TRANSPORT=log`, default) or written as JSON files
 to a local directory (`MAIL_TRANSPORT=outbox` + `MAIL_OUTBOX_DIR`) — open the link from the file to
 verify an account locally. No real email provider is configured yet. Invalid
 configuration stops the process with exit code 1, naming the variable but never its value.

@@ -101,6 +101,7 @@ route tests (`test:e2e`) pass on that build too. Behind an HTTP proxy, set
 
 Since P2-04 (ADR-0021) the suite also starts the worker with `MAIL_TRANSPORT=outbox`: emails land
 as JSON files in `e2e/.outbox/` (gitignored, emptied per run) and tests open the links from there
-(`waitForEmails`, `verificationLinkIn` in `e2e/browser/fixtures.ts`). Each test presents its own
+(`waitForEmails`, `waitForTemplate`, `verificationLinkIn`, `passwordResetLinkIn` in
+`e2e/browser/fixtures.ts`). Each test presents its own
 client address to the API (`X-Forwarded-For`, API started with `TRUST_PROXY=1`), so the `auth`
 rate limit (10 per 5 minutes per address) applies per test rather than to the whole suite.

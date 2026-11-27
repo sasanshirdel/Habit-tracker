@@ -176,7 +176,9 @@ Revisit with the provider decision: an SMTP or HTTP-API transport is one class i
   two new routes (one public, reviewed in the route inventory), no migration.
 - `RequestPrincipal`/`ActiveSession` gain `emailVerified`.
 - Password recovery (P2-05) reuses the mail port, the renderer, the `email` queue, the fragment
-  link pattern and `INVALID_TOKEN`.
+  link pattern and `INVALID_TOKEN` — done in ADR-0022, which also generalised the resend throttle
+  store into per-policy "email send limits" (same Redis keys for verification) and makes a
+  successful password reset mark the address verified.
 - Follow-ups: a real transport once a provider is chosen (with SPF/DKIM/DMARC on the sending
   domain), clean-up job for expired `user_tokens`, delivery records/bounces with notifications
   (P8), applying `@RequireVerifiedEmail()` as features land.
