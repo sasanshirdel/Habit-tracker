@@ -62,10 +62,27 @@ export const authenticatedUserSchema = component(
   { id: 'AuthenticatedUser' },
 );
 
-export const loginResponseSchema = component(z.strictObject({ user: authenticatedUserSchema }), {
-  id: 'LoginResponse',
-  description: 'The session is in the `__Host-session` cookie (`HttpOnly`), never in the body.',
+const csrfTokenSchema = z.string().meta({
+  description:
+    'CSRF token of this session (ADR-0019). Keep it in memory only; send it as `X-CSRF-Token` on ' +
+    'every POST/PUT/PATCH/DELETE.',
 });
+
+export const loginResponseSchema = component(
+  z.strictObject({ user: authenticatedUserSchema, csrfToken: csrfTokenSchema }),
+  {
+    id: 'LoginResponse',
+    description: 'The session is in the `__Host-session` cookie (`HttpOnly`), never in the body.',
+  },
+);
+
+export const sessionResponseSchema = component(
+  z.strictObject({ user: authenticatedUserSchema, csrfToken: csrfTokenSchema }),
+  {
+    id: 'SessionResponse',
+    description: 'The signed-in account and the CSRF token of the presented session.',
+  },
+);
 
 export const invalidCredentialsErrorSchema = component(
   errorEnvelopeWith(z.literal('INVALID_CREDENTIALS'), z.unknown().optional()),
@@ -74,9 +91,4 @@ export const invalidCredentialsErrorSchema = component(
     description:
       '401 `INVALID_CREDENTIALS`: identical for an unknown address and a wrong password.',
   },
-);
-
-export const unauthenticatedErrorSchema = component(
-  errorEnvelopeWith(z.literal('UNAUTHENTICATED'), z.unknown().optional()),
-  { id: 'UnauthenticatedError', description: '401 `UNAUTHENTICATED`: no active session.' },
 );

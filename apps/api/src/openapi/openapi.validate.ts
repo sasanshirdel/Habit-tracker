@@ -6,8 +6,8 @@ import type { OpenApiDocument } from './openapi.document.js';
  * - `openapi` is 3.1.x and `info` has a title and version;
  * - paths start with `/`, use only `{param}` templates, and every template parameter is declared
  *   as a required `in: path` parameter (and no undeclared path parameter exists);
- * - every operation has a unique `operationId`, at least one 2xx response, and every response a
- *   description;
+ * - every operation has a unique `operationId`, at least one 2xx response, every response a
+ *   description, and an explicit `security` naming only declared schemes (P2-03);
  * - every `$ref` resolves inside the document;
  * - no JSON Schema keyword OpenAPI 3.1 forbids in embedded schemas leaks through (`$schema` with
  *   another dialect, `$id` fragments, leftover `$defs` refs).
@@ -57,6 +57,19 @@ export function validateOpenApiDocument(document: OpenApiDocument): string[] {
       const responses = (operation.responses ?? {}) as Record<string, Record<string, unknown>>;
       if (!Object.keys(responses).some((s) => /^2\d\d$/.test(s))) {
         problems.push(`${where}: no 2xx response`);
+      }
+      // P2-03: every operation states its security explicitly, naming only declared schemes.
+      const security = operation.security;
+      if (!Array.isArray(security)) {
+        problems.push(`${where}: security requirement missing (use [] for public routes)`);
+      } else {
+        for (const requirement of security as Record<string, unknown>[]) {
+          for (const scheme of Object.keys(requirement)) {
+            if (!(scheme in document.components.securitySchemes)) {
+              problems.push(`${where}: unknown security scheme "${scheme}"`);
+            }
+          }
+        }
       }
       for (const [status, response] of Object.entries(responses)) {
         if (!/^([1-5]\d\d|default)$/.test(status))

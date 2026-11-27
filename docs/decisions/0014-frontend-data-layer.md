@@ -19,9 +19,10 @@ the browser must never hold a token. Backlog P1-12 (#16).
   `cache: 'no-store'`, sends `Accept: application/json` (and JSON bodies), and has a timeout
   (15 s). Paths must be relative to `NEXT_PUBLIC_API_BASE_URL`; absolute URLs and `//host` paths are
   rejected so credentials cannot leak to another origin.
-- **CSRF:** the client has a `csrf: { headerName, getToken }` option applied to state-changing
-  methods only. It is not configured yet: P2-03 chooses the mechanism and header name, adds the
-  header to the API's CORS allow-list (ADR-0011) and sets the option in `lib/api/api.ts`.
+- **CSRF:** the client has a `csrf: { headerName, getToken, onRejected }` option applied to
+  state-changing methods only. Since P2-03 (ADR-0019) `lib/api/api.ts` sets it: header
+  `X-CSRF-Token`, token (sync or async) from the in-memory store `lib/api/csrf.ts` (fetched from
+  `GET /auth/session` on first need), and one retry after 403 `CSRF_FAILED`.
 - **No tokens in web storage:** the client never reads or writes `localStorage`/`sessionStorage`
   (a test makes any access throw).
 - **Errors:** every failure is an `ApiError` with `code`, `status`, `requestId`, `details` and

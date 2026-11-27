@@ -123,6 +123,10 @@ Origin/`Sec-Fetch-Site` or token check to every state-changing cookie-authentica
 including these, and the deny-by-default `AuthGuard`/`@CurrentUser()` built on
 `SessionService.resolve`. Nothing on `main` should be deployed publicly before P2-03 lands.
 
+**Update (P2-03, ADR-0019):** done — all four routes pass the global `AuthGuard` (origin check on
+all; session token on logout with a live session and on logout-everywhere, which is now a protected
+route using `@CurrentUser()`); sign-in returns the session's `csrfToken`; `GET /auth/session` added.
+
 ## Alternatives considered
 
 - **`argon2` / `@node-rs/argon2` / `hash-wasm`** — see the table above.

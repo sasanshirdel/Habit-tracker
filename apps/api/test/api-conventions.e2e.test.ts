@@ -26,6 +26,7 @@ import {
   sortSchema,
 } from '../src/common/index.js';
 import { QueueUnavailableError } from '../src/queue/errors.js';
+import { Public } from '../src/common/auth/index.js';
 
 // e2e for the API conventions (backlog P1-05): error envelope, validation, pagination and request
 // ids, through the real global setup (`createApp`). A test-only controller is mounted next to the
@@ -42,6 +43,8 @@ const createItemSchema = z.strictObject({
 });
 const idParamsSchema = z.object({ id: z.coerce.number().int().positive() });
 
+// Test-only routes: public, so these suites exercise conventions without a session (P2-03).
+@Public()
 @Controller('conventions-test')
 class ConventionsTestController {
   @Get('items')

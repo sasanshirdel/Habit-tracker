@@ -5,6 +5,7 @@ import {
   Inject,
   Injectable,
   Logger,
+  Optional,
   SetMetadata,
   applyDecorators,
   type CanActivate,
@@ -13,9 +14,16 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import type { RateLimitErrorDetails } from '@habit/shared-types';
+import {
+  SESSION_RESOLVER,
+  checkRequestOrigin,
+  isUnsafeMethod,
+  routeAuthPolicy,
+  type SessionResolver,
+} from '../common/auth/index.js';
+import { currentRequestContext } from '../common/request/request-context.js';
 import type { Env } from '../config/env.js';
 import { ApiException } from '../common/errors/api-exception.js';
-import { currentRequestContext } from '../common/request/request-context.js';
 import { OutageLogger } from '../queue/outage-logger.js';
 import {
   RATE_LIMIT_CLASSES,
@@ -98,8 +106,8 @@ interface Verdict {
 }
 
 /**
- * Global guard (registered by `RateLimitModule` as the first `APP_GUARD`, so it runs before
- * authentication guards — P2-03 — and limits unauthenticated floods too).
+ * Global guard (registered by `RateLimitModule` as the first `APP_GUARD`, so it runs before the
+ * authentication guard — P2-03 — and limits unauthenticated floods too).
  *
  * - Applies `default` to every routed request, plus the route's class if it has one.
  * - Sets `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset` (seconds) for the most
@@ -116,13 +124,17 @@ export class RateLimitGuard implements CanActivate {
   private readonly logger = new Logger('RateLimit');
   private readonly outage = new OutageLogger(this.logger, 'Rate-limit store');
   private readonly enabled: boolean;
+  private readonly trustedOrigins: ReadonlySet<string>;
 
   constructor(
     private readonly reflector: Reflector,
     @Inject(RATE_LIMIT_STORE) private readonly store: RateLimitStore,
     config: ConfigService<Env, true>,
+    // Provided by the identity module (P2-03); absent in apps composed without it (tests).
+    @Optional() @Inject(SESSION_RESOLVER) private readonly sessions?: SessionResolver,
   ) {
     this.enabled = config.get('RATE_LIMIT_ENABLED', { infer: true });
+    this.trustedOrigins = new Set(config.get('CORS_ORIGINS', { infer: true }));
     if (!this.enabled) this.logger.warn('Rate limiting is DISABLED (RATE_LIMIT_ENABLED=false).');
   }
 
@@ -138,7 +150,7 @@ export class RateLimitGuard implements CanActivate {
     const http = context.switchToHttp();
     const req = http.getRequest<ClientRequest>();
     const res = http.getResponse<ServerResponse>();
-    const userId = currentRequestContext()?.userId;
+    const userId = await this.userIdFor(context, req, policies);
 
     const verdicts: Verdict[] = [];
     for (const policy of policies) {
@@ -188,6 +200,32 @@ export class RateLimitGuard implements CanActivate {
       'Too many requests.',
       details,
     );
+  }
+
+  /**
+   * The user whose budget `user-or-ip` policies spend (P2-03, ADR-0019): the active session's
+   * user on routes that look up a session (protected and `optional` ones), through the shared
+   * per-request resolver, so the `AuthGuard` that runs next reuses the same lookup. `@Public()`
+   * routes and anonymous requests are keyed by client address. A well-formed but unknown cookie
+   * costs one indexed lookup and is then counted by address like any anonymous request. A
+   * state-changing request from an untrusted origin (which the `AuthGuard` will reject as CSRF) is
+   * counted by address without a lookup, so a foreign page cannot spend a victim's budget. A user
+   * id already in the request context (set by middleware before guards) is honoured otherwise.
+   */
+  private async userIdFor(
+    context: ExecutionContext,
+    req: IncomingMessage,
+    policies: readonly RateLimitPolicy[],
+  ): Promise<string | undefined> {
+    if (!policies.some((p) => p.key === 'user-or-ip')) return undefined;
+    const fromContext = currentRequestContext()?.userId;
+    if (!this.sessions) return fromContext;
+    const auth = routeAuthPolicy(this.reflector, context.getHandler(), context.getClass());
+    if (auth === 'public') return fromContext;
+    if (isUnsafeMethod(req.method) && checkRequestOrigin(req, this.trustedOrigins)) {
+      return fromContext;
+    }
+    return (await this.sessions.resolveRequest(req))?.userId ?? fromContext;
   }
 }
 

@@ -47,4 +47,22 @@ export interface AuthenticatedUser {
  */
 export interface LoginResponse {
   user: AuthenticatedUser;
+  /**
+   * CSRF token of the new session (P2-03, ADR-0019). Keep it in memory only and send it in the
+   * `X-CSRF-Token` header on every state-changing request (`POST`, `PUT`, `PATCH`, `DELETE`).
+   */
+  csrfToken: string;
 }
+
+/**
+ * `GET /api/v1/auth/session` — 200 while signed in (401 `UNAUTHENTICATED` otherwise). How the
+ * web app learns, after a reload, who is signed in and the session's CSRF token.
+ */
+export interface SessionResponse {
+  user: AuthenticatedUser;
+  /** Same token as {@link LoginResponse.csrfToken} for this session. */
+  csrfToken: string;
+}
+
+/** Request header that carries the CSRF token on state-changing requests (ADR-0019). */
+export const CSRF_HEADER_NAME = 'X-CSRF-Token';

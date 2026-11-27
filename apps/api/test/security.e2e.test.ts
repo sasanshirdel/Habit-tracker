@@ -25,6 +25,7 @@ import {
   RateLimitStoreUnavailableError,
   type RateLimitStore,
 } from '../src/rate-limit/index.js';
+import { Public } from '../src/common/auth/index.js';
 
 // e2e for backlog P1-08 through the real global setup (`configureApp` + AppModule): security
 // headers, CORS allow-list and the rate-limit guard. The Redis store is replaced by an in-memory
@@ -33,6 +34,8 @@ import {
 
 const ALLOWED_ORIGIN = 'http://localhost:3000'; // CORS_ORIGINS default
 
+// Test-only routes: public, so these suites exercise conventions without a session (P2-03).
+@Public()
 @Controller('security-test')
 class SecurityTestController {
   @Get('open')
@@ -173,7 +176,7 @@ describe('security headers, CORS and rate limiting (P1-08)', () => {
       expect(res.headers['access-control-allow-methods']).toBe('GET,HEAD,POST,PUT,PATCH,DELETE');
       // Not a reflection of what was requested.
       expect(res.headers['access-control-allow-headers']).toBe(
-        'Accept,Accept-Language,Content-Type,X-Request-Id',
+        'Accept,Accept-Language,Content-Type,X-Request-Id,X-CSRF-Token',
       );
       expect(res.headers['access-control-max-age']).toBe('600');
     });

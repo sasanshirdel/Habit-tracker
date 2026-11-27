@@ -102,3 +102,24 @@ export const pageInfoSchema = component(
 export function paginatedSchema<T extends z.ZodType>(item: T) {
   return z.strictObject({ data: z.array(item), page: pageInfoSchema });
 }
+
+/** 401 on every protected route without an active session (P2-03, ADR-0019). */
+export const unauthenticatedErrorSchema = component(
+  errorEnvelopeWith(z.literal('UNAUTHENTICATED'), z.unknown().optional()),
+  {
+    id: 'UnauthenticatedError',
+    description:
+      '401 `UNAUTHENTICATED`: no active session (missing, expired, idle too long or revoked).',
+  },
+);
+
+/** 403 on a state-changing request that fails the CSRF checks (P2-03, ADR-0019). */
+export const csrfFailedErrorSchema = component(
+  errorEnvelopeWith(z.literal('CSRF_FAILED'), z.unknown().optional()),
+  {
+    id: 'CsrfFailedError',
+    description:
+      '403 `CSRF_FAILED`: foreign `Origin`/cross-site request, or a missing or wrong ' +
+      '`X-CSRF-Token` for the session. Fetch `GET /auth/session` for the current token and retry.',
+  },
+);
