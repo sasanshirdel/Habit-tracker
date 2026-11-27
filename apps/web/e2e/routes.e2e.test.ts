@@ -236,6 +236,21 @@ describe('application shell (P1-11)', () => {
       expect(html).toMatch(/<meta name="robots" content="noindex, nofollow"/);
     });
 
+    it.each(['profile', 'preferences'])(
+      `/${locale}/settings/%s (P2-07) renders inside the shell behind the auth gate`,
+      async (page) => {
+        const res = await get(`/${locale}/settings/${page}`);
+        expect(res.status).toBe(200);
+        const html = await res.text();
+        expect(htmlTag(html)).toContain(`dir="${dir}"`);
+        expect(html).toContain('data-auth-gate="checking"');
+        // No user data and no form in the server HTML.
+        expect(html).not.toContain('data-profile-form');
+        expect(html).not.toContain('data-preferences-form');
+        expect(html).toMatch(/<meta name="robots" content="noindex, nofollow"/);
+      },
+    );
+
     it('has the landmarks: skip link first, labelled navigation, banner, main', async () => {
       const html = await (await get(`/${locale}/habits`)).text();
       const body = html.slice(html.indexOf('<body'));

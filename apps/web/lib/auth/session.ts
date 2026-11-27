@@ -40,10 +40,11 @@ export async function fetchSession(signal?: AbortSignal): Promise<SessionState> 
   }
 }
 
-export function useSession() {
+export function useSession({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: sessionQueryKey,
     queryFn: ({ signal }) => fetchSession(signal),
     staleTime: SESSION_STALE_MS,
+    enabled,
   });
 }

@@ -245,7 +245,47 @@
     }
   },
   "settings": {
-    "more": "Profile, preferences, notifications, privacy, billing, integrations and accountability settings will be added here.",
+    "more": "Notification, privacy, billing, integration and accountability settings will be added here.",
+    "profile": {
+      "title": "Profile",
+      "summary": "Your display name.",
+      "description": "How your name appears in the app. Profile photos will come later.",
+      "loading": "Loading your profile…",
+      "displayName": "Display name",
+      "displayNameHint": "Optional, up to {max} characters. Leave it empty to remove it.",
+      "tooLong": "Use at most {max} characters.",
+      "invalidCharacters": "Remove line breaks and invisible formatting characters.",
+      "save": "Save profile",
+      "saving": "Saving…",
+      "saved": "Profile saved"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "summary": "Language, time zone, calendar, week start and theme.",
+      "description": "These apply on every device you sign in on.",
+      "loading": "Loading your preferences…",
+      "language": "Language",
+      "languageHint": "Used for the app and for emails we send you.",
+      "timeZone": "Time zone",
+      "timeZoneHint": "Times are shown, and your days are counted, in this time zone.",
+      "calendar": "Calendar",
+      "calendarHint": "How dates are shown. Your data is the same in either calendar.",
+      "calendars": {
+        "gregorian": "Gregorian",
+        "solar_hijri": "Solar Hijri (Persian)"
+      },
+      "weekStart": "Week starts on",
+      "weekdays": {
+        "saturday": "Saturday",
+        "sunday": "Sunday",
+        "monday": "Monday"
+      },
+      "invalidChoice": "Choose one of the options.",
+      "invalidTimeZone": "Choose a time zone from the list.",
+      "save": "Save preferences",
+      "saving": "Saving…",
+      "saved": "Preferences saved"
+    },
     "security": {
       "title": "Sessions and security",
       "summary": "See where you're signed in, sign out other devices and review recent security activity.",

@@ -30,8 +30,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useFormatter, useNow, useTranslations } from 'next-intl';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { QueryError } from '@/components/status/query-error';
+import { useDateDisplay } from '@/lib/account/preferences';
 import {
   useAccountSessions,
   useRevokeOtherSessions,
@@ -43,7 +44,7 @@ import {
  * Settings → Sessions and security (backlog P2-08, ADR-0023): where the account is signed in
  * (current device marked, sign out one or all others, each confirmed in a dialog) and the recent
  * security activity. Rendered only inside `AuthGate`, i.e. in the browser after the session check,
- * so times use the browser's time zone (the profile time zone arrives with P2-07).
+ * so dates use the profile's time zone and calendar (P2-07, `useDateDisplay`).
  */
 export function SecuritySettings() {
   return (
@@ -71,11 +72,6 @@ function useClientLabel() {
       browser: isolate(t(`browsers.${client.browser}`)),
       os: isolate(t(`oses.${client.os}`)),
     });
-}
-
-/** Browser time zone; stable for the component's life. */
-function useBrowserTimeZone(): string {
-  return useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
 }
 
 function SessionsSection() {
@@ -182,7 +178,7 @@ function SessionItem({ session }: { session: AccountSession }) {
   const tSessions = useTranslations('settings.security.sessions');
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
-  const timeZone = useBrowserTimeZone();
+  const display = useDateDisplay();
   const clientLabel = useClientLabel();
   const revoke = useRevokeSession();
   const [confirming, setConfirming] = useState(false);
@@ -232,7 +228,7 @@ function SessionItem({ session }: { session: AccountSession }) {
             when: format.dateTime(new Date(session.createdAt), {
               dateStyle: 'medium',
               timeStyle: 'short',
-              timeZone,
+              ...display,
             }),
           })}
         </p>
@@ -328,7 +324,7 @@ function ActivitySection() {
 function EventItem({ event }: { event: SecurityEvent }) {
   const t = useTranslations('settings.security.activity');
   const format = useFormatter();
-  const timeZone = useBrowserTimeZone();
+  const display = useDateDisplay();
   const clientLabel = useClientLabel();
   const occurredAt = new Date(event.occurredAt);
   return (
@@ -340,7 +336,7 @@ function EventItem({ event }: { event: SecurityEvent }) {
           {clientLabel(event.client)}
           {' · '}
           <time dateTime={event.occurredAt}>
-            {format.dateTime(occurredAt, { dateStyle: 'medium', timeStyle: 'short', timeZone })}
+            {format.dateTime(occurredAt, { dateStyle: 'medium', timeStyle: 'short', ...display })}
           </time>
         </p>
       </div>

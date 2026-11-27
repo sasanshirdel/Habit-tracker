@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { AccountSession, SecurityEvent } from '@habit/shared-types';
+import type { AccountSession, SecurityEvent, UserPreferences } from '@habit/shared-types';
 import { Toaster, UiProvider } from '@habit/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
@@ -49,8 +49,21 @@ const page = <T,>(data: T[]) => ({
   page: { nextCursor: null, hasMore: false, limit: 20 },
 });
 
-function routeGets(sessions: AccountSession[], events: SecurityEvent[]) {
+const UTC_GREGORIAN: UserPreferences = {
+  locale: 'en',
+  timezone: 'UTC',
+  theme: 'dark',
+  calendar: 'gregorian',
+  weekStart: 'monday',
+};
+
+function routeGets(
+  sessions: AccountSession[],
+  events: SecurityEvent[],
+  preferences: UserPreferences = UTC_GREGORIAN,
+) {
   http.get.mockImplementation(async (path: string) => {
+    if (path === '/account/preferences') return preferences;
     if (path.startsWith('/account/sessions')) return page(sessions);
     if (path.startsWith('/account/security-events')) return page(events);
     throw new Error(`unexpected GET ${path}`);
@@ -91,6 +104,23 @@ const iso = (browser: string, os: string, joiner: string) =>
 const fa = messages.fa.settings.security;
 
 describe('SecuritySettings (P2-08)', () => {
+  it('shows times in the profile time zone and calendar (P2-07)', async () => {
+    routeGets([CURRENT], [EVENT], {
+      ...UTC_GREGORIAN,
+      timezone: 'Asia/Tehran',
+      calendar: 'solar_hijri',
+    });
+    renderWith();
+    const expected = new Intl.DateTimeFormat('en', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'Asia/Tehran',
+      calendar: 'persian',
+    }).format(new Date(EVENT.occurredAt));
+    expect(await screen.findByText(expected)).toBeTruthy();
+    expect(http.get).toHaveBeenCalledWith('/account/preferences', expect.anything());
+  });
+
   it('lists sessions with the current one marked and only others revocable; shows activity', async () => {
     routeGets([PHONE, CURRENT], [EVENT]);
     renderWith();
