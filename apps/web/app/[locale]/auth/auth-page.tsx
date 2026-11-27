@@ -11,14 +11,27 @@ export type AuthPageProps = {
 };
 
 /** Pages that only make sense with a personal emailed link: never indexed. */
-const PERSONAL_LINK_PAGES = new Set(['verifyEmail', 'resetPassword']);
+const PERSONAL_LINK_PAGES = new Set([
+  'verifyEmail',
+  'resetPassword',
+  'restoreAccount',
+  'accountDeleted',
+]);
 
 /**
  * `<title>` of an auth page: "Sign in · Habit Tracker". The verification page (P2-04) and the
- * reset-password page (P2-05) are never indexed: they only make sense with a personal link.
+ * reset-password page (P2-05) are never indexed: they only make sense with a personal link; nor
+ * are the restore and "account deleted" pages (P2-10).
  */
 export function authMetadata(
-  page: 'signIn' | 'signUp' | 'verifyEmail' | 'forgotPassword' | 'resetPassword',
+  page:
+    | 'signIn'
+    | 'signUp'
+    | 'verifyEmail'
+    | 'forgotPassword'
+    | 'resetPassword'
+    | 'restoreAccount'
+    | 'accountDeleted',
 ) {
   return async function generateMetadata({ params }: AuthPageProps): Promise<Metadata> {
     const locale = parseLocale((await params).locale);
