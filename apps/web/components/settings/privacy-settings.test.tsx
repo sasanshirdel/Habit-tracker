@@ -146,6 +146,30 @@ describe('PrivacySettings — deletion (P2-10)', () => {
     expect(http.post).not.toHaveBeenCalled();
   });
 
+  it('closing the dialog (Escape or Cancel) returns focus to "Delete account…" (WAI-ARIA dialog)', async () => {
+    for (const locale of ['en', 'fa'] as const) {
+      const t = messages[locale].settings.privacy.delete;
+      const user = userEvent.setup();
+      renderWith(<PrivacySettings />, locale);
+      const open = screen.getByRole('button', { name: t.open });
+      open.focus();
+      await user.keyboard('{Enter}');
+      expect(await screen.findByRole('dialog', { name: t.dialogTitle })).toBeTruthy();
+      await user.keyboard('{Escape}');
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(document.activeElement).toBe(open);
+      await user.click(open);
+      const dialog = await screen.findByRole('dialog', { name: t.dialogTitle });
+      const cancel = Array.from(dialog.querySelectorAll('button')).find(
+        (b) => b.textContent === t.cancel,
+      )!;
+      await user.click(cancel);
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(document.activeElement).toBe(open);
+      cleanup();
+    }
+  });
+
   it('a wrong password keeps the user signed in and says so', async () => {
     const { user } = await openDialog();
     http.post.mockRejectedValue(new ApiError('REAUTHENTICATION_FAILED', 'x', { status: 403 }));

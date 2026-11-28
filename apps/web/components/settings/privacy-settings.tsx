@@ -12,6 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
   Input,
   Label,
   PasswordInput,
@@ -112,9 +113,12 @@ function DeleteSection() {
         <p className="text-sm text-text-secondary">{t('exportFirst')}</p>
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <Button variant="danger" className="self-start" onClick={() => setOpen(true)}>
-          {t('open')}
-        </Button>
+        {/* DialogTrigger (not a plain onClick) so Radix returns focus here when the dialog closes. */}
+        <DialogTrigger asChild>
+          <Button variant="danger" className="self-start">
+            {t('open')}
+          </Button>
+        </DialogTrigger>
         <DialogContent closeLabel={t('cancel')}>{open ? <DeleteForm /> : null}</DialogContent>
       </Dialog>
     </section>
