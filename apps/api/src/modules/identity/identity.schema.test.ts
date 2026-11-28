@@ -54,8 +54,10 @@ describe('identity schema (P2-01)', () => {
     for (const line of schema.match(/^\s+id\s+String\s+@id.*$/gm) ?? []) {
       expect(line).toContain('@default(uuid(7))');
     }
+    // Instants (`…At`) are timestamptz(3); local calendar days (habits, P3-01, ADR-0028) are `date`.
     for (const line of schema.match(/^\s+\w+\s+DateTime\??\s.*$/gm) ?? []) {
-      expect(line).toContain('@db.Timestamptz(3)');
+      if (/^\s+\w+At\s/.test(line)) expect(line).toContain('@db.Timestamptz(3)');
+      else expect(line).toContain('@db.Date');
     }
   });
 });

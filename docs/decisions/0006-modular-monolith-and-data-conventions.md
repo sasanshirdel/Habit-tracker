@@ -50,3 +50,12 @@ and CHECK constraints Prisma cannot express written by hand in the migration (ke
 application constants by a unit test). Every new migration must apply both to an empty database
 and on top of the previous release state (integration test `identity.int.test.ts`, which is
 generic over the newest migration).
+
+## Addendum (2026-11-28, P3-01): habit occurrences
+
+ADR-0028 applies the conventions to the habit tables and refines one point: a recorded occurrence
+is keyed by **habit + local date** (unique), and the schedule version that judges it is **derived**
+from the date (the version whose `[effective_from, effective_to)` contains it) rather than stored on
+the row — past version ranges are immutable, so storing it would only add a second source of truth.
+Calendar days are `date` columns (local, ISO/Gregorian); only instants are `timestamptz`. The
+`version` column is on habits, categories, occurrences and notes.

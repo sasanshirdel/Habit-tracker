@@ -4,6 +4,7 @@ import { validateEnv } from './config/env.js';
 import { DataExportModule } from './data-export/index.js';
 import { DatabaseModule } from './database/index.js';
 import { HealthModule } from './health/health.module.js';
+import { HabitsModule } from './modules/habits/index.js';
 import { IdentityModule } from './modules/identity/index.js';
 import { QueueModule } from './queue/queue.module.js';
 import { RateLimitModule } from './rate-limit/rate-limit.module.js';
@@ -27,6 +28,7 @@ import { RateLimitModule } from './rate-limit/rate-limit.module.js';
     // Global registry feature modules contribute their part of the user's data export to (P2-10).
     DataExportModule,
     IdentityModule,
+    HabitsModule,
   ],
 })
 export class AppModule {}

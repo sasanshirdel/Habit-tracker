@@ -1,4 +1,4 @@
-// Prisma schema (database foundation P1-01; identity tables P2-01).
+// Prisma schema (database foundation P1-01; identity tables P2-01; habit tables P3-01).
 //
 // Models are added per roadmap phase with version-controlled migrations
 // (`pnpm --filter @habit/api db:migrate:dev --name <change>`).
@@ -169,6 +169,12 @@ model User {
   sessions           UserSession[]
   tokens             UserToken[]
   securityEvents     UserSecurityEvent[]
+  habitCategories    HabitCategory[]
+  habits             Habit[]
+  habitSchedules     HabitScheduleVersion[]
+  habitOccurrences   HabitOccurrence[]
+  habitNotes         HabitNote[]
+  habitPauses        HabitPause[]
 
   /// The purge job finds accounts whose grace period has passed (P2-10).
   @@index([deletedAt])
@@ -290,4 +296,256 @@ model UserToken {
   @@index([userId, purpose])
   @@index([expiresAt])
   @@map("user_tokens")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// Habits (backlog P3-01, ADR-0028). Owned by the `habits` feature module (src/modules/habits); no
+// other module reads or writes these tables directly.
+//
+// Every row carries `user_id` (owner scoping, ON DELETE CASCADE from users for the account purge),
+// and children reference their habit through composite keys that include `user_id`, so a row can
+// never point at another user's habit or category. Schedule versions and occurrences also repeat
+// the habit's `type` in their key, which makes the type immutable once a habit has rows and lets
+// the database check type-specific values. Calendar days are `date` columns holding the user's
+// local date (ISO/Gregorian; Solar Hijri is display only, ADR-0024); instants are timestamptz.
+// Hand-written in the migration SQL (Prisma cannot express them), kept in step with
+// `HABIT_LIMITS` in @habit/shared-validation by a unit test:
+//   - text lengths, palette/icon token shapes, date window, value and target bounds;
+//   - one schedule shape per `kind`, type-specific target and value rules;
+//   - schedule versions of a habit never overlap (EXCLUDE … USING gist, extension btree_gist).
+// Occurrences are NOT generated rows: a row exists only where the user recorded something for a
+// day; Due/Missed/Paused/Not scheduled are computed from the schedule (P3-02, P3-04).
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// The six habit types of PRD §3.1. Fixed for the life of a habit (ADR-0028).
+enum HabitType {
+  /// Done or not done on a scheduled day (recorded value 1 or 0).
+  binary
+  /// An amount per day towards an at-least target (e.g. 8 glasses).
+  numeric
+  /// Seconds per day towards an at-least target (e.g. 20 minutes of meditation).
+  duration
+  /// Done on some days, counted against "N times per week/month" (schedule kind times_per_period).
+  frequency
+  /// Avoiding a behaviour: lapses per day, at most the target (usually 0).
+  negative
+  /// A user-defined measure with its own unit and direction (at least / at most).
+  custom
+
+  @@map("habit_type")
+}
+
+/// How a schedule version picks the days a habit is due (P3-02 computes the days).
+enum HabitScheduleKind {
+  /// Every day.
+  daily
+  /// The ISO weekdays in `days_of_week` (1 = Monday … 7 = Sunday).
+  weekdays
+  /// The days in `days_of_month` (1…31; -1 = last day of the month).
+  monthly_days
+  /// Every `interval_days` days counted from `anchor_date`.
+  interval
+  /// Any days, `times_per_period` times per `period` (flexible / weekly frequency targets).
+  times_per_period
+
+  @@map("habit_schedule_kind")
+}
+
+/// Period of a times-per-period schedule.
+enum HabitSchedulePeriod {
+  week
+  month
+
+  @@map("habit_schedule_period")
+}
+
+/// Direction of a target: reach at least / stay at or below the target value.
+enum HabitTargetComparison {
+  at_least
+  at_most
+
+  @@map("habit_target_comparison")
+}
+
+/// A user's own habit category (name unique per user, case-insensitively).
+model HabitCategory {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  /// 1..50 characters, NFKC-normalised by the application.
+  name      String   @db.Citext
+  /// Palette token (design tokens, never a raw colour), e.g. "teal".
+  color     String?
+  /// Icon token, e.g. "dumbbell".
+  icon      String?
+  /// Display order among the user's categories (ascending; ties by id).
+  position  Int      @default(0)
+  /// Optimistic-concurrency version for offline edits (ADR-0006).
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habits Habit[]
+
+  @@unique([userId, name])
+  /// Target of the habits' composite (category, owner) foreign key.
+  @@unique([id, userId])
+  @@map("habit_categories")
+}
+
+/// A habit. Its rules over time live in `habit_schedule_versions`; its recorded days in
+/// `habit_occurrences`.
+model Habit {
+  id                   String    @id @default(uuid(7)) @db.Uuid
+  userId               String    @map("user_id") @db.Uuid
+  /// Must be one of the owner's categories (composite key); null = uncategorised.
+  categoryId           String?   @map("category_id") @db.Uuid
+  type                 HabitType
+  /// 1..100 characters.
+  name                 String
+  /// Up to 2000 characters.
+  description          String?
+  /// Unit label for numeric, negative and custom habits (e.g. "pages"); null for the others.
+  unit                 String?
+  icon                 String?
+  color                String?
+  /// First local date the habit applies (inclusive).
+  startsOn             DateTime  @map("starts_on") @db.Date
+  /// Last local date the habit applies (inclusive); null = open-ended.
+  endsOn               DateTime? @map("ends_on") @db.Date
+  /// Preferred time of day in minutes after local midnight (0..1439); null = any time.
+  preferredTimeMinutes Int?      @map("preferred_time_minutes") @db.SmallInt
+  /// Display order among the user's habits (ascending; ties by id).
+  position             Int       @default(0)
+  /// Optimistic-concurrency version for offline edits (ADR-0006).
+  version              Int       @default(1)
+  /// Archived habits keep their history but leave active views (restorable).
+  archivedAt           DateTime? @map("archived_at") @db.Timestamptz(3)
+  /// Soft delete (restorable until a retention purge, P3-06); hidden everywhere but export.
+  deletedAt            DateTime? @map("deleted_at") @db.Timestamptz(3)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category         HabitCategory?         @relation(fields: [categoryId, userId], references: [id, userId], onDelete: NoAction, onUpdate: NoAction)
+  scheduleVersions HabitScheduleVersion[]
+  occurrences      HabitOccurrence[]
+  notes            HabitNote[]
+  pauses           HabitPause[]
+
+  /// Targets of the children's composite foreign keys (owner, and owner + type).
+  @@unique([id, userId])
+  @@unique([id, userId, type])
+  @@index([userId, position])
+  @@index([categoryId, userId])
+  @@index([deletedAt])
+  @@map("habits")
+}
+
+/// One version of a habit's rules: when it is due and what counts as done, valid for the local
+/// dates [effective_from, effective_to). Versions of a habit never overlap; at most one is open
+/// (effective_to null). Editing a schedule closes the current version and opens a new one (P3-03),
+/// so past days keep the rules that applied to them.
+model HabitScheduleVersion {
+  id               String                 @id @default(uuid(7)) @db.Uuid
+  userId           String                 @map("user_id") @db.Uuid
+  habitId          String                 @map("habit_id") @db.Uuid
+  /// Copy of habits.type (part of the foreign key; never differs).
+  habitType        HabitType              @map("habit_type")
+  effectiveFrom    DateTime               @map("effective_from") @db.Date
+  /// Exclusive end; null = still in effect.
+  effectiveTo      DateTime?              @map("effective_to") @db.Date
+  kind             HabitScheduleKind
+  /// ISO weekdays (1 = Monday … 7 = Sunday) for kind `weekdays`; empty otherwise.
+  daysOfWeek       Int[]                  @default([]) @map("days_of_week") @db.SmallInt
+  /// Days of the month (1..31, -1 = last day) for kind `monthly_days`; empty otherwise.
+  daysOfMonth      Int[]                  @default([]) @map("days_of_month") @db.SmallInt
+  /// Every N days (2..365) for kind `interval`, counted from `anchorDate`.
+  intervalDays     Int?                   @map("interval_days") @db.SmallInt
+  anchorDate       DateTime?              @map("anchor_date") @db.Date
+  /// For kind `times_per_period`: N times per week (1..7) or per month (1..31).
+  period           HabitSchedulePeriod?
+  timesPerPeriod   Int?                   @map("times_per_period") @db.SmallInt
+  /// Grace allowance for streaks (0..7); exact semantics are P3-05's.
+  graceDays        Int                    @default(0) @map("grace_days") @db.SmallInt
+  /// Daily target for numeric, duration (seconds), negative and custom habits; null otherwise.
+  targetValue      Decimal?               @map("target_value") @db.Decimal(12, 3)
+  targetComparison HabitTargetComparison? @map("target_comparison")
+  createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit Habit @relation(fields: [habitId, userId, habitType], references: [id, userId, type], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([habitId, effectiveFrom])
+  @@index([userId])
+  @@map("habit_schedule_versions")
+}
+
+/// What the user recorded for one habit on one local date: a value or a skip. At most one row per
+/// habit and day. Statuses (Completed, Missed, Due, Skipped, Paused, Not scheduled) are derived
+/// from this row, the schedule version in effect that day and pauses (P3-04) — never stored.
+model HabitOccurrence {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  habitId   String    @map("habit_id") @db.Uuid
+  /// Copy of habits.type (part of the foreign key; never differs).
+  habitType HabitType @map("habit_type")
+  /// The user's local calendar date this entry belongs to.
+  localDate DateTime  @map("local_date") @db.Date
+  /// The day's amount: 1/0 for binary and frequency, seconds for duration, the measured amount
+  /// for numeric and custom, lapses for negative. Null exactly when skipped.
+  value     Decimal?  @db.Decimal(12, 3)
+  /// The user excused this day (counts neither as done nor as missed).
+  skipped   Boolean   @default(false)
+  /// Optimistic-concurrency version for offline edits (ADR-0006).
+  version   Int       @default(1)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit Habit @relation(fields: [habitId, userId, habitType], references: [id, userId, type], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([habitId, localDate])
+  @@index([userId, localDate])
+  @@map("habit_occurrences")
+}
+
+/// A note on a habit, optionally about one local date (habit detail page, PRD §3.1).
+model HabitNote {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  habitId   String    @map("habit_id") @db.Uuid
+  localDate DateTime? @map("local_date") @db.Date
+  /// 1..5000 characters.
+  body      String
+  version   Int       @default(1)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit Habit @relation(fields: [habitId, userId], references: [id, userId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([habitId, createdAt])
+  @@index([userId])
+  @@map("habit_notes")
+}
+
+/// A pause of one habit, or a vacation of all the user's habits (habit_id null), over the local
+/// dates [starts_on, ends_on] (inclusive; ends_on null = until resumed). Paused days are neither
+/// due nor missed (P3-02, P3-05).
+model HabitPause {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  habitId   String?   @map("habit_id") @db.Uuid
+  startsOn  DateTime  @map("starts_on") @db.Date
+  endsOn    DateTime? @map("ends_on") @db.Date
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit Habit? @relation(fields: [habitId, userId], references: [id, userId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId, startsOn])
+  @@index([habitId])
+  @@map("habit_pauses")
 }

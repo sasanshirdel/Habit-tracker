@@ -72,3 +72,19 @@ export type {
   AccountRestoreResponse,
   UserDataExport,
 } from './privacy.js';
+export { HABIT_TYPE_VALUES } from './habits.js';
+export type {
+  Habit,
+  HabitCategory,
+  HabitNote,
+  HabitOccurrenceRecord,
+  HabitOccurrenceStatus,
+  HabitPause,
+  HabitScheduleKind,
+  HabitSchedulePeriod,
+  HabitScheduleRule,
+  HabitScheduleVersion,
+  HabitTarget,
+  HabitTargetComparison,
+  HabitType,
+} from './habits.js';

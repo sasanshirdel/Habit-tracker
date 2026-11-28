@@ -177,7 +177,15 @@ describe('data export and account deletion (real PostgreSQL + Redis + worker)', 
         version: 1,
         exportedAt: expect.any(String),
       });
-      expect(Object.keys(doc.sections)).toEqual(['account']);
+      // One section per registered module, sorted (P3-01 added `habits`, ADR-0028).
+      expect(Object.keys(doc.sections)).toEqual(['account', 'habits']);
+      expect(doc.sections.habits).toEqual({
+        categories: [],
+        habits: [],
+        occurrences: [],
+        notes: [],
+        pauses: [],
+      });
       const user = await userOf(email);
       const data = doc.sections.account;
       expect(data.user).toEqual({

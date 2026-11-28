@@ -11,7 +11,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started
 | 0     | Product definition & repository foundation | 🟡 (this PR) |
 | 1     | Application foundation                     | 🟡           |
 | 2     | Authentication & user management           | 🟡           |
-| 3     | Habit tracking core                        | ⬜           |
+| 3     | Habit tracking core                        | 🟡           |
 | 4     | Goals, tasks & planning                    | ⬜           |
 | 5     | Focus & journal                            | ⬜           |
 | 6     | Analytics & performance intelligence       | ⬜           |
@@ -61,6 +61,8 @@ Registration, login, sessions, email verification, password recovery, Google sig
 Habit CRUD, categories, six habit types, schedule engine, schedule versioning, occurrence generation, completion logic, streaks/consistency, weekly matrix (desktop + mobile), habit details/history/heatmap, templates, guided onboarding. **Extensive unit and integration testing.**
 
 **Acceptance:** deterministic, tested occurrence and streak calculations across timezones/DST/pauses; schedule edits never rewrite history; weekly matrix usable on mobile and in RTL.
+
+- P3-01 (#31) habit domain model (ADR-0028): categories, habits (six immutable types), schedule versions with non-overlapping effective ranges, recorded occurrences (value or skip, unique per habit and local date; statuses computed), notes, pauses/vacations; owner-scoped repository, export section `habits`, purge by cascade. No routes yet (P3-06).
 
 ## Phase 4 — Goals, tasks & planning
 
@@ -119,3 +121,4 @@ Functional, integration, E2E (all 15 PRD journeys), security, performance, acces
 15. **Profile and preferences** (ADR-0024): avatar upload waits for an object-storage choice (tied to #3); the header language switcher changes only the view in this browser (the stored language changes in Settings → Preferences) and sign-in does not move users to their stored language; theme can flash once on a new browser until the API shares the web origin (#11). Interim and reversible.
 16. **Data export and account deletion** (ADR-0025): restore window **30 days** (then hard delete, address freed); export is a synchronous JSON download (no CSV, no emailed link — an async job with an expiring link waits for object storage, #3); the purge job `identity.account-purge` runs **daily at 23:30 UTC** (03:00 Tehran) from a BullMQ job scheduler the worker registers (ADR-0026; time interim); a lost confirmation email leaves no self-service restore link (admin restore: Phase 10); no "account restored" notice; export/deletion limited to 10/h per user. All interim and reversible.
 17. **Recurring jobs** (ADR-0026): BullMQ job schedulers registered by every worker replica (one run per schedule, at least once, idempotent handlers); cron in UTC; daily account purge 23:30 UTC and identity retention clean-up 23:45 UTC (03:00/03:15 Tehran); expired emailed-link tokens are now deleted after expiry; failed runs are only logged and kept in the failed set until monitoring exists (P10-12, P12-05). Interim and reversible; `JOB_SCHEDULES_ENABLED=false` hands scheduling to the deployment.
+18. **Habit model** (ADR-0028): only `frequency` habits use "N times per week/month" (and always do); negative habits count whole lapses against an "at most" target; supported dates 2000-01-01..2099-12-31; values up to 1,000,000 with 3 decimals, durations in whole seconds; grace days 0..7 (meaning set by P3-05); deleted habits are soft-deleted (restore window → P3-06); deleting a category moves its habits to "uncategorised" (P3-06). Interim and reversible.
