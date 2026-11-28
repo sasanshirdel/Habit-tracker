@@ -13,6 +13,7 @@ import { QueryError } from '@/components/status/query-error';
 import { useProfile, useUpdateProfile } from '@/lib/account/preferences';
 import { useErrorMessage } from '@/lib/api/error-messages';
 import { schemaResolver } from '@/lib/forms/schema-resolver';
+import { applyServerFieldErrors } from '@/lib/forms/server-errors';
 
 type ProfileFields = { displayName: string };
 
@@ -51,6 +52,8 @@ function ProfileForm({ initial }: { initial: string }) {
     register,
     handleSubmit,
     reset,
+    setError,
+    setFocus,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<ProfileFields, unknown, ProfileUpdate>({
     resolver: schemaResolver<ProfileFields, ProfileUpdate>(profileUpdateSchema),
@@ -69,6 +72,9 @@ function ProfileForm({ initial }: { initial: string }) {
       reset({ displayName: saved.displayName ?? '' });
       toast({ title: t('saved'), variant: 'success' });
     } catch (error) {
+      // The API's verdict on the name (e.g. too long only after its normalisation) goes on the
+      // field, focused; anything else is a form-level message.
+      if (applyServerFieldErrors(error, { setError, setFocus }, ['displayName'])) return;
       setFormError(errorMessage(error));
     }
   });

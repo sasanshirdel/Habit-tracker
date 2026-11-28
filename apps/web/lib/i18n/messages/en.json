@@ -198,7 +198,8 @@
       "signingOut": "Signing out…",
       "signedOut": "You've signed out.",
       "signOutFailed": "We couldn't sign you out. Check your connection and try again.",
-      "checkFailed": "We couldn't check whether you're signed in."
+      "checkFailed": "We couldn't check whether you're signed in.",
+      "expired": "Your session has ended. Sign in again to continue where you left off."
     },
     "verifyEmail": {
       "title": "Confirm your email address",
@@ -403,6 +404,7 @@
         "password": "Your password",
         "passwordHint": "Enter your password to confirm it's you.",
         "passwordRequired": "Enter your password.",
+        "passwordRejected": "Enter the password you use to sign in.",
         "confirmLabel": "Type your email address to confirm",
         "confirmHint": "Type {email}",
         "confirmMismatch": "Type your email address exactly as shown.",

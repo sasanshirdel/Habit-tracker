@@ -52,6 +52,13 @@ Next.js 16 App Router frontend, bilingual from the first page:
   error), `lib/auth/actions.ts` (`signUp`, `signIn` — keeps the CSRF token in memory — and
   `signOut`), `lib/auth/redirect.ts` (`safeNextPath`: `next` only for in-app section paths),
   `components/auth/account-menu.tsx` (banner: who is signed in, sign out). Messages: `auth.*`.
+  Server answers in forms (ADR-0027): `lib/forms/server-errors.ts` puts a `400 VALIDATION_FAILED`
+  issue on the matching field (`applyServerFieldErrors(error, form, fieldsInVisualOrder)` in every
+  submit `catch`, before the form-level message) — same localized text, `aria-invalid`,
+  `aria-describedby`, focus on the first invalid field. Any 401 `UNAUTHENTICATED` from the app's
+  API client re-checks the session once (`recheckSession`, wired in `QueryProvider`); signed out →
+  cached data dropped, `reason: 'expired'`, the gate goes to sign-in with the page as `next` and
+  the sign-in form says the session ended. Playwright: `e2e/browser/forms-session.spec.ts`.
 
 - **Settings → Sessions and security** (P2-08, ADR-0023): `/{locale}/settings/security`
   (`app/[locale]/(app)/settings/security`, linked from `/settings`), `components/settings/

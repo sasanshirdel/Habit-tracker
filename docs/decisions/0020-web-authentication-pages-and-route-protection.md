@@ -162,6 +162,6 @@ results; the API keeps zod's JIT.
   the deployment decision.
 - Follow-ups: verify/reset pages (P2-04/P2-05 — _done: verify-email in ADR-0021,
   forgot-password/reset-password in ADR-0022_), settings and sessions pages with "sign out
-  everywhere" (P2-07/P2-08), reacting to a 401 from any API call by re-checking the session
-  (today the session is re-checked on focus and after 60 s), field-level mapping of server
-  `VALIDATION_FAILED` details.
+  everywhere" (P2-07/P2-08 — _done: ADR-0023, ADR-0024, ADR-0025_), reacting to a 401 from any
+  API call by re-checking the session, field-level mapping of server `VALIDATION_FAILED` details
+  (_both done in ADR-0027_).

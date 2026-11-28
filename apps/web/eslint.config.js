@@ -8,5 +8,6 @@ export default [
   ...base,
   nextPlugin.configs['core-web-vitals'],
   reactHooks.configs.flat.recommended,
-  { ignores: ['.next/**', 'next-env.d.ts'] },
+  // Playwright's HTML report and failure artefacts (generated, not source).
+  { ignores: ['.next/**', 'next-env.d.ts', 'playwright-report/**', 'test-results/**'] },
 ];

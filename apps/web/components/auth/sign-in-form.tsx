@@ -10,6 +10,7 @@ import { signIn } from '@/lib/auth/actions';
 import { afterSignInPath, forgotPasswordHref, signUpHref } from '@/lib/auth/redirect';
 import { useSession } from '@/lib/auth/session';
 import { schemaResolver } from '@/lib/forms/schema-resolver';
+import { applyServerFieldErrors } from '@/lib/forms/server-errors';
 import { Link, useRouter } from '@/lib/i18n/navigation';
 import { useAuthErrorMessage, useFieldErrorMessage } from './auth-messages';
 import { EmailField, PasswordField } from './credential-fields';
@@ -22,7 +23,8 @@ type SignInFields = { email: string; password: string };
  * (sanitised) `next` page or the app's home. A wrong address and a wrong password get the same
  * message (the API cannot tell them apart either); the password is cleared and focused for the
  * next try. A visitor who is already signed in is sent on without seeing the form submit.
- * "Forgot your password?" leads to the reset request page (P2-05).
+ * "Forgot your password?" leads to the reset request page (P2-05). After the session ended under
+ * an open page (ADR-0027) a note says so.
  */
 export function SignInForm({ next }: { next: string | null }) {
   const t = useTranslations('auth');
@@ -38,6 +40,7 @@ export function SignInForm({ next }: { next: string | null }) {
     getValues,
     setValue,
     setFocus,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<SignInFields, unknown, SignInCredentials>({
     resolver: schemaResolver<SignInFields, SignInCredentials>(signInCredentialsSchema),
@@ -49,6 +52,8 @@ export function SignInForm({ next }: { next: string | null }) {
   });
 
   const signedIn = session.data?.status === 'signed-in';
+  // Sent here because a request found the session gone (ADR-0027): say why.
+  const expired = session.data?.status === 'signed-out' && session.data.reason === 'expired';
   useEffect(() => {
     if (signedIn) router.replace(afterSignInPath(next));
   }, [signedIn, next, router]);
@@ -59,6 +64,8 @@ export function SignInForm({ next }: { next: string | null }) {
       await signIn(queryClient, credentials);
       // The effect above navigates once the cached session says "signed in".
     } catch (error) {
+      // A field the API refused (rare: same shared schema) is marked on the field itself.
+      if (applyServerFieldErrors(error, { setError, setFocus }, ['email', 'password'])) return;
       setFormError(authError(error));
       setValue('password', '');
       setFocus('password');
@@ -73,7 +80,13 @@ export function SignInForm({ next }: { next: string | null }) {
       aria-busy={isSubmitting}
       className="flex flex-col gap-5"
     >
-      {formError ? <Alert tone="danger">{formError}</Alert> : null}
+      {formError ? (
+        <Alert tone="danger">{formError}</Alert>
+      ) : expired ? (
+        <Alert tone="info" data-session-expired="">
+          {t('session.expired')}
+        </Alert>
+      ) : null}
       <EmailField
         autoComplete="username"
         registration={register('email')}

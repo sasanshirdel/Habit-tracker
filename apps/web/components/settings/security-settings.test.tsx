@@ -154,6 +154,11 @@ describe('SecuritySettings (P2-08)', () => {
     expect(await screen.findByText(en.activity.events.session_revoked)).toBeTruthy();
     expect(await screen.findByText(en.sessions.onlyThisDevice)).toBeTruthy();
     expect(screen.queryByRole('button', { name: en.sessions.revokeOthers })).toBeNull();
+    // The button that opened the dialog left with its row: focus goes to the list heading
+    // instead of falling to the page body (P2-09).
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: en.sessions.title })),
+    );
   });
 
   it('signs out all other devices and reports how many', async () => {
@@ -166,6 +171,9 @@ describe('SecuritySettings (P2-08)', () => {
     await user.click(within(dialog).getByRole('button', { name: en.sessions.revokeOthersConfirm }));
     await waitFor(() => expect(http.post).toHaveBeenCalledWith('/account/sessions/revoke-others'));
     expect(await screen.findByText('1 device was signed out.')).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: en.sessions.title })),
+    );
   });
 
   it('cancelling a confirmation returns focus to the button that opened it', async () => {

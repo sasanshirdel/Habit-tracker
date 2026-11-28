@@ -12,7 +12,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import { api, csrfTokens } from '@/lib/api/api';
-import { sessionQueryKey, type SessionState } from './session';
+import { dropUserData, sessionQueryKey, type SessionState } from './session';
 
 /**
  * The signed-in user's sessions and security activity (backlog P2-08, ADR-0023). Reads use the
@@ -75,9 +75,7 @@ export function useRevokeSession() {
     onSuccess: async ({ current }) => {
       if (current) {
         csrfTokens.remember(null);
-        queryClient.removeQueries({
-          predicate: (query) => query.queryKey[0] !== sessionQueryKey[0],
-        });
+        dropUserData(queryClient);
         queryClient.setQueryData<SessionState>(sessionQueryKey, () => ({
           status: 'signed-out',
           reason: 'signed-out',

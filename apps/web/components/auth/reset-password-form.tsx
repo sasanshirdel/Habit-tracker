@@ -20,6 +20,7 @@ import {
   type SafeParseSchema,
   type SchemaIssue,
 } from '@/lib/forms/schema-resolver';
+import { applyServerFieldErrors, validationIssuesOf } from '@/lib/forms/server-errors';
 import { Link } from '@/lib/i18n/navigation';
 import { useAuthErrorMessage, useFieldErrorMessage } from './auth-messages';
 import { PasswordField } from './credential-fields';
@@ -79,6 +80,7 @@ export function ResetPasswordForm() {
     handleSubmit,
     getValues,
     setFocus,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<ResetFields, unknown, PasswordResetInput>({
     resolver: schemaResolver<ResetFields, PasswordResetInput>(resetFormSchema),
@@ -125,12 +127,19 @@ export function ResetPasswordForm() {
       await resetPassword(queryClient, current, password);
       setState({ step: 'done' });
     } catch (error) {
-      if (isApiError(error) && error.code === 'INVALID_TOKEN') {
+      // A token the API cannot even parse (`VALIDATION_FAILED` on `body.token`) is a dead link
+      // like any other.
+      const deadLink =
+        (isApiError(error) && error.code === 'INVALID_TOKEN') ||
+        validationIssuesOf(error).some((issue) => issue.field === 'body.token');
+      if (deadLink) {
         setState({ step: 'invalid' });
-      } else {
-        setFormError(authError(error));
-        setFocus('password');
+        return;
       }
+      // The new password broke the server's policy: shown on the field; the link stays usable.
+      if (applyServerFieldErrors(error, { setError, setFocus }, ['password'])) return;
+      setFormError(authError(error));
+      setFocus('password');
     }
   });
 

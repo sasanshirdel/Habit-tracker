@@ -137,6 +137,51 @@ describe('requests', () => {
     expect(calls).toHaveLength(5);
   });
 
+  it('reports a final 401 UNAUTHENTICATED to onUnauthenticated with the path, then rejects (P2-09)', async () => {
+    const onUnauthenticated = vi.fn();
+    const { fetch } = fakeFetch((url) =>
+      url.endsWith('/login')
+        ? json(envelope('INVALID_CREDENTIALS'), 401)
+        : url.endsWith('/plain')
+          ? new Response('nope', { status: 401 })
+          : json(envelope('UNAUTHENTICATED'), 401),
+    );
+    const api = createApiClient({ baseUrl: BASE, fetch, onUnauthenticated });
+
+    const error = await rejection(api.get('/account/profile'));
+    expect(error).toMatchObject({ code: 'UNAUTHENTICATED', status: 401 });
+    expect(onUnauthenticated).toHaveBeenCalledTimes(1);
+    expect(onUnauthenticated).toHaveBeenCalledWith(error, '/account/profile');
+
+    // An envelope-less 401 is UNAUTHENTICATED by its status; a wrong password is not "signed out".
+    await rejection(api.post('/plain'));
+    expect(onUnauthenticated).toHaveBeenCalledTimes(2);
+    await expect(rejection(api.post('/login', {}))).resolves.toMatchObject({
+      code: 'INVALID_CREDENTIALS',
+    });
+    expect(onUnauthenticated).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports a 401 after a CSRF retry once, and a throwing listener does not hide the error', async () => {
+    let attempt = 0;
+    const { fetch } = fakeFetch(() =>
+      attempt++ === 0 ? json(envelope('CSRF_FAILED'), 403) : json(envelope('UNAUTHENTICATED'), 401),
+    );
+    const onUnauthenticated = vi.fn(() => {
+      throw new Error('listener bug');
+    });
+    const api = createApiClient({
+      baseUrl: BASE,
+      fetch,
+      csrf: { headerName: 'X-CSRF-Token', getToken: () => 't', onRejected: () => {} },
+      onUnauthenticated,
+    });
+    await expect(rejection(api.patch('/account/profile', {}))).resolves.toMatchObject({
+      code: 'UNAUTHENTICATED',
+    });
+    expect(onUnauthenticated).toHaveBeenCalledTimes(1);
+  });
+
   it('resolves 204 No Content to undefined', async () => {
     const { fetch } = fakeFetch(() => new Response(null, { status: 204 }));
     await expect(createApiClient({ baseUrl: BASE, fetch }).delete('/a')).resolves.toBeUndefined();

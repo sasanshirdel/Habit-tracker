@@ -16,6 +16,9 @@ import { ApiError, codeFromResponse, parseRetryAfter } from './errors';
  *   `requestId`, `details` and `retryAfterSeconds`; envelope-less responses (e.g. a proxy's 502)
  *   get the code for their status. No response → `NETWORK_ERROR`; too slow → `TIMEOUT`;
  *   unparsable → `INVALID_RESPONSE`. Aborts by the caller rethrow the `AbortError`.
+ * - **Session ended:** a final 401 `UNAUTHENTICATED` (after any CSRF retry) is reported to
+ *   `onUnauthenticated` with the request's path before the error is rethrown, so the app can
+ *   re-check its session state (P2-09, ADR-0027). Other 401s (`INVALID_CREDENTIALS`) are not.
  * - **Same API only:** paths are relative to `baseUrl`; an absolute URL or `//host` path is
  *   rejected, so credentials are never sent to another origin by mistake.
  */
@@ -53,6 +56,12 @@ export interface ApiClientOptions {
   /** Per-request timeout in milliseconds (default 15 s). */
   timeoutMs?: number;
   csrf?: CsrfOptions;
+  /**
+   * Called when a request finally fails with 401 `UNAUTHENTICATED` — the session the request
+   * relied on is gone (expired, revoked, signed out elsewhere). Must not throw; the request still
+   * rejects with the `ApiError`.
+   */
+  onUnauthenticated?: (error: ApiError, path: string) => void;
 }
 
 export interface ApiClient {
@@ -150,11 +159,22 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     const method = init.method ?? 'GET';
     const csrf = SAFE_METHODS.has(method) ? undefined : options.csrf;
     try {
-      return await send<T>(path, init, method, csrf);
+      try {
+        return await send<T>(path, init, method, csrf);
+      } catch (error) {
+        if (!csrf || !(error instanceof ApiError) || error.code !== 'CSRF_FAILED') throw error;
+        csrf.onRejected?.();
+        return await send<T>(path, init, method, csrf);
+      }
     } catch (error) {
-      if (!csrf || !(error instanceof ApiError) || error.code !== 'CSRF_FAILED') throw error;
-      csrf.onRejected?.();
-      return send<T>(path, init, method, csrf);
+      if (error instanceof ApiError && error.code === 'UNAUTHENTICATED') {
+        try {
+          options.onUnauthenticated?.(error, path);
+        } catch {
+          // A listener's failure must not replace the request's own error.
+        }
+      }
+      throw error;
     }
   }
 

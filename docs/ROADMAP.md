@@ -54,6 +54,8 @@ Registration, login, sessions, email verification, password recovery, Google sig
 
 **Acceptance:** a user can register, verify, log in/out, recover a password, sign in with Google, manage profile/preferences/sessions; all protected endpoints reject unauthenticated/cross-user access (tested).
 
+- P2-09 (#29) auth and settings UI: sign-up/sign-in/sign-out and page protection (ADR-0020), verify-email (ADR-0021), forgot/reset password (ADR-0022), Settings → Security (ADR-0023), Profile/Preferences (ADR-0024, avatar → #27), Your data (ADR-0025); server validation errors on the matching field and the session re-check on any 401 with return to the page after signing in (ADR-0027). Google sign-in UI belongs to P2-06.
+
 ## Phase 3 — Habit tracking core
 
 Habit CRUD, categories, six habit types, schedule engine, schedule versioning, occurrence generation, completion logic, streaks/consistency, weekly matrix (desktop + mobile), habit details/history/heatmap, templates, guided onboarding. **Extensive unit and integration testing.**

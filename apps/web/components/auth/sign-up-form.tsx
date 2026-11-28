@@ -14,6 +14,7 @@ import { signInHref } from '@/lib/auth/redirect';
 import { browserTimeZone } from '@/lib/auth/time-zone';
 import { isolateBidi } from '@/lib/i18n/bidi';
 import { schemaResolver } from '@/lib/forms/schema-resolver';
+import { applyServerFieldErrors } from '@/lib/forms/server-errors';
 import type { Locale } from '@/lib/i18n/config';
 import { Link } from '@/lib/i18n/navigation';
 import { useAuthErrorMessage, useFieldErrorMessage } from './auth-messages';
@@ -40,6 +41,8 @@ export function SignUpForm({ next }: { next: string | null }) {
     register,
     handleSubmit,
     getValues,
+    setError,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<SignUpFields, unknown, SignUpCredentials>({
     resolver: schemaResolver<SignUpFields, SignUpCredentials>(signUpCredentialsSchema),
@@ -60,6 +63,8 @@ export function SignUpForm({ next }: { next: string | null }) {
       await signUp({ ...credentials, locale, timezone: browserTimeZone() });
       setAccepted(credentials.email);
     } catch (error) {
+      // Field issues go on the field (focused); the hidden locale/time zone stay form-level.
+      if (applyServerFieldErrors(error, { setError, setFocus }, ['email', 'password'])) return;
       setFormError(authError(error));
     }
   });
