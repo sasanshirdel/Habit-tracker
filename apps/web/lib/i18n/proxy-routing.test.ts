@@ -152,5 +152,9 @@ describe('proxy: requests outside locale routing still get the CSP', () => {
     expect(isLocalizedRequest(r('/', 'POST'))).toBe(false);
     expect(isLocalizedRequest(r('/robots.txt'))).toBe(false);
     expect(isLocalizedRequest(r('/_next/data/x'))).toBe(false);
+    // API paths are not pages: no redirect to /en/api/… (fix/local-dev-api-404).
+    expect(isLocalizedRequest(r('/api'))).toBe(false);
+    expect(isLocalizedRequest(r('/api/v1/auth/session'))).toBe(false);
+    expect(isLocalizedRequest(r('/apis'))).toBe(true);
   });
 });

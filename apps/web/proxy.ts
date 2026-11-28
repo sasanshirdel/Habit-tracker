@@ -46,7 +46,9 @@ export function proxy(request: NextRequest): NextResponse {
 /**
  * Locale routing applies to page navigations only: `GET`/`HEAD` (Server Actions `POST` to
  * already-prefixed pages) and paths without a file extension (`/robots.txt` must not become
- * `/en/robots.txt`). Everything else still gets the CSP.
+ * `/en/robots.txt`). `/api/…` is never a page: it belongs to the API (behind a reverse proxy, or
+ * nowhere on this origin), so it answers a plain 404 here instead of a redirect to `/en/api/…`
+ * that hid a missing `NEXT_PUBLIC_API_BASE_URL`. Everything else still gets the CSP.
  */
 export function isLocalizedRequest(request: {
   method: string;
@@ -54,6 +56,7 @@ export function isLocalizedRequest(request: {
 }): boolean {
   if (request.method !== 'GET' && request.method !== 'HEAD') return false;
   const { pathname } = request.nextUrl;
+  if (pathname === '/api' || pathname.startsWith('/api/')) return false;
   return !pathname.startsWith('/_next/') && !/\.[^/]*$/.test(pathname);
 }
 

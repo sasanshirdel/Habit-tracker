@@ -2,6 +2,10 @@
 
 Next.js 16 App Router frontend, bilingual from the first page:
 
+- **Configuration:** `next.config.ts` also loads the repository-root `.env` (created from
+  `.env.example`; `apps/web/.env.local` and real environment variables win), so
+  `NEXT_PUBLIC_API_BASE_URL` reaches the app in local development; when it is unset the browser calls
+  `/api/v1` on the web origin (reverse proxy only) and the dev server warns (ADR-0014 addendum).
 - **i18n with next-intl** (P1-10, ADR-0004): `/en` (LTR) and `/fa` (RTL); `<html lang dir>` comes
   from the `[locale]` segment. `/` and other unprefixed paths redirect (307) to the negotiated
   locale — `NEXT_LOCALE` cookie, then `Accept-Language`, then `defaultLocale` from
