@@ -1,8 +1,9 @@
 # @habit/habit-engine
 
-Pure, deterministic habit logic (ADR-0029). Today: the **schedule engine** (backlog P3-02) —
+Pure, deterministic habit logic (ADR-0029, ADR-0031): the **schedule engine** (backlog P3-02) —
 which local dates a habit is due on, from its start/end/archive dates, schedule versions,
-pauses/vacations and a date range. No I/O, no clock, no third-party dependency (only the types
+pauses/vacations and a date range — and the **status rules** (P3-04): what each day is and
+whether a check-in may be written. No I/O, no clock, no third-party dependency (only the types
 and calendar settings of `@habit/shared-types` and `@habit/localization`). Consumed through
 `dist/` — run `pnpm build:packages` first.
 
@@ -46,3 +47,34 @@ const { days, periods } = computeSchedule({
   version as it is and a later preference change never re-buckets history.
 - **Errors:** `ScheduleInputError` with a `code`; input is never repaired.
 - Tests: table-driven + seeded property tests (`src/test-support/random.ts`).
+
+## Statuses (P3-04, ADR-0031)
+
+```ts
+import { checkInRefusal, computeStatuses, statusRecordRange } from '@habit/habit-engine';
+
+const records = loadRecords(
+  statusRecordRange({ startsOn, endsOn, archivedOn, versions, pauses, range }),
+);
+const { days, periods } = computeStatuses({
+  habitType: 'numeric',
+  startsOn,
+  endsOn,
+  archivedOn,
+  pauses,
+  range,
+  versions, // schedule versions with their `target` ({ comparison: 'at_least' | 'at_most', value })
+  records, // [{ localDate, value, skipped }]
+  today: localDateAt(new Date(), timeZone),
+});
+// days[i].status: 'completed' | 'missed' | 'due' | 'skipped' | 'paused' | 'not_scheduled'
+// days[i].progress: { value, target, met, partial, percent }; days[i].openUntil: last Due day
+// periods[days[i].period]: frequency periods with target (after skips), completed, status
+checkInRefusal('skip', date, today, scheduleDay); // null | 'DATE_IN_FUTURE' | 'DATE_NOT_TRACKED' | 'SKIP_NOT_ALLOWED'
+```
+
+- Not scheduled = inactive or `off` days; Paused = any paused day; a scheduled day is Completed
+  when the value meets the version's target, Skipped when excused, Missed once
+  `today > date + graceDays` (or at once when an "at most" limit is exceeded), else Due.
+- Frequency habits are judged per period; skips re-prorate the period's target.
+- Tests: table-driven per type and status, seeded property tests against a naive reference.

@@ -52,6 +52,7 @@ export {
 } from './profile.js';
 export {
   HABIT_DATE_MAX,
+  HABIT_CHECK_IN_ACTIONS,
   HABIT_DATE_MIN,
   HABIT_LIMITS,
   HABIT_SCHEDULE_KINDS,
@@ -63,6 +64,8 @@ export {
   dailyScheduleSchema,
   habitAmountSchema,
   habitCategoryNameSchema,
+  habitCheckInActionSchema,
+  habitCheckInSchema,
   habitColorTokenSchema,
   habitDateRangeSchema,
   habitDateSchema,
@@ -82,6 +85,7 @@ export {
   habitSchedulePeriodSchema,
   habitScheduleRuleDraftSchema,
   habitScheduleRuleSchema,
+  habitStatusRangeSchema,
   habitTargetComparisonSchema,
   habitTargetSchema,
   habitTypeSchema,
@@ -96,6 +100,8 @@ export {
   timesPerPeriodScheduleSchema,
   unitAllowedFor,
   weekdaysScheduleSchema,
+  type HabitCheckInInput,
+  type HabitCheckInRequest,
   type HabitDefinition,
   type HabitDefinitionInput,
   type HabitOccurrenceEntry,
@@ -106,6 +112,7 @@ export {
   type HabitScheduleRule,
   type HabitScheduleRuleDraft,
   type HabitScheduleRuleInput,
+  type HabitStatusRangeQuery,
   type HabitTarget,
   type HabitTypeValue,
 } from './habits.js';

@@ -189,3 +189,8 @@ drop the table, the trigger function, the enum, the index and the two columns.
   habit's `starts_on` consistent with its first version (the orphan check guards recorded days).
 - Every writer of `habit_schedule_versions` must set `week_start`/`calendar` and append an audit
   row in the same transaction.
+
+## Addendum (P3-04, ADR-0031)
+
+- Check-ins take the same `FOR UPDATE` lock on the habit, so a check-in is always judged by a
+  fully applied version set; schedule changes and check-ins of one habit run one after the other.

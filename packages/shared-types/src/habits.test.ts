@@ -1,11 +1,12 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import type {
+  HabitCheckInAction,
   HabitOccurrenceRecord,
   HabitOccurrenceStatus,
   HabitScheduleKind,
   HabitType,
 } from './index.js';
-import { HABIT_TYPE_VALUES } from './index.js';
+import { HABIT_CHECK_IN_ACTIONS, HABIT_TYPE_VALUES } from './index.js';
 
 // Type-level contract tests for the habit domain (P3-01, ADR-0028).
 describe('habit contracts', () => {
@@ -30,5 +31,10 @@ describe('habit contracts', () => {
   it('a recorded occurrence is keyed by habit and local date', () => {
     expectTypeOf<HabitOccurrenceRecord['localDate']>().toEqualTypeOf<string>();
     expectTypeOf<HabitOccurrenceRecord['value']>().toEqualTypeOf<number | null>();
+  });
+
+  it('check-ins set, skip or clear a day (P3-04)', () => {
+    expect([...HABIT_CHECK_IN_ACTIONS]).toEqual(['set', 'skip', 'clear']);
+    expectTypeOf<HabitCheckInAction>().toEqualTypeOf<'set' | 'skip' | 'clear'>();
   });
 });

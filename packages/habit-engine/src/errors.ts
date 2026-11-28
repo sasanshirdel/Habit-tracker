@@ -8,6 +8,7 @@ export type ScheduleInputErrorCode =
   | 'OVERLAPPING_VERSIONS'
   | 'INVALID_RULE'
   | 'INVALID_PAUSE'
+  | 'INVALID_RECORD'
   | 'INVALID_TIME_ZONE'
   | 'INVALID_INSTANT';
 

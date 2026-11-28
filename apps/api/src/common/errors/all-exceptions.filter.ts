@@ -28,6 +28,13 @@ const GENERIC_MESSAGES: Record<ApiErrorCode, string> = {
   NOT_FOUND: 'Not found.',
   METHOD_NOT_ALLOWED: 'Method not allowed.',
   CONFLICT: 'Conflict.',
+  HABIT_ARCHIVED: 'This habit is archived; restore it to record progress.',
+  DATE_IN_FUTURE: 'The day is after your today (profile time zone).',
+  DATE_NOT_TRACKED:
+    'The habit is not tracked on that day (before its start, after its end, or without a schedule).',
+  SKIP_NOT_ALLOWED: 'Only scheduled, not paused days can be skipped.',
+  VERSION_CONFLICT: 'The data changed since it was read.',
+  IDEMPOTENCY_KEY_REUSED: 'The operation id was already used for a different request.',
   PAYLOAD_TOO_LARGE: 'Request body too large.',
   UNSUPPORTED_MEDIA_TYPE: 'Unsupported media type or encoding.',
   RATE_LIMITED: 'Too many requests.',

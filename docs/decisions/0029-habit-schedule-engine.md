@@ -1,6 +1,7 @@
 # ADR-0029: Habit schedule engine — a pure package on local day numbers, with Solar Hijri months
 
-- **Status:** Accepted (P3-02); open decision 1 taken (interim) in [ADR-0030](0030-schedule-versioning.md)
+- **Status:** Accepted (P3-02); open decision 1 taken (interim) in [ADR-0030](0030-schedule-versioning.md),
+  open decision 5 in [ADR-0031](0031-occurrence-status-and-check-ins.md)
 - **Date:** 2026-11-28
 
 ## Context
@@ -227,3 +228,11 @@ required, partial }`. Periods are the user's **week** (7 days from `weekStart`) 
 - A new `interval` rule without `anchorDate` is anchored on the version's effective date.
 - `apps/api` uses the engine at runtime (`localDateAt` for "today", `versionIdOn` and
   `computeSchedule` to check planned version sets), so it is a regular dependency now.
+
+## Addendum (P3-04, ADR-0031)
+
+- The package now also holds the status rules: `computeStatuses` (Completed / Missed / Due /
+  Skipped / Paused / Not scheduled, progress, frequency period status), `judgeValue`,
+  `statusRecordRange` and the check-in rules `checkInRefusal`; new error code `INVALID_RECORD`.
+- Open decision 5 is taken (interim): a paused day is **Paused** whatever the rule says
+  (`pausedState` keeps it).

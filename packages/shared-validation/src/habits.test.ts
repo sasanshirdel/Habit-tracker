@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  HABIT_CHECK_IN_ACTIONS,
   HABIT_DATE_MAX,
   HABIT_DATE_MIN,
   HABIT_TYPES,
   habitAmountSchema,
   habitCategoryNameSchema,
+  habitCheckInSchema,
   habitColorTokenSchema,
   habitDateRangeSchema,
   habitDateSchema,
@@ -19,6 +21,7 @@ import {
   habitScheduleChangeSchema,
   habitScheduleRuleDraftSchema,
   habitScheduleRuleSchema,
+  habitStatusRangeSchema,
   HABIT_LIMITS,
   minutesToPreferredTime,
   resolveScheduleRule,
@@ -359,5 +362,44 @@ describe('schedule changes (P3-03)', () => {
     expect(ok(habitScheduleChangeSchema, { ...base, reason: 'x'.repeat(max + 1) })).toBe(false);
     expect(ok(habitScheduleChangeSchema, { ...base, graceDays: 8 })).toBe(false);
     expect(ok(habitScheduleChangeSchema, { ...base, unknown: true })).toBe(false);
+  });
+});
+
+describe('check-ins and status ranges (P3-04, ADR-0031)', () => {
+  const OP = '0195f0b4-0000-7000-8000-000000000001';
+  const ok = (input: unknown) => habitCheckInSchema.safeParse(input).success;
+
+  it.each([
+    [{ operationId: OP, localDate: '2026-11-28', action: 'set', value: 1 }, true],
+    [{ operationId: OP, localDate: '2026-11-28', action: 'set', value: 2.125 }, true],
+    [
+      { operationId: OP, localDate: '2026-11-28', action: 'set', value: 1, expectedVersion: 3 },
+      true,
+    ],
+    [{ operationId: OP, localDate: '2026-11-28', action: 'skip', expectedVersion: null }, true],
+    [{ operationId: OP, localDate: '2026-11-28', action: 'clear' }, true],
+    [{ operationId: OP, localDate: '2026-11-28', action: 'set' }, false], // value missing
+    [{ operationId: OP, localDate: '2026-11-28', action: 'skip', value: 1 }, false],
+    [{ operationId: OP, localDate: '2026-11-28', action: 'clear', value: 0 }, false],
+    [{ operationId: OP, localDate: '2026-11-28', action: 'set', value: -1 }, false],
+    [{ operationId: OP, localDate: '2026-11-28', action: 'set', value: 0.0001 }, false],
+    [{ operationId: OP, localDate: '2026-11-28', action: 'set', value: 1_000_001 }, false],
+    [{ operationId: OP, localDate: '2026-11-28', action: 'done' }, false],
+    [{ operationId: 'not-a-uuid', localDate: '2026-11-28', action: 'clear' }, false],
+    [{ operationId: OP, localDate: '2026-02-30', action: 'clear' }, false],
+    [{ operationId: OP, localDate: '2100-01-01', action: 'clear' }, false],
+    [{ operationId: OP, localDate: '2026-11-28', action: 'clear', expectedVersion: 0 }, false],
+    [{ operationId: OP, localDate: '2026-11-28', action: 'clear', extra: 1 }, false],
+  ])('%o → %s', (input, valid) => {
+    expect(ok(input)).toBe(valid);
+  });
+
+  it('status ranges: from ≤ to, at most 366 days', () => {
+    const range = (from: string, to: string) => habitStatusRangeSchema.safeParse({ from, to });
+    expect(range('2026-01-01', '2026-01-01').success).toBe(true);
+    expect(range('2024-01-01', '2024-12-31').success).toBe(true); // 366 days (leap year)
+    expect(range('2024-01-01', '2025-01-01').success).toBe(false); // 367 days
+    expect(range('2026-01-02', '2026-01-01').success).toBe(false);
+    expect(HABIT_CHECK_IN_ACTIONS).toEqual(['set', 'skip', 'clear']);
   });
 });
