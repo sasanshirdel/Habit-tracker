@@ -179,7 +179,34 @@ describe('PrivacySettings — deletion (P2-10)', () => {
     expect(await screen.findByText(messages.en.apiErrors.REAUTHENTICATION_FAILED)).toBeTruthy();
     expect(http.post).toHaveBeenCalledWith('/account/deletion', { password: 'wrong' });
     expect((screen.getByLabelText(en.delete.password) as HTMLInputElement).value).toBe('');
+    // Ready for the next try (P2-09): the emptied password field has focus.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByLabelText(en.delete.password)),
+    );
     expect(csrf.remember).not.toHaveBeenCalled();
+  });
+
+  it('a password the API refuses by schema is shown on the field, focused (P2-09, ADR-0027)', async () => {
+    const { user } = await openDialog();
+    http.post.mockRejectedValue(
+      new ApiError('VALIDATION_FAILED', 'x', {
+        status: 400,
+        details: { issues: [{ field: 'body.password', code: 'too_big', message: 'English' }] },
+      }),
+    );
+    const password = screen.getByLabelText(en.delete.password);
+    await user.type(password, PASSWORD);
+    await user.type(screen.getByLabelText(en.delete.confirmLabel), EMAIL);
+    await user.click(screen.getByRole('button', { name: en.delete.confirm }));
+    const error = await screen.findByText(en.delete.passwordRejected);
+    expect(password.getAttribute('aria-invalid')).toBe('true');
+    expect(password.getAttribute('aria-describedby')).toContain(error.id);
+    expect(document.activeElement).toBe(password);
+    expect(document.querySelector('[data-delete-error]')).toBeNull();
+    // Editing the password clears the server's mark.
+    await user.type(password, 'x');
+    expect(screen.queryByText(en.delete.passwordRejected)).toBeNull();
+    expect(password.getAttribute('aria-invalid')).toBeNull();
   });
 
   it('on success drops local state and AuthGate goes to the confirmation page', async () => {

@@ -31,7 +31,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useFormatter, useNow, useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { QueryError } from '@/components/status/query-error';
 import { useDateDisplay } from '@/lib/account/preferences';
 import {
@@ -80,15 +80,26 @@ function SessionsSection() {
   const sessions = useAccountSessions();
   const revokeOthers = useRevokeOtherSessions();
   const [confirmOthers, setConfirmOthers] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  /**
+   * After a confirmed sign-out the button that opened the dialog is gone with its row (or with
+   * the last other session), so Radix has nowhere to return focus and it would fall to the page
+   * body. It goes to the section heading instead, right above the updated list (P2-09).
+   */
+  const focusSections = () => heading.current?.focus();
+  const revokingOthers = useRef(false);
   const all = sessions.data?.pages.flatMap((page) => page.data) ?? [];
   const others = all.filter((s) => !s.current);
 
   async function onRevokeOthers() {
+    revokingOthers.current = true;
     try {
       const { revoked } = await revokeOthers.mutateAsync();
       setConfirmOthers(false);
       toast({ title: t('revokedOthers', { count: revoked }), variant: 'success' });
+      focusSections();
     } catch {
+      revokingOthers.current = false;
       toast({ title: t('revokeFailed'), variant: 'error' });
     }
   }
@@ -101,7 +112,12 @@ function SessionsSection() {
       data-sessions=""
     >
       <div className="flex flex-col gap-1">
-        <h2 id="sessions-title" className="text-lg font-semibold text-text-primary">
+        <h2
+          id="sessions-title"
+          ref={heading}
+          tabIndex={-1}
+          className="text-lg font-semibold text-text-primary outline-none"
+        >
           {t('title')}
         </h2>
         <p className="text-sm text-text-secondary">{t('description')}</p>
@@ -119,7 +135,7 @@ function SessionsSection() {
         <>
           <ul className="flex flex-col gap-3">
             {all.map((session) => (
-              <SessionItem key={session.id} session={session} />
+              <SessionItem key={session.id} session={session} onRevoked={focusSections} />
             ))}
           </ul>
           {sessions.hasNextPage ? (
@@ -144,7 +160,15 @@ function SessionsSection() {
                   {t('revokeOthers')}
                 </Button>
               </DialogTrigger>
-              <DialogContent closeLabel={t('cancel')}>
+              <DialogContent
+                closeLabel={t('cancel')}
+                onCloseAutoFocus={(event) => {
+                  if (!revokingOthers.current) return;
+                  revokingOthers.current = false;
+                  event.preventDefault();
+                  focusSections();
+                }}
+              >
                 <DialogHeader>
                   <DialogTitle>{t('revokeOthersTitle')}</DialogTitle>
                   <DialogDescription>{t('revokeOthersDescription')}</DialogDescription>
@@ -171,7 +195,14 @@ function SessionsSection() {
   );
 }
 
-function SessionItem({ session }: { session: AccountSession }) {
+function SessionItem({
+  session,
+  onRevoked,
+}: {
+  session: AccountSession;
+  /** Called after the sign-out succeeded (this row is about to disappear). */
+  onRevoked: () => void;
+}) {
   const t = useTranslations('settings.security');
   const tSessions = useTranslations('settings.security.sessions');
   const format = useFormatter();
@@ -180,6 +211,7 @@ function SessionItem({ session }: { session: AccountSession }) {
   const clientLabel = useClientLabel();
   const revoke = useRevokeSession();
   const [confirming, setConfirming] = useState(false);
+  const revoking = useRef(false);
   const Icon = deviceIcons[session.client.device];
   const label = clientLabel(session.client);
   const lastActive = new Date(session.lastActiveAt);
@@ -187,11 +219,14 @@ function SessionItem({ session }: { session: AccountSession }) {
   const lastActiveShown = lastActive.getTime() > now.getTime() ? now : lastActive;
 
   async function onRevoke() {
+    revoking.current = true;
     try {
       await revoke.mutateAsync({ id: session.id, current: session.current });
       setConfirming(false);
       toast({ title: tSessions('revoked'), variant: 'success' });
+      onRevoked();
     } catch {
+      revoking.current = false;
       toast({ title: tSessions('revokeFailed'), variant: 'error' });
     }
   }
@@ -243,7 +278,15 @@ function SessionItem({ session }: { session: AccountSession }) {
               {tSessions('revoke')}
             </Button>
           </DialogTrigger>
-          <DialogContent closeLabel={tSessions('cancel')}>
+          <DialogContent
+            closeLabel={tSessions('cancel')}
+            onCloseAutoFocus={(event) => {
+              // Signed out: the trigger leaves with this row, so focus goes to the list heading.
+              if (!revoking.current) return;
+              event.preventDefault();
+              onRevoked();
+            }}
+          >
             <DialogHeader>
               <DialogTitle>{tSessions('revokeTitle')}</DialogTitle>
               <DialogDescription>

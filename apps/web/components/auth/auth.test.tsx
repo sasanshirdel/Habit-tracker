@@ -63,8 +63,9 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-function renderWith(ui: ReactNode, locale: Locale = 'en') {
+function renderWith(ui: ReactNode, locale: Locale = 'en', session?: unknown) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  if (session) queryClient.setQueryData(['auth', 'session'], session);
   const view = render(
     <NextIntlClientProvider
       locale={locale}
@@ -307,5 +308,93 @@ describe('AccountMenu (P2-09)', () => {
     expect(screen.getByText('secret page')).toBeTruthy();
     expect(nav.replace).not.toHaveBeenCalled();
     await act(async () => {});
+  });
+});
+
+describe('server validation errors on the field (P2-09, ADR-0027)', () => {
+  const refused = (issues: { field: string; code: string }[]) =>
+    new ApiError('VALIDATION_FAILED', 'Request validation failed.', {
+      status: 400,
+      details: { issues: issues.map((issue) => ({ ...issue, message: 'English' })) },
+    });
+
+  it('sign-in: marks and focuses the refused field, keeps the password, shows no alert', async () => {
+    const user = userEvent.setup();
+    http.publicPost.mockRejectedValue(refused([{ field: 'body.email', code: 'invalid_format' }]));
+    renderWith(<SignInForm next={null} />);
+    const email = screen.getByLabelText(en.fields.email);
+    const password = screen.getByLabelText(en.fields.password) as HTMLInputElement;
+    await user.type(email, 'sara@example.com');
+    await user.type(password, 'a pass phrase');
+    await user.click(screen.getByRole('button', { name: en.signIn.submit }));
+    await waitFor(() => expect(email.getAttribute('aria-invalid')).toBe('true'));
+    expect(document.getElementById(email.getAttribute('aria-describedby')!)?.textContent).toBe(
+      en.validation.emailInvalid,
+    );
+    expect(document.activeElement).toBe(email);
+    expect(password.value).toBe('a pass phrase');
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    // Editing re-checks with the shared schema: the server's mark goes once the value is valid.
+    await user.type(email, 'x');
+    await waitFor(() => expect(email.getAttribute('aria-invalid')).toBeNull());
+  });
+
+  it('sign-up (fa): the first refused field in form order gets focus and Persian text', async () => {
+    const user = userEvent.setup();
+    http.publicPost.mockRejectedValue(
+      refused([
+        { field: 'body.password', code: 'too_big' },
+        { field: 'body.email', code: 'invalid_format' },
+      ]),
+    );
+    renderWith(<SignUpForm next={null} />, 'fa');
+    const email = screen.getByLabelText(fa.fields.email);
+    const password = screen.getByLabelText(fa.fields.password);
+    await user.type(email, 'new@example.com');
+    await user.type(password, 'a long pass phrase');
+    await user.click(screen.getByRole('button', { name: fa.signUp.submit }));
+    await waitFor(() => expect(document.activeElement).toBe(email));
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+    expect(password.getAttribute('aria-invalid')).toBe('true');
+    expect(
+      screen.getByText(fa.validation.passwordTooLong.replace('{max, number}', '۱۲۸')),
+    ).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: fa.signUp.acceptedTitle })).toBeNull();
+  });
+
+  it('sign-up: an issue outside the visible fields (time zone) is a form-level message', async () => {
+    const user = userEvent.setup();
+    http.publicPost.mockRejectedValue(refused([{ field: 'body.timezone', code: 'custom' }]));
+    renderWith(<SignUpForm next={null} />);
+    await user.type(screen.getByLabelText(en.fields.email), 'new@example.com');
+    await user.type(screen.getByLabelText(en.fields.password), 'a long pass phrase');
+    await user.click(screen.getByRole('button', { name: en.signUp.submit }));
+    expect((await screen.findByRole('alert')).textContent).toBe(en.errors.invalidInput);
+    expect(screen.getByLabelText(en.fields.email).getAttribute('aria-invalid')).toBeNull();
+  });
+});
+
+describe('session ended under an open page (P2-09, ADR-0027)', () => {
+  it('the gate hides the page and returns to sign-in with this page as next', async () => {
+    nav.pathname = '/settings/profile';
+    const { queryClient, container } = renderWith(<AuthGate>secret page</AuthGate>);
+    act(() => {
+      queryClient.setQueryData(['auth', 'session'], { status: 'signed-out', reason: 'expired' });
+    });
+    await waitFor(() =>
+      expect(nav.replace).toHaveBeenCalledWith('/auth/sign-in?next=%2Fsettings%2Fprofile'),
+    );
+    expect(container.textContent).not.toContain('secret page');
+  });
+
+  it('the sign-in form says the session ended (status, not an error)', async () => {
+    renderWith(<SignInForm next="/settings/profile" />, 'en', {
+      status: 'signed-out',
+      reason: 'expired',
+    });
+    const note = await screen.findByText(en.session.expired);
+    expect(note.closest('[role]')?.getAttribute('role')).toBe('status');
+    expect(document.querySelector('[role="alert"]')).toBeNull();
   });
 });

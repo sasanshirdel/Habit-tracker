@@ -53,7 +53,10 @@ describe('stylesheets: no physical left/right properties', () => {
 
   function cssFiles(dir: string): string[] {
     return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-      if (['node_modules', '.next', 'dist'].includes(entry.name)) return [];
+      if (
+        ['node_modules', '.next', 'dist', 'playwright-report', 'test-results'].includes(entry.name)
+      )
+        return [];
       const path = join(dir, entry.name);
       if (entry.isDirectory()) return cssFiles(path);
       return entry.name.endsWith('.css') ? [path] : [];

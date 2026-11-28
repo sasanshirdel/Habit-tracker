@@ -7,7 +7,7 @@ import type {
 } from '@habit/shared-types';
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { api, csrfTokens, publicApi } from '@/lib/api/api';
-import { sessionQueryKey, type SessionState } from '@/lib/auth/session';
+import { dropUserData, sessionQueryKey, type SessionState } from '@/lib/auth/session';
 
 /**
  * Data export, account deletion and restore from the browser (backlog P2-10, ADR-0025). The API
@@ -59,7 +59,7 @@ export function useExportData() {
 /** Local sign-out after the API ended every session (deletion): drop all cached user data. */
 function forgetAccount(queryClient: QueryClient): void {
   csrfTokens.remember(null);
-  queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== sessionQueryKey[0] });
+  dropUserData(queryClient);
   queryClient.setQueryData<SessionState>(sessionQueryKey, () => ({
     status: 'signed-out',
     reason: 'account-deleted',

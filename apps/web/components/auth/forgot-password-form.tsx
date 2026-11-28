@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form';
 import { requestPasswordReset } from '@/lib/auth/actions';
 import { signInHref } from '@/lib/auth/redirect';
 import { schemaResolver } from '@/lib/forms/schema-resolver';
+import { applyServerFieldErrors } from '@/lib/forms/server-errors';
 import { isolateBidi } from '@/lib/i18n/bidi';
 import { Link } from '@/lib/i18n/navigation';
 import { useAuthErrorMessage, useFieldErrorMessage } from './auth-messages';
@@ -37,6 +38,8 @@ export function ForgotPasswordForm() {
     register,
     handleSubmit,
     getValues,
+    setError,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<ForgotFields, unknown, PasswordResetRequestInput>({
     resolver: schemaResolver<ForgotFields, PasswordResetRequestInput>(passwordResetRequestSchema),
@@ -57,6 +60,7 @@ export function ForgotPasswordForm() {
       await requestPasswordReset(email);
       setSentTo(email);
     } catch (error) {
+      if (applyServerFieldErrors(error, { setError, setFocus }, ['email'])) return;
       setFormError(authError(error));
     }
   });

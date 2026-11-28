@@ -498,6 +498,17 @@ describe('auth pages (P2-09)', () => {
     expect(html).toContain('href="/en/auth/forgot-password"');
   });
 
+  it('the sign-in page a session expiry leads to (ADR-0027): next to a settings page kept, no note in the HTML', async () => {
+    for (const locale of ['en', 'fa'] as const) {
+      const response = await get(`/${locale}/auth/sign-in?next=%2Fsettings%2Fprofile`);
+      expect(response.status).toBe(200);
+      const html = await response.text();
+      expect(html).toContain(`href="/${locale}/auth/sign-up?next=%2Fsettings%2Fprofile"`);
+      // "Your session has ended" comes only from the browser's own session state, never the server.
+      expect(html).not.toContain('data-session-expired');
+    }
+  });
+
   it('/{locale}/auth itself is not a page', async () => {
     expect((await get('/en/auth')).status).toBe(404);
   });

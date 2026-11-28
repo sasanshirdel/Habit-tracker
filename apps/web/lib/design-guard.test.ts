@@ -17,7 +17,12 @@ const COMMENT = /^\s*(\/\/|\/\*|\*)/;
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    if (['node_modules', '.next', 'dist', 'e2e'].includes(entry.name)) return [];
+    if (
+      ['node_modules', '.next', 'dist', 'e2e', 'playwright-report', 'test-results'].includes(
+        entry.name,
+      )
+    )
+      return [];
     const path = join(dir, entry.name);
     if (entry.isDirectory()) return sourceFiles(path);
     if (/\.test\.tsx?$/.test(entry.name)) return [];

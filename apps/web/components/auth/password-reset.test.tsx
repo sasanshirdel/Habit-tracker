@@ -211,6 +211,58 @@ describe('ResetPasswordForm (P2-05)', () => {
   });
 });
 
+describe('server validation errors on the field (P2-09, ADR-0027)', () => {
+  const refused = (field: string, code: string) =>
+    new ApiError('VALIDATION_FAILED', 'Request validation failed.', {
+      status: 400,
+      details: { issues: [{ field, code, message: 'English' }] },
+    });
+
+  it('forgot password: the refused address is marked and focused, no alert', async () => {
+    const user = userEvent.setup();
+    http.publicPost.mockRejectedValue(refused('body.email', 'invalid_format'));
+    renderWith(<ForgotPasswordForm />);
+    const email = screen.getByLabelText(en.fields.email);
+    await user.type(email, 'sara@example.com');
+    await user.click(screen.getByRole('button', { name: en.forgotPassword.submit }));
+    await waitFor(() => expect(email.getAttribute('aria-invalid')).toBe('true'));
+    expect(document.activeElement).toBe(email);
+    expect(screen.getByText(en.validation.emailInvalid)).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('reset: a new password the server refuses is shown on its field; the link stays usable', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', `/en/auth/reset-password#token=${TOKEN}`);
+    http.publicPost.mockRejectedValueOnce(refused('body.password', 'too_small'));
+    renderWith(<ResetPasswordForm />);
+    await screen.findByRole('button', { name: en.resetPassword.submit });
+    const password = screen.getByLabelText(en.fields.newPassword);
+    await user.type(password, NEW_PASSWORD);
+    await user.type(screen.getByLabelText(en.fields.confirmPassword), NEW_PASSWORD);
+    await user.click(screen.getByRole('button', { name: en.resetPassword.submit }));
+    await waitFor(() => expect(password.getAttribute('aria-invalid')).toBe('true'));
+    expect(document.activeElement).toBe(password);
+    expect(screen.getByText('Use at least 8 characters.')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('button', { name: en.resetPassword.submit })).toBeTruthy();
+  });
+
+  it('reset: a token the API cannot parse is a dead link', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', `/en/auth/reset-password#token=${TOKEN}`);
+    http.publicPost.mockRejectedValueOnce(refused('body.token', 'too_big'));
+    renderWith(<ResetPasswordForm />);
+    await screen.findByRole('button', { name: en.resetPassword.submit });
+    await user.type(screen.getByLabelText(en.fields.newPassword), NEW_PASSWORD);
+    await user.type(screen.getByLabelText(en.fields.confirmPassword), NEW_PASSWORD);
+    await user.click(screen.getByRole('button', { name: en.resetPassword.submit }));
+    expect(
+      await screen.findByRole('heading', { name: en.resetPassword.invalidTitle }),
+    ).toBeTruthy();
+  });
+});
+
 describe('resetFormSchema', () => {
   it('compares the two fields after NFKC normalisation and outputs the normalised password', () => {
     const ok = resetFormSchema.safeParse({

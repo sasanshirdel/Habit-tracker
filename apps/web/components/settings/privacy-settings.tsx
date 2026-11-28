@@ -24,6 +24,7 @@ import { useId, useState, type FormEvent } from 'react';
 import { useAuthErrorMessage } from '@/components/auth/auth-messages';
 import { useDeleteAccount, useExportData } from '@/lib/account/privacy';
 import { isApiError } from '@/lib/api/errors';
+import { serverFieldErrors } from '@/lib/forms/server-errors';
 import { useSession } from '@/lib/auth/session';
 
 /** First-strong isolate: keeps an email address in one piece inside Persian text. */
@@ -136,6 +137,8 @@ function DeleteForm() {
   const [confirmation, setConfirmation] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  /** The API's validation issue code for the password, until it is edited (ADR-0027). */
+  const [serverPasswordIssue, setServerPasswordIssue] = useState<string | null>(null);
   const email = session.data?.status === 'signed-in' ? session.data.user.email : '';
 
   const passwordMissing = password.length === 0;
@@ -153,6 +156,7 @@ function DeleteForm() {
     event.preventDefault();
     setSubmitted(true);
     setFormError(null);
+    setServerPasswordIssue(null);
     if (passwordMissing || confirmationWrong || remove.isPending) {
       const first = passwordMissing ? ids.password : ids.confirm;
       if (passwordMissing || confirmationWrong) window.document.getElementById(first)?.focus();
@@ -162,12 +166,30 @@ function DeleteForm() {
       await remove.mutateAsync(password);
       // AuthGate moves on to the confirmation page (the session is now "account deleted").
     } catch (error) {
-      if (isApiError(error) && error.code === 'REAUTHENTICATION_FAILED') setPassword('');
+      const [issue] = serverFieldErrors(error, ['password']);
+      if (issue) {
+        // Refused by the API's schema: shown on the password field, which gets focus.
+        setServerPasswordIssue(issue.code);
+        window.document.getElementById(ids.password)?.focus();
+        return;
+      }
+      if (isApiError(error) && error.code === 'REAUTHENTICATION_FAILED') {
+        setPassword('');
+        window.document.getElementById(ids.password)?.focus();
+      }
       setFormError(errorMessage(error));
     }
   }
 
-  const showPasswordError = submitted && passwordMissing;
+  const passwordError =
+    submitted && passwordMissing
+      ? t('passwordRequired')
+      : serverPasswordIssue
+        ? serverPasswordIssue === 'too_small'
+          ? t('passwordRequired')
+          : t('passwordRejected')
+        : null;
+  const showPasswordError = passwordError !== null;
   const showConfirmError = submitted && confirmationWrong;
 
   return (
@@ -191,7 +213,10 @@ function DeleteForm() {
           autoComplete="current-password"
           toggleLabel={tFields('showPassword')}
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setServerPasswordIssue(null);
+          }}
           aria-invalid={showPasswordError || undefined}
           aria-describedby={`${ids.passwordHint}${showPasswordError ? ` ${ids.passwordError}` : ''}`}
         />
@@ -199,8 +224,8 @@ function DeleteForm() {
           {t('passwordHint')}
         </p>
         {showPasswordError ? (
-          <p id={ids.passwordError} className="text-sm text-danger">
-            {t('passwordRequired')}
+          <p id={ids.passwordError} data-slot="field-error" className="text-sm text-danger">
+            {passwordError}
           </p>
         ) : null}
       </div>

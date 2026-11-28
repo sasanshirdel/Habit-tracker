@@ -11,11 +11,13 @@ import { QueryError } from '@/components/status/query-error';
 import { applyTheme, usePreferences, useUpdatePreferences } from '@/lib/account/preferences';
 import { useErrorMessage } from '@/lib/api/error-messages';
 import { schemaResolver } from '@/lib/forms/schema-resolver';
+import { applyServerFieldErrors } from '@/lib/forms/server-errors';
 import { usePathname, useRouter } from '@/lib/i18n/navigation';
 
 type PreferenceFields = UserPreferences;
 type PreferenceKey = keyof UserPreferences;
-const FIELDS: readonly PreferenceKey[] = ['locale', 'timezone', 'theme', 'calendar', 'weekStart'];
+/** In the order the form shows them (the first invalid one gets focus). */
+const FIELDS: readonly PreferenceKey[] = ['locale', 'timezone', 'calendar', 'weekStart', 'theme'];
 
 /** Language names in their own language, as language pickers conventionally show them. */
 const NATIVE_LANGUAGE_NAMES = { en: 'English', fa: 'فارسی' } as const;
@@ -73,6 +75,8 @@ function PreferencesForm({ saved }: { saved: UserPreferences }) {
     register,
     handleSubmit,
     reset,
+    setError,
+    setFocus,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<PreferenceFields, unknown, PreferencesInput>({
     resolver: schemaResolver<PreferenceFields, PreferencesInput>(preferencesSchema),
@@ -101,6 +105,9 @@ function PreferencesForm({ saved }: { saved: UserPreferences }) {
       }
       toast({ title: t('saved'), variant: 'success' });
     } catch (error) {
+      // E.g. a time zone this browser offers but the API's ICU data does not know: marked on
+      // that field, focused; anything else is a form-level message.
+      if (applyServerFieldErrors(error, { setError, setFocus }, FIELDS)) return;
       setFormError(errorMessage(error));
     }
   });

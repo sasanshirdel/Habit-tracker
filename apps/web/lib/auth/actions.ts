@@ -11,21 +11,13 @@ import type {
 import type { SignInCredentials } from '@habit/shared-validation';
 import type { QueryClient } from '@tanstack/react-query';
 import { api, csrfTokens, publicApi } from '@/lib/api/api';
-import { sessionQueryKey, type SessionState } from './session';
+import { dropUserData, sessionQueryKey, type SessionState } from './session';
 
 /**
  * Sign-up, sign-in and sign-out from the browser (backlog P2-09). Credentials go to the API and
  * nowhere else: no web storage, no cookies the page can read, no logging. Errors are the API
  * client's `ApiError`s; the forms map their codes to messages.
  */
-
-/**
- * Removes every cached query except the session itself, which is overwritten in place (removing
- * it would detach the components observing it).
- */
-function dropUserData(queryClient: QueryClient): void {
-  queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== sessionQueryKey[0] });
-}
 
 function setSession(queryClient: QueryClient, state: SessionState): void {
   queryClient.setQueryData(sessionQueryKey, () => state);

@@ -185,3 +185,54 @@ describe('PreferencesSettings (P2-07)', () => {
     expect(await screen.findByRole('button', { name: messages.en.apiErrors.retry })).toBeTruthy();
   });
 });
+
+describe('server validation errors on the field (P2-09, ADR-0027)', () => {
+  const refused = (field: string, code: string) =>
+    new ApiError('VALIDATION_FAILED', 'Request validation failed.', {
+      status: 400,
+      details: { issues: [{ field, code, message: 'English' }] },
+    });
+
+  it('profile: a name the API refuses is marked, described and focused; no alert', async () => {
+    const user = userEvent.setup();
+    http.patch.mockRejectedValue(refused('body.displayName', 'too_big'));
+    renderWith(<ProfileSettings />);
+    const input = await screen.findByRole('textbox', { name: enProfile.displayName });
+    await user.type(input, ' Ahmadi');
+    await user.click(screen.getByRole('button', { name: enProfile.save }));
+    const error = await screen.findByText('Use at most 100 characters.');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toContain(error.id);
+    expect(document.activeElement).toBe(input);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('preferences (fa): a time zone the API does not know is marked on that field', async () => {
+    const user = userEvent.setup();
+    const fa = messages.fa.settings.preferences;
+    http.patch.mockRejectedValue(refused('body.timezone', 'custom'));
+    renderWith(<PreferencesSettings />, 'fa');
+    const zone = await screen.findByRole('combobox', { name: fa.timeZone });
+    await user.selectOptions(zone, 'UTC');
+    await user.click(screen.getByRole('button', { name: fa.save }));
+    const error = await screen.findByText(fa.invalidTimeZone);
+    expect(zone.getAttribute('aria-invalid')).toBe('true');
+    expect(zone.getAttribute('aria-describedby')).toContain(error.id);
+    expect(document.activeElement).toBe(zone);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('preferences: an issue on no field of the form stays a form-level message', async () => {
+    const user = userEvent.setup();
+    http.patch.mockRejectedValue(refused('body', 'custom'));
+    renderWith(<PreferencesSettings />);
+    await user.selectOptions(
+      await screen.findByRole('combobox', { name: enPrefs.weekStart }),
+      'sunday',
+    );
+    await user.click(screen.getByRole('button', { name: enPrefs.save }));
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      messages.en.apiErrors.VALIDATION_FAILED,
+    );
+  });
+});
