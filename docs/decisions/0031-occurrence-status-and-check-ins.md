@@ -206,3 +206,9 @@ data: drop the table, its trigger function and the enum.
   archive/restore and start-date changes must take the same habit lock.
 - Any change to the value rules must change `occurrenceValueIssue` and both CHECKs together (a
   unit test keeps the two CHECKs identical); `judgeValue` assumes values that passed them.
+
+## Addendum (P3-06, ADR-0032)
+
+- Archive, restore, delete and undelete take the same habit row lock (after the user's list lock),
+  so a check-in is accepted wholly before an archive or refused `HABIT_ARCHIVED` after it
+  (integration-tested). Restore is `POST /habits/{habitId}/restore`.

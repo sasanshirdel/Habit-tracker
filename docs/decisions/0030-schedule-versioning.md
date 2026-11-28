@@ -194,3 +194,13 @@ drop the table, the trigger function, the enum, the index and the two columns.
 
 - Check-ins take the same `FOR UPDATE` lock on the habit, so a check-in is always judged by a
   fully applied version set; schedule changes and check-ins of one habit run one after the other.
+
+## Addendum (P3-06, ADR-0032)
+
+- `HabitScheduleService.changeSchedule` is exposed as `POST /api/v1/habits/{habitId}/schedule-changes`
+  (body = `habitScheduleChangeSchema`, answer `{ outcome, detail, change }`); refusals map to
+  400 `VALIDATION_FAILED` on `body.<path>` / `body.effectiveFrom` / `body.reason`, 409
+  `VERSION_CONFLICT`, 409 `HABIT_DATES_CONFLICT` (orphaned records).
+- Habit start-date edits move the first version's `effective_from` under the same row lock
+  (earlier: always; later: only if no recorded day and no later version falls before it). They are
+  not audit-trail entries (logged instead).

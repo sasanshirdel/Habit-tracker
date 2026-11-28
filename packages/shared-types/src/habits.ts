@@ -121,9 +121,55 @@ export interface Habit {
   position: number;
   /** Optimistic-concurrency version (offline edits, Phase 8). */
   version: number;
+  /** When the habit was archived (out of active views, read-only for check-ins); `null` = active. */
   archivedAt: string | null;
+  /**
+   * When the habit was deleted (soft delete, P3-06): restorable for
+   * {@link HABIT_DELETED_RESTORE_DAYS} days, then purged; `null` = not deleted.
+   */
+  deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+// ── Habits API (P3-06, ADR-0032) ────────────────────────────────────────────────────────────────
+
+/** Days a deleted habit stays restorable before the daily purge erases it (interim, ROADMAP #22). */
+export const HABIT_DELETED_RESTORE_DAYS = 30;
+
+export const HABIT_LIST_STATUSES = ['active', 'archived', 'deleted'] as const;
+/** Which habits a list shows: active (default), archived, or deleted and still restorable. */
+export type HabitListStatus = (typeof HABIT_LIST_STATUSES)[number];
+
+/** A habit with its schedule versions, as every single-habit route of the habits API returns it. */
+export interface HabitDetail {
+  habit: Habit;
+  /** All versions, oldest first. */
+  scheduleVersions: HabitScheduleVersion[];
+  /**
+   * The version in effect on the user's today (profile time zone); before the habit starts its
+   * first version, after its last version ends the last one. `null` only without versions.
+   */
+  currentVersionId: string | null;
+}
+
+/** Answer to a schedule change (P3-03 rules over HTTP): what happened and the habit now. */
+export interface HabitScheduleChangeOutcome {
+  /** `unchanged` (identical rules: nothing written), `split` or `replace` (ADR-0030). */
+  outcome: 'unchanged' | 'split' | 'replace';
+  detail: HabitDetail;
+  /** The audit entry written, `null` when unchanged. */
+  change: HabitScheduleChange | null;
+}
+
+/** Answer to a reorder: the active habits in their new order. */
+export interface HabitOrder {
+  data: Habit[];
+}
+
+/** Answer to a category reorder: every category in its new order. */
+export interface HabitCategoryOrder {
+  data: HabitCategory[];
 }
 
 /**

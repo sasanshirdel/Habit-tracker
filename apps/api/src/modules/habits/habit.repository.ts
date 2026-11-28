@@ -22,6 +22,7 @@ import {
   versionRuleColumns,
 } from './habit-mappers.js';
 import { readScheduleContext, recordScheduleChange } from './habit-schedule.service.js';
+import { lockHabitList, nextHabitPosition } from './habit-locks.js';
 import { snapshotOf } from './schedule-versioning.js';
 
 /** A new habit, already validated with the shared schemas (habitDefinitionSchema and friends). */
@@ -36,18 +37,33 @@ export interface NewHabit {
   icon: string | null;
   color: string | null;
   categoryId: string | null;
-  /** First local date; the first schedule version takes effect on it. */
-  startsOn: string;
+  /**
+   * First local date; the first schedule version takes effect on it. Omitted = the user's today
+   * in the profile time zone (P3-06).
+   */
+  startsOn?: string;
   endsOn: string | null;
   /** Local `HH:MM` or null. */
   preferredTime: string | null;
-  position: number;
+  /**
+   * Display position. Omitted = after every other (not deleted) habit of the user, computed under
+   * the user's habit-list lock so concurrent creates never pick the same place (P3-06).
+   */
+  position?: number;
 }
 
 export interface HabitWithSchedule {
   habit: Habit;
   /** All versions, oldest first. */
   scheduleVersions: HabitScheduleVersion[];
+}
+
+/** `endsOn` is before the (defaulted) `startsOn`. */
+export class HabitDatesInvalidError extends Error {
+  constructor() {
+    super('A habit must not end before it starts');
+    this.name = 'HabitDatesInvalidError';
+  }
 }
 
 /** The category does not exist for this user (another user's id looks exactly like a missing one). */
@@ -64,8 +80,8 @@ const FOREIGN_KEY_VIOLATION = 'P2003';
  * Data access for the habit tables (backlog P3-01, ADR-0028). Every method takes the owner's
  * `userId` and filters by it, so a caller can never read or attach another user's rows; ids of
  * other users' rows behave like missing ones (callers answer 404, ADR-0019). Soft-deleted habits
- * are invisible here except to the data export. HTTP routes arrive with P3-06; schedule changes
- * are `HabitScheduleService` (P3-03); check-ins (P3-04) add their writes here.
+ * are invisible here except to the data export. The habits API is `HabitService` (P3-06);
+ * schedule changes are `HabitScheduleService` (P3-03); check-ins are `HabitCheckInService` (P3-04).
  */
 @Injectable()
 export class HabitRepository {
@@ -82,15 +98,22 @@ export class HabitRepository {
     input: NewHabit,
     options: { now?: Date } = {},
   ): Promise<HabitWithSchedule> {
-    const definition = {
-      ...input.definition,
-      schedule: resolveScheduleRule(input.definition.schedule, input.startsOn),
-    };
     const now = options.now ?? new Date();
     try {
       return await this.prisma.$transaction(async (tx) => {
         // The first version snapshots the user's week start and calendar (ADR-0030).
         const context = await readScheduleContext(tx, userId, now);
+        const startsOn = input.startsOn ?? context.today;
+        if (input.endsOn !== null && input.endsOn < startsOn) throw new HabitDatesInvalidError();
+        const definition = {
+          ...input.definition,
+          schedule: resolveScheduleRule(input.definition.schedule, startsOn),
+        };
+        let position = input.position;
+        if (position === undefined) {
+          await lockHabitList(tx, userId);
+          position = await nextHabitPosition(tx, userId);
+        }
         const habit = await tx.habit.create({
           data: {
             userId,
@@ -101,11 +124,11 @@ export class HabitRepository {
             unit: definition.unit,
             icon: input.icon,
             color: input.color,
-            startsOn: toDbDate(input.startsOn),
+            startsOn: toDbDate(startsOn),
             endsOn: input.endsOn === null ? null : toDbDate(input.endsOn),
             preferredTimeMinutes:
               input.preferredTime === null ? null : preferredTimeToMinutes(input.preferredTime),
-            position: input.position,
+            position,
           },
         });
         const version = await tx.habitScheduleVersion.create({

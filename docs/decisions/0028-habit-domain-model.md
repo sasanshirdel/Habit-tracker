@@ -212,3 +212,15 @@ altered — unit-tested). Applied from an empty database and on top of the previ
   unique per user by the client's `operation_id` (idempotency), with the same type-specific value
   CHECK as `habit_occurrences`; in the `habits` export section (`habits[].checkIns`) and purged by
   cascade. `habit_occurrences` is written only by `HabitCheckInService` (habit row lock + log).
+
+## Addendum (P3-06, ADR-0032)
+
+- Open decision 4 taken (interim): deleted habits are restorable for 30 days (`POST
+/habits/{id}/undelete`) and then erased with their history by the daily `habits.deleted-purge`
+  job; `deletedAt` is now part of the `Habit` contract.
+- Open decision 5 **not** adopted for now: deleting a category that active or archived habits use
+  is refused (409 `CATEGORY_NOT_EMPTY`), keeping the database's `NO ACTION`; soft-deleted habits in
+  it are detached. Moving habits to "uncategorised" remains the owner's call (ROADMAP #22).
+- The reorder algorithm: the client sends the complete list (every active habit once), positions
+  become 0..n-1 under a per-user advisory lock; new, restored and undeleted habits go to the end.
+- No schema change; `goalId` waits for Phase 4.

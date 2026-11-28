@@ -12,8 +12,6 @@ import {
   toScheduleVersion,
 } from './habit-mappers.js';
 
-const iso = (date: Date | null): string | null => (date ? date.toISOString() : null);
-
 /**
  * The habits module's section (`habits`) of the user's data export (backlog P3-01, ADR-0025,
  * ADR-0028): every stored habit row of the user — categories, habits (archived and soft-deleted
@@ -93,7 +91,6 @@ export class HabitsDataExportContributor implements UserDataContributor, OnModul
       categories: categories.map(toHabitCategory),
       habits: habits.map((row) => ({
         ...toHabit(row),
-        deletedAt: iso(row.deletedAt),
         scheduleVersions: versionsByHabit.get(row.id) ?? [],
         scheduleChanges: changesByHabit.get(row.id) ?? [],
         checkIns: checkInsByHabit.get(row.id) ?? [],

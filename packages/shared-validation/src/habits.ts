@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { localDateSchema } from './local-date.js';
+import { paginationQuerySchema } from './pagination.js';
 
 /**
  * Habit domain input rules (backlog P3-01, ADR-0028). These are the domain invariants every habit
@@ -589,3 +590,187 @@ export const habitStatusRangeSchema = z
     path: ['to'],
   });
 export type HabitStatusRangeQuery = z.output<typeof habitStatusRangeSchema>;
+
+// ── Habits API (P3-06, ADR-0032) ────────────────────────────────────────────────────────────────
+
+/**
+ * The colours a habit or category may be given through the API: names of the design palette
+ * (P3-07 maps each to light/dark tokens). Interim list (ROADMAP #22); the database only checks the
+ * token shape, so changing the list needs no migration.
+ */
+export const HABIT_COLOR_TOKENS = [
+  'slate',
+  'red',
+  'orange',
+  'amber',
+  'yellow',
+  'lime',
+  'green',
+  'teal',
+  'cyan',
+  'sky',
+  'blue',
+  'indigo',
+  'violet',
+  'purple',
+  'pink',
+  'rose',
+] as const;
+export type HabitColorToken = (typeof HABIT_COLOR_TOKENS)[number];
+export const habitPaletteColorSchema = z.enum(HABIT_COLOR_TOKENS);
+
+/** Which habits a list shows (repeats `HABIT_LIST_STATUSES` of `@habit/shared-types`). */
+export const HABIT_LIST_STATUS_VALUES = ['active', 'archived', 'deleted'] as const;
+
+/** Most ids one reorder request may carry (habits or categories). */
+export const HABIT_ORDER_MAX_ITEMS = 1000;
+
+/** `goalId` is reserved for Phase 4 (goals): only `null` is accepted until goals exist. */
+const reservedGoalIdSchema = z.null().optional().meta({
+  description: 'Reserved for goals (Phase 4); only `null` is accepted until then.',
+});
+
+const expectedVersionSchema = z.number().int().min(1);
+
+/**
+ * A new habit (P3-06): its type (fixed for life), unit and first rules — checked together as
+ * {@link habitDefinitionSchema} does — plus its metadata. `startsOn` defaults to the user's today
+ * (profile time zone, applied by the API); an interval schedule without `anchorDate` is anchored on
+ * `startsOn`. Optional fields default to `null` (target, unit, …) or 0 (grace days).
+ */
+export const habitCreateSchema = z
+  .strictObject({
+    name: habitNameSchema,
+    description: habitDescriptionSchema.default(null),
+    type: habitTypeSchema,
+    unit: habitUnitSchema.nullable().default(null),
+    schedule: habitScheduleRuleDraftSchema,
+    target: habitTargetSchema.nullable().default(null),
+    graceDays: habitRulesShape.graceDays.default(0),
+    categoryId: z.uuid().nullable().default(null),
+    icon: habitIconTokenSchema.nullable().default(null),
+    color: habitPaletteColorSchema.nullable().default(null),
+    preferredTime: habitPreferredTimeSchema.nullable().default(null),
+    startsOn: habitDateSchema.optional(),
+    endsOn: habitDateSchema.nullable().default(null),
+    goalId: reservedGoalIdSchema,
+  })
+  .superRefine((value, ctx) => {
+    const unit = unitAllowedFor(value.type);
+    if (unit === 'required' && value.unit === null) {
+      ctx.addIssue({ code: 'custom', path: ['unit'], message: 'Custom habits need a unit' });
+    }
+    if (unit === 'none' && value.unit !== null) {
+      ctx.addIssue({ code: 'custom', path: ['unit'], message: 'This habit type has no unit' });
+    }
+    const rules = {
+      schedule: resolveScheduleRule(value.schedule, value.startsOn ?? HABIT_DATE_MIN),
+      target: value.target,
+      graceDays: value.graceDays,
+    };
+    for (const issue of habitRuleIssues(value.type, rules)) {
+      ctx.addIssue({ code: 'custom', path: issue.path, message: issue.message });
+    }
+    if (value.startsOn !== undefined && value.endsOn !== null && value.endsOn < value.startsOn) {
+      ctx.addIssue({ code: 'custom', path: ['endsOn'], message: 'Must not end before it starts' });
+    }
+  });
+export type HabitCreateInput = z.input<typeof habitCreateSchema>;
+export type HabitCreateRequest = z.output<typeof habitCreateSchema>;
+
+/**
+ * An edit of a habit's metadata (P3-06): any non-empty subset of the fields; `null` clears an
+ * optional one. The type never changes, and schedule/target/grace days change only through a
+ * schedule change ({@link habitScheduleChangeSchema}), so past days keep their rules.
+ * `expectedVersion` (optional) is the habit `version` the client last saw: the edit is refused
+ * with `VERSION_CONFLICT` if the habit changed meanwhile — unless it would change nothing.
+ */
+export const habitUpdateSchema = z
+  .strictObject({
+    name: habitNameSchema.optional(),
+    description: habitDescriptionSchema.optional(),
+    unit: habitUnitSchema.nullable().optional(),
+    categoryId: z.uuid().nullable().optional(),
+    icon: habitIconTokenSchema.nullable().optional(),
+    color: habitPaletteColorSchema.nullable().optional(),
+    preferredTime: habitPreferredTimeSchema.nullable().optional(),
+    startsOn: habitDateSchema.optional(),
+    endsOn: habitDateSchema.nullable().optional(),
+    goalId: reservedGoalIdSchema,
+    expectedVersion: expectedVersionSchema.optional(),
+  })
+  .refine(
+    (value) =>
+      Object.entries(value).some(
+        ([key, v]) => v !== undefined && key !== 'expectedVersion' && key !== 'goalId',
+      ),
+    { message: 'Change at least one field' },
+  )
+  .refine(
+    (value) =>
+      value.startsOn === undefined ||
+      value.endsOn === undefined ||
+      value.endsOn === null ||
+      value.endsOn >= value.startsOn,
+    { message: 'Must not end before it starts', path: ['endsOn'] },
+  );
+export type HabitUpdateInput = z.input<typeof habitUpdateSchema>;
+export type HabitUpdateRequest = z.output<typeof habitUpdateSchema>;
+
+/**
+ * Query of the habit list: `status` (default `active`), `categoryId` (a category id, or `none`
+ * for uncategorised habits) and the shared `limit`/`cursor` pagination. Ordered by the user's
+ * sort order (`position`, then id).
+ */
+export const habitListQuerySchema = z.strictObject({
+  ...paginationQuerySchema.shape,
+  status: z.enum(HABIT_LIST_STATUS_VALUES).default('active'),
+  categoryId: z.union([z.uuid(), z.literal('none')]).optional(),
+});
+export type HabitListQuery = z.output<typeof habitListQuerySchema>;
+
+/** Ids in their new order: every one exactly once. */
+const orderedIdsSchema = z
+  .array(z.uuid())
+  .min(1)
+  .max(HABIT_ORDER_MAX_ITEMS)
+  .refine((ids) => new Set(ids.map((id) => id.toLowerCase())).size === ids.length, {
+    message: 'Each id must appear once',
+  });
+
+/** A new order of the user's active habits: exactly all of them, each once, first = top. */
+export const habitReorderSchema = z.strictObject({ habitIds: orderedIdsSchema });
+export type HabitReorderRequest = z.output<typeof habitReorderSchema>;
+
+/** `?expectedVersion=` of archive / restore / delete (query strings arrive as text). */
+export const habitExpectedVersionQuerySchema = z.strictObject({
+  expectedVersion: z.coerce.number().int().min(1).optional(),
+});
+export type HabitExpectedVersionQuery = z.output<typeof habitExpectedVersionQuerySchema>;
+
+/** A new category: name (unique per user, case-insensitively), optional colour and icon. */
+export const habitCategoryCreateSchema = z.strictObject({
+  name: habitCategoryNameSchema,
+  color: habitPaletteColorSchema.nullable().default(null),
+  icon: habitIconTokenSchema.nullable().default(null),
+});
+export type HabitCategoryCreateRequest = z.output<typeof habitCategoryCreateSchema>;
+
+/** Rename / recolour a category: a non-empty subset; `expectedVersion` as for habits. */
+export const habitCategoryUpdateSchema = z
+  .strictObject({
+    name: habitCategoryNameSchema.optional(),
+    color: habitPaletteColorSchema.nullable().optional(),
+    icon: habitIconTokenSchema.nullable().optional(),
+    expectedVersion: expectedVersionSchema.optional(),
+  })
+  .refine(
+    (value) =>
+      Object.entries(value).some(([key, v]) => v !== undefined && key !== 'expectedVersion'),
+    { message: 'Change at least one field' },
+  );
+export type HabitCategoryUpdateRequest = z.output<typeof habitCategoryUpdateSchema>;
+
+/** A new order of all the user's categories: every one exactly once, first = top. */
+export const habitCategoryReorderSchema = z.strictObject({ categoryIds: orderedIdsSchema });
+export type HabitCategoryReorderRequest = z.output<typeof habitCategoryReorderSchema>;

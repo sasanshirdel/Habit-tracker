@@ -12,9 +12,14 @@
  * P3-04 (ADR-0031) adds check-ins and statuses: `HabitCheckInService` (idempotent by client
  * operation id, append-only `habit_check_ins` log) and its routes
  * `POST /habits/{habitId}/check-ins`, `GET /habits/{habitId}/statuses`.
+ *
+ * P3-06 (ADR-0032) adds the habits and categories API (`HabitService`, `HabitCategoryService`,
+ * routes under `/habits` and `/habit-categories`) and the daily purge of deleted habits
+ * (`HabitsJobsModule`, `HABIT_SCHEDULES`).
  */
 export {
   HabitCategoryNotFoundError,
+  HabitDatesInvalidError,
   HabitRepository,
   type HabitWithSchedule,
   type NewHabit,
@@ -50,4 +55,19 @@ export {
   type SchedulePlan,
 } from './schedule-versioning.js';
 export { HabitsDataExportContributor } from './habits-data-export.contributor.js';
-export { HabitsModule } from './habits.module.js';
+export { HabitsJobsModule, HabitsModule } from './habits.module.js';
+export {
+  HabitService,
+  HabitWriteError,
+  HABIT_DELETED_RESTORE_MS,
+  currentVersionIdOn,
+  type HabitWriteErrorCode,
+} from './habit.service.js';
+export { HabitCategoryService } from './habit-category.service.js';
+export {
+  HABIT_PURGE_JOB,
+  HABIT_PURGE_SCHEDULE,
+  HABIT_SCHEDULES,
+  HabitPurgeHandler,
+  HabitPurgeService,
+} from './habit-purge.js';

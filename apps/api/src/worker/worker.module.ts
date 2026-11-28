@@ -12,6 +12,7 @@ import {
   PasswordResetEmailHandler,
   VerificationEmailHandler,
 } from '../modules/identity/index.js';
+import { HABIT_SCHEDULES, HabitPurgeHandler, HabitsJobsModule } from '../modules/habits/index.js';
 import { QueueModule } from '../queue/queue.module.js';
 import { JOB_HANDLERS, type JobHandler } from './job-handler.js';
 import { JOB_SCHEDULES, JobScheduleRegistrar } from './job-schedules.service.js';
@@ -37,6 +38,8 @@ import { WorkerHost } from './worker-host.service.js';
     // Feature modules' job handlers (P2-04 verification/registration, P2-05 password emails,
     // P2-10 account-deleted email and account purge, ADR-0026 retention clean-up).
     IdentityJobsModule,
+    // P3-06: daily purge of deleted habits.
+    HabitsJobsModule,
   ],
   providers: [
     SystemNoopJobHandler,
@@ -50,6 +53,7 @@ import { WorkerHost } from './worker-host.service.js';
         accountDeletedEmail: AccountDeletedEmailHandler,
         accountPurge: AccountPurgeHandler,
         identityRetention: IdentityRetentionHandler,
+        habitPurge: HabitPurgeHandler,
       ): JobHandler[] => [
         noop,
         verificationEmail,
@@ -58,6 +62,7 @@ import { WorkerHost } from './worker-host.service.js';
         accountDeletedEmail,
         accountPurge,
         identityRetention,
+        habitPurge,
       ],
       inject: [
         SystemNoopJobHandler,
@@ -67,10 +72,11 @@ import { WorkerHost } from './worker-host.service.js';
         AccountDeletedEmailHandler,
         AccountPurgeHandler,
         IdentityRetentionHandler,
+        HabitPurgeHandler,
       ],
     },
     // Recurring jobs (ADR-0026): feature modules declare them next to their jobs.
-    { provide: JOB_SCHEDULES, useValue: [...IDENTITY_SCHEDULES] },
+    { provide: JOB_SCHEDULES, useValue: [...IDENTITY_SCHEDULES, ...HABIT_SCHEDULES] },
     JobScheduleRegistrar,
     WorkerHost,
   ],

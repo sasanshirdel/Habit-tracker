@@ -103,8 +103,18 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       '/auth/session',
       '/auth/verification/confirm',
       '/auth/verification/resend',
+      '/habit-categories',
+      '/habit-categories/{categoryId}',
+      '/habit-categories/order',
+      '/habits',
+      '/habits/{habitId}',
+      '/habits/{habitId}/archive',
       '/habits/{habitId}/check-ins',
+      '/habits/{habitId}/restore',
+      '/habits/{habitId}/schedule-changes',
       '/habits/{habitId}/statuses',
+      '/habits/{habitId}/undelete',
+      '/habits/order',
       '/health',
       '/health/ready',
     ]);
@@ -113,7 +123,9 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     expect(doc.tags.map((t) => t.name)).toEqual([
       'Account',
       'Auth',
+      'Habit categories',
       'Habit check-ins',
+      'Habits',
       'Health',
       'Privacy',
       'Profile',
@@ -128,6 +140,27 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     // P3-04: check-ins are CSRF-protected POSTs, statuses a GET with a date range.
     expect(op(doc, '/habits/{habitId}/check-ins', 'post').operationId).toBe('checkInHabit');
     expect(op(doc, '/habits/{habitId}/statuses', 'get').operationId).toBe('getHabitStatuses');
+    // P3-06: the habits and categories API (ADR-0032) — every operation, by method.
+    const habitOps: [string, 'get' | 'post' | 'patch' | 'put' | 'delete', string][] = [
+      ['/habits', 'get', 'listHabits'],
+      ['/habits', 'post', 'createHabit'],
+      ['/habits/order', 'put', 'reorderHabits'],
+      ['/habits/{habitId}', 'get', 'getHabit'],
+      ['/habits/{habitId}', 'patch', 'updateHabit'],
+      ['/habits/{habitId}', 'delete', 'deleteHabit'],
+      ['/habits/{habitId}/archive', 'post', 'archiveHabit'],
+      ['/habits/{habitId}/restore', 'post', 'restoreHabit'],
+      ['/habits/{habitId}/undelete', 'post', 'undeleteHabit'],
+      ['/habits/{habitId}/schedule-changes', 'post', 'changeHabitSchedule'],
+      ['/habit-categories', 'get', 'listHabitCategories'],
+      ['/habit-categories', 'post', 'createHabitCategory'],
+      ['/habit-categories/order', 'put', 'reorderHabitCategories'],
+      ['/habit-categories/{categoryId}', 'patch', 'updateHabitCategory'],
+      ['/habit-categories/{categoryId}', 'delete', 'deleteHabitCategory'],
+    ];
+    for (const [path, method, operationId] of habitOps) {
+      expect(op(doc, path, method).operationId).toBe(operationId);
+    }
   });
 
   it('references the response components and keeps only reachable ones', () => {
@@ -152,13 +185,28 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'CsrfFailedError',
       'DependencyStatus',
       'EmailVerifiedResponse',
+      'Habit',
+      'HabitCategory',
+      'HabitCategoryConflictError',
+      'HabitCategoryList',
+      'HabitCategoryNotFoundError',
+      'HabitCategoryOrder',
       'HabitCheckIn',
       'HabitCheckInResult',
+      'HabitConflictError',
       'HabitDayProgress',
       'HabitDayStatus',
+      'HabitDetail',
+      'HabitList',
       'HabitNotFoundError',
       'HabitOccurrenceRecord',
+      'HabitOrCategoryNotFoundError',
+      'HabitOrder',
       'HabitPeriodStatus',
+      'HabitScheduleChange',
+      'HabitScheduleChangeOutcome',
+      'HabitScheduleConflictError',
+      'HabitScheduleVersion',
       'HabitStatusRange',
       'HealthResponse',
       'InvalidCredentialsError',

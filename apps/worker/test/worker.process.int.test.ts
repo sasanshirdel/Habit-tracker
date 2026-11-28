@@ -153,6 +153,7 @@ describe('worker process (real Redis)', () => {
       );
       const system = producer.queue('system');
       expect((await system.getJobSchedulers(0, -1)).map((s) => s.key).sort()).toEqual([
+        'habits.deleted-purge-daily',
         'identity.account-purge-daily',
         'identity.retention-cleanup-daily',
       ]);
@@ -161,10 +162,10 @@ describe('worker process (real Redis)', () => {
         tz: 'UTC',
       });
       const delayed = (await system.getDelayed(0, -1)).filter((j) => j.id?.startsWith('repeat:'));
-      expect(delayed).toHaveLength(2);
+      expect(delayed).toHaveLength(3);
       // Logged: schedule ids and cron only.
       expect(worker.output()).toMatch(
-        /Job schedules synced: identity\.account-purge-daily \(30 23 \* \* \* UTC\), identity\.retention-cleanup-daily \(45 23 \* \* \* UTC\)/,
+        /Job schedules synced: identity\.account-purge-daily \(30 23 \* \* \* UTC\), identity\.retention-cleanup-daily \(45 23 \* \* \* UTC\), habits\.deleted-purge-daily \(55 23 \* \* \* UTC\)/,
       );
       worker.child.kill('SIGTERM');
       expect(await worker.exited).toBe(0);
