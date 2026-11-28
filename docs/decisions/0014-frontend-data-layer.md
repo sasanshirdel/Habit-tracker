@@ -70,3 +70,34 @@ the browser must never hold a token. Backlog P1-12 (#16).
   `/api/v1` on the web origin (the fallback); it also feeds the CSP `connect-src`.
 - Adding an API error code needs an `apiErrors` message in both catalogues (enforced).
 - P2-03 must wire the CSRF option; P1-13 can reuse `/status` for an API smoke test.
+
+## Addendum (2026-11-28): local development reads the repository-root `.env`
+
+**Context.** A fresh clone set up exactly as the README said (`cp .env.example .env`, then the
+three `dev` commands) answered **404 to every API request**, so nobody could sign up or sign in.
+Next.js loads `.env*` files only from the app directory (`apps/web`), never from the repository
+root, so `NEXT_PUBLIC_API_BASE_URL` in the root `.env` never reached the web app; the client fell
+back to `/api/v1` on the web origin (`:3000`), where nothing serves it. `proxy.ts` then redirected
+`/api/v1/…` to `/en/api/v1/…`, which hid the cause. CI never saw it: every CI job sets real
+environment variables (`build:e2e` bakes the API URL).
+
+**Decision.**
+
+- `next.config.ts` loads the repository-root `.env` first (`apps/web/lib/config/repository-env.ts`,
+  `process.loadEnvFile`), the same file the API, the worker and Prisma already read. It never
+  overrides a variable that is set: real environment variables and `apps/web/.env*` (loaded by
+  Next.js before the config) keep precedence. No file = no-op.
+- When `NEXT_PUBLIC_API_BASE_URL` is still unset, the web app warns at start-up and build, naming
+  the variable and the fix. It is a warning, not an error: the same-origin fallback stays valid
+  behind a reverse proxy.
+- `proxy.ts` no longer locale-redirects `/api` and `/api/…`: they are API paths, never pages, so a
+  missing API base shows up as a plain 404 on `/api/v1/…` instead of a redirect to `/en/api/v1/…`.
+- No dev proxy/rewrite of `/api` to the API is added. Serving the API under the web origin changes
+  cookie scope, CORS, CSRF origin checks, rate-limit client addresses (`TRUST_PROXY`) and the CSP,
+  and is the open deployment decision ROADMAP #11/#3; local development keeps the production-like
+  cross-origin setup that the Playwright suite also uses.
+
+**Consequences.** `cp .env.example .env` is the only configuration step for local development.
+Regression tests: `apps/web/lib/config/repository-env.test.ts` (root `.env` loaded, precedence,
+warning, `.env.example` API base matches `API_PORT` and its web origin is in `CORS_ORIGINS`) and
+`lib/i18n/proxy-routing.test.ts` (no locale redirect for `/api/…`).
