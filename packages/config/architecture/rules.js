@@ -26,8 +26,15 @@ const rules = {
     '@habit/shared-types': [],
     '@habit/localization': [],
     '@habit/shared-validation': ['@habit/localization'],
+    /** Pure habit logic (ADR-0029): contract types and calendar settings only, no zod, no I/O. */
+    '@habit/habit-engine': ['@habit/shared-types', '@habit/localization'],
     '@habit/ui': [],
-    '@habit/api': ['@habit/shared-types', '@habit/shared-validation', '@habit/localization'],
+    '@habit/api': [
+      '@habit/shared-types',
+      '@habit/shared-validation',
+      '@habit/localization',
+      '@habit/habit-engine',
+    ],
     '@habit/worker': [
       '@habit/api',
       '@habit/shared-types',
@@ -38,6 +45,7 @@ const rules = {
       '@habit/shared-types',
       '@habit/shared-validation',
       '@habit/localization',
+      '@habit/habit-engine',
       '@habit/ui',
     ],
   },

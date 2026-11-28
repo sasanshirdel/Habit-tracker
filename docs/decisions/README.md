@@ -33,5 +33,6 @@ new ADR that supersedes the old one (and mark the old one `Superseded by ADR-NNN
 | [0026](0026-recurring-jobs.md)                                | Recurring jobs (BullMQ job schedulers) and identity retention    | Accepted          |
 | [0027](0027-form-server-errors-and-session-expiry.md)         | Server validation errors on form fields; session expiry (web)    | Accepted          |
 | [0028](0028-habit-domain-model.md)                            | Habit domain model (habits, schedule versions, occurrences)      | Accepted          |
+| [0029](0029-habit-schedule-engine.md)                         | Habit schedule engine (pure package, Solar Hijri months)         | Accepted          |
 
 New ADRs: copy [`TEMPLATE.md`](TEMPLATE.md), use the next number, open it in the same PR as the change.

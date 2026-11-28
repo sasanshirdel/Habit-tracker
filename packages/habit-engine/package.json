@@ -1,0 +1,33 @@
+{
+  "name": "@habit/habit-engine",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure, deterministic habit logic (schedule engine first; ADR-0029): local-date arithmetic, Solar Hijri months, scheduled days and periods. No I/O.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@habit/localization": "workspace:*",
+    "@habit/shared-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@habit/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "eslint": "10.15.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.1"
+  }
+}
