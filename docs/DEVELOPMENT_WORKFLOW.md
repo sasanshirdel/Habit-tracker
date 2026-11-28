@@ -47,6 +47,7 @@ their env at boot (`apps/api/src/config/env.ts`) and exit on invalid config with
 | `QUEUE_PREFIX`                                                          | api, worker         | no (`habit:q`)                   | Namespace of all BullMQ keys                                 |
 | `WORKER_CONCURRENCY`                                                    | worker              | no (`5`, 1–50)                   | Parallel jobs per queue per worker process                   |
 | `WORKER_SHUTDOWN_TIMEOUT_MS`                                            | worker              | no (`25000`, 1000–600000)        | Graceful-shutdown wait for in-flight jobs                    |
+| `JOB_SCHEDULES_ENABLED`                                                 | worker              | no (`true`)                      | Register recurring jobs (ADR-0026)                           |
 | `MAIL_TRANSPORT`                                                        | worker              | no (`log`)                       | `log` or `outbox` — dev/test only (ADR-0021)                 |
 | `MAIL_OUTBOX_DIR`                                                       | worker              | with `MAIL_TRANSPORT=outbox`     | Directory the outbox writes JSON emails to                   |
 | `MAIL_FROM`                                                             | worker              | no (placeholder sender)          | Sender of every email (no line breaks)                       |

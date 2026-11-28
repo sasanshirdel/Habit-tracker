@@ -112,6 +112,8 @@ filename="habit-tracker-data-YYYY-MM-DD.json"` and the API's `Cache-Control: no-
   BullMQ `upsertJobScheduler` once the scheduler work lands — tracked as a follow-up together with
   ADR-0023's global retention purge). Until then deleted accounts simply stay soft-deleted (and
   unrestorable after 30 days); nothing is lost or exposed by a late purge.
+  **Update (ADR-0026):** the worker now registers schedule `identity.account-purge-daily`
+  (`30 23 * * *` UTC, 03:00 Tehran); nothing has to be enqueued by the deployment.
 
 ### What is not erased by the purge (documented retention)
 
@@ -152,8 +154,9 @@ previous migration state by the generic upgrade test. Rollback before real data:
 1. **Grace period length:** 30 days.
 2. **Export format and delivery:** synchronous JSON download; no CSV; async + expiring link when
    data grows (needs ROADMAP #3).
-3. **Purge scheduling:** job exists, no scheduler — the deployment must enqueue
-   `identity.account-purge` daily until the platform scheduler lands.
+3. **Purge scheduling:** ~~job exists, no scheduler — the deployment must enqueue
+   `identity.account-purge` daily until the platform scheduler lands.~~ Resolved by ADR-0026: runs
+   daily at 23:30 UTC from a BullMQ job scheduler the worker registers (time is interim).
 4. **Lost confirmation email:** if the email job cannot be queued, the user has no restore link
    (support/admin restore arrives in Phase 10). Option: a "send me a restore link" form.
 5. **"Account restored" notice email:** not sent (the restorer proved control of the address).
