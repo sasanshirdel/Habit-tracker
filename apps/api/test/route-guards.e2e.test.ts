@@ -61,6 +61,9 @@ const PUBLIC_ROUTES: Record<string, Exclude<RouteAuthPolicy, 'required'>> = {
   // limit) and the emailed token is the credential of the reset; origin-checked, `auth` class.
   'POST /auth/password-reset/request': 'public',
   'POST /auth/password-reset/confirm': 'public',
+  // P2-10 (ADR-0025): a deleted account has no session; the emailed restore token is the
+  // credential; origin-checked, `auth` class.
+  'POST /auth/account-restore': 'public',
 };
 
 const METHODS: Partial<Record<RequestMethod, string>> = {

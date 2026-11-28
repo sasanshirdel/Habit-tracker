@@ -236,6 +236,18 @@ describe('application shell (P1-11)', () => {
       expect(html).toMatch(/<meta name="robots" content="noindex, nofollow"/);
     });
 
+    it(`/${locale}/settings/privacy (P2-10) renders inside the shell behind the auth gate`, async () => {
+      const res = await get(`/${locale}/settings/privacy`);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(htmlTag(html)).toContain(`dir="${dir}"`);
+      expect(html).toContain('data-auth-gate="checking"');
+      // No actions in the server HTML: they render only after the session check.
+      expect(html).not.toContain('data-export-data');
+      expect(html).not.toContain('data-delete-account');
+      expect(html).toMatch(/<meta name="robots" content="noindex, nofollow"/);
+    });
+
     it.each(['profile', 'preferences'])(
       `/${locale}/settings/%s (P2-07) renders inside the shell behind the auth gate`,
       async (page) => {
@@ -458,6 +470,26 @@ describe('auth pages (P2-09)', () => {
       expect(html).toContain('data-reset-step="reading"');
       // The token lives in the URL fragment, read by the browser only: no form until then.
       expect(html).not.toContain('data-reset-step="ready"');
+    },
+  );
+
+  it.each(['en', 'fa'] as const)(
+    'restore-account and account-deleted (/%s, P2-10): noindex, localized, no restore action in the server HTML',
+    async (locale) => {
+      const restore = await get(`/${locale}/auth/restore-account`);
+      expect(restore.status).toBe(200);
+      const html = await restore.text();
+      expect(htmlTag(html)).toContain(`dir="${locale === 'fa' ? 'rtl' : 'ltr'}"`);
+      expect(html).toMatch(/<meta name="robots" content="noindex, nofollow"/);
+      expect(html).toContain('data-restore-step="reading"');
+      expect(html).not.toContain('data-restore-step="ready"');
+
+      const deleted = await get(`/${locale}/auth/account-deleted`);
+      expect(deleted.status).toBe(200);
+      const deletedHtml = await deleted.text();
+      expect(htmlTag(deletedHtml)).toContain(`dir="${locale === 'fa' ? 'rtl' : 'ltr'}"`);
+      expect(deletedHtml).toMatch(/<meta name="robots" content="noindex, nofollow"/);
+      expect(deletedHtml).toContain('data-account-deleted');
     },
   );
 

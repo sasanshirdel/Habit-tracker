@@ -18,8 +18,11 @@ import { isApiError } from '@/lib/api/errors';
  */
 export type SessionState =
   | { status: 'signed-in'; user: AuthenticatedUser }
-  /** `reason: 'signed-out'` when the user just signed out here (no `next` back to this page). */
-  | { status: 'signed-out'; reason?: 'signed-out' };
+  /**
+   * `reason: 'signed-out'` when the user just signed out here (no `next` back to this page);
+   * `'account-deleted'` right after deleting the account here (P2-10: the confirmation page).
+   */
+  | { status: 'signed-out'; reason?: 'signed-out' | 'account-deleted' };
 
 export const sessionQueryKey = ['auth', 'session'] as const;
 

@@ -141,3 +141,21 @@ export type PasswordResetRequestInput = z.output<typeof passwordResetRequestSche
  */
 export const passwordResetSchema = z.object({ password: newPasswordSchema });
 export type PasswordResetInput = z.output<typeof passwordResetSchema>;
+
+/**
+ * Re-authentication for account deletion (backlog P2-10, ADR-0025): the current password, bounded
+ * like sign-in. `POST /account/deletion` uses this shape made strict; the web dialog adds a typed
+ * confirmation checked in the browser only ({@link deletionConfirmationMatches}).
+ */
+export const accountDeletionSchema = z.object({ password: currentPasswordSchema });
+export type AccountDeletionInput = z.output<typeof accountDeletionSchema>;
+
+/**
+ * Whether the text typed into the deletion dialog is the account's email address (trimmed,
+ * case-insensitive). A deliberate, language-neutral confirmation step — UX only; the server's
+ * check is the password.
+ */
+export function deletionConfirmationMatches(typed: string, email: string): boolean {
+  const expected = email.trim().toLowerCase();
+  return expected.length > 0 && typed.trim().toLowerCase() === expected;
+}

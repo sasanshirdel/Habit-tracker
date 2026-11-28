@@ -168,6 +168,24 @@ describe('SecuritySettings (P2-08)', () => {
     expect(await screen.findByText('1 device was signed out.')).toBeTruthy();
   });
 
+  it('cancelling a confirmation returns focus to the button that opened it', async () => {
+    const user = userEvent.setup();
+    routeGets([PHONE, CURRENT], [EVENT]);
+    renderWith();
+    const others = await screen.findByRole('button', { name: en.sessions.revokeOthers });
+    await user.click(others);
+    expect(await screen.findByRole('dialog', { name: en.sessions.revokeOthersTitle })).toBeTruthy();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.activeElement).toBe(others);
+    const one = screen.getByRole('button', { name: /^Sign out \u2068Firefox/ });
+    await user.click(one);
+    const dialog = await screen.findByRole('dialog', { name: en.sessions.revokeTitle });
+    await user.click(within(dialog).getAllByRole('button', { name: en.sessions.cancel }).at(-1)!);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.activeElement).toBe(one);
+  });
+
   it('a failed revocation keeps the dialog open and says so', async () => {
     const user = userEvent.setup();
     routeGets([PHONE, CURRENT], []);

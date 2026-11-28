@@ -32,3 +32,9 @@ export function removeHashFromAddressBar(): void {
     `${window.location.pathname}${window.location.search}`,
   );
 }
+
+/**
+ * The token of an account-restore link (`/{locale}/auth/restore-account#token=…`, P2-10,
+ * ADR-0025): same shape, same fragment pattern, same rules as the verification link.
+ */
+export const restoreTokenFromHash = verificationTokenFromHash;

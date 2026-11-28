@@ -1,5 +1,6 @@
 import {
   ChevronRightIcon,
+  DatabaseIcon,
   ShieldCheckIcon,
   SlidersHorizontalIcon,
   UserRoundIcon,
@@ -16,15 +17,20 @@ export const generateMetadata = sectionMetadata('settings');
 type PageProps = { params: Promise<{ locale: string }> };
 
 /** The settings pages that exist so far, in display order (ARCHITECTURE §7). */
-const PAGES: readonly { key: 'profile' | 'preferences' | 'security'; icon: LucideIcon }[] = [
+const PAGES: readonly {
+  key: 'profile' | 'preferences' | 'security' | 'privacy';
+  icon: LucideIcon;
+}[] = [
   { key: 'profile', icon: UserRoundIcon },
   { key: 'preferences', icon: SlidersHorizontalIcon },
   { key: 'security', icon: ShieldCheckIcon },
+  { key: 'privacy', icon: DatabaseIcon },
 ];
 
 /**
  * `/{locale}/settings` — the list of settings pages: Profile and Preferences (P2-07), Sessions and
- * security (P2-08); notifications, privacy and the rest are added by the features that own them
+ * security (P2-08), Your data — export and account deletion (P2-10, `/settings/privacy`);
+ * notifications and the rest are added by the features that own them
  * (ARCHITECTURE §7). Static: no user data in the server HTML (ADR-0020).
  */
 export default async function SettingsPage({ params }: PageProps) {

@@ -85,12 +85,15 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     expect(doc.openapi).toBe('3.1.1');
     expect(doc.servers).toEqual([{ url: '/api/v1', description: expect.any(String) }]);
     expect(Object.keys(doc.paths)).toEqual([
+      '/account/deletion',
+      '/account/export',
       '/account/preferences',
       '/account/profile',
       '/account/security-events',
       '/account/sessions',
       '/account/sessions/{id}',
       '/account/sessions/revoke-others',
+      '/auth/account-restore',
       '/auth/login',
       '/auth/logout',
       '/auth/logout-everywhere',
@@ -105,10 +108,20 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     ]);
     expect(op(doc, '/health', 'get').operationId).toBe('getLiveness');
     expect(op(doc, '/health/ready', 'get').operationId).toBe('getReadiness');
-    expect(doc.tags.map((t) => t.name)).toEqual(['Account', 'Auth', 'Health', 'Profile']);
+    expect(doc.tags.map((t) => t.name)).toEqual([
+      'Account',
+      'Auth',
+      'Health',
+      'Privacy',
+      'Profile',
+    ]);
     // P2-07: profile and preferences are read with GET and changed with PATCH.
     expect(op(doc, '/account/profile', 'patch').operationId).toBe('updateProfile');
     expect(op(doc, '/account/preferences', 'patch').operationId).toBe('updatePreferences');
+    // P2-10: export and deletion are CSRF-protected POSTs; restore is public.
+    expect(op(doc, '/account/export', 'post').operationId).toBe('exportUserData');
+    expect(op(doc, '/account/deletion', 'post').operationId).toBe('deleteAccount');
+    expect(op(doc, '/auth/account-restore', 'post').operationId).toBe('restoreAccount');
   });
 
   it('references the response components and keeps only reachable ones', () => {
@@ -120,6 +133,8 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'application/json': { schema: { $ref: '#/components/schemas/NotReadyError' } },
     });
     expect(Object.keys(doc.components.schemas)).toEqual([
+      'AccountDeletionResponse',
+      'AccountRestoreResponse',
       'AccountSession',
       'AccountSessionList',
       'ApiError',
@@ -143,12 +158,14 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'ReadinessChecks',
       'ReadinessErrorDetails',
       'ReadinessResponse',
+      'ReauthenticationFailedError',
       'RegistrationAcceptedResponse',
       'RevokeOtherSessionsResponse',
       'SecurityEvent',
       'SecurityEventList',
       'SessionResponse',
       'UnauthenticatedError',
+      'UserDataExport',
       'UserPreferences',
       'UserProfile',
       'ValidationErrorDetails',

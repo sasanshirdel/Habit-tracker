@@ -75,6 +75,12 @@ export const SECURITY_EVENT_TYPES = [
   'session_revoked',
   'password_reset',
   'email_verified',
+  /** A copy of the account's data was downloaded (P2-10, ADR-0025). */
+  'data_exported',
+  /** The account was deleted (soft delete; restorable during the grace period, P2-10). */
+  'account_deletion_requested',
+  /** A deleted account was restored with the emailed link during the grace period (P2-10). */
+  'account_restored',
 ] as const;
 export type SecurityEventType = (typeof SECURITY_EVENT_TYPES)[number];
 
