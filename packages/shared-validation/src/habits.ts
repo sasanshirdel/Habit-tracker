@@ -56,6 +56,8 @@ export const HABIT_LIMITS = {
   timesPerMonthMax: 31,
   /** Minutes after local midnight (23:59). */
   preferredTimeMaxMinutes: 1439,
+  /** Reason recorded with a schedule change (required for historical corrections, ADR-0030). */
+  scheduleChangeReasonMaxLength: 500,
   /** Longest free-text input accepted before normalisation (cheap DoS guard). */
   rawTextMaxLength: 20_000,
 } as const;
@@ -430,6 +432,63 @@ export const habitDefinitionSchema = z
   });
 export type HabitDefinitionInput = z.input<typeof habitDefinitionSchema>;
 export type HabitDefinition = z.output<typeof habitDefinitionSchema>;
+
+// ── Schedule changes (P3-03, ADR-0030) ──────────────────────────────────────────────────────────
+
+/** An interval rule whose anchor may be left out: it then defaults to the version's start. */
+export const intervalScheduleDraftSchema = intervalScheduleSchema.extend({
+  anchorDate: habitDateSchema.optional(),
+});
+
+/**
+ * A schedule as a writer submits it: like {@link habitScheduleRuleSchema}, except that an
+ * interval's `anchorDate` is optional — "every N days from the day this version starts" is the
+ * natural case. Resolve it with {@link resolveScheduleRule} before storing.
+ */
+export const habitScheduleRuleDraftSchema = z.discriminatedUnion('kind', [
+  dailyScheduleSchema,
+  weekdaysScheduleSchema,
+  monthlyDaysScheduleSchema,
+  intervalScheduleDraftSchema,
+  timesPerPeriodScheduleSchema,
+]);
+export type HabitScheduleRuleDraft = z.output<typeof habitScheduleRuleDraftSchema>;
+
+/** Fills the interval anchor of a draft rule with the version's first day, `effectiveFrom`. */
+export function resolveScheduleRule(
+  draft: HabitScheduleRuleDraft,
+  effectiveFrom: string,
+): HabitScheduleRule {
+  if (draft.kind !== 'interval') return draft;
+  return {
+    kind: 'interval',
+    intervalDays: draft.intervalDays,
+    anchorDate: draft.anchorDate ?? effectiveFrom,
+  };
+}
+
+/** Why a schedule was changed: one line, 1..500 characters after normalisation. */
+export const habitScheduleChangeReasonSchema = singleLineText(
+  HABIT_LIMITS.scheduleChangeReasonMaxLength,
+);
+
+/**
+ * A change of a habit's schedule rules (P3-03, ADR-0030): the new rules (checked against the
+ * stored habit type with {@link habitRuleIssues} once the anchor is resolved), the first local
+ * date they apply to (default: the user's today, or the habit's start if that is later), the
+ * habit `version` the client last saw (optimistic concurrency, optional) and a reason — required
+ * when `effectiveFrom` is before the user's today (a historical correction).
+ */
+export const habitScheduleChangeSchema = z.strictObject({
+  schedule: habitScheduleRuleDraftSchema,
+  target: habitTargetSchema.nullable(),
+  graceDays: habitRulesShape.graceDays,
+  effectiveFrom: habitDateSchema.optional(),
+  expectedHabitVersion: z.number().int().min(1).optional(),
+  reason: habitScheduleChangeReasonSchema.optional(),
+});
+export type HabitScheduleChangeInput = z.input<typeof habitScheduleChangeSchema>;
+export type HabitScheduleChangeRequest = z.output<typeof habitScheduleChangeSchema>;
 
 /** A habit's active date range: `endsOn` (inclusive) is null or not before `startsOn`. */
 export const habitDateRangeSchema = z

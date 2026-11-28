@@ -38,7 +38,16 @@ export interface HabitTarget {
   value: number;
 }
 
-/** One version of a habit's rules, in effect for local dates [effectiveFrom, effectiveTo). */
+/** First day of the week a version's weekly periods are counted from (ADR-0024 values). */
+export type HabitWeekStart = 'saturday' | 'sunday' | 'monday';
+/** Calendar of a version's months (ADR-0024 values). */
+export type HabitCalendar = 'gregorian' | 'solar_hijri';
+
+/**
+ * One version of a habit's rules, in effect for local dates [effectiveFrom, effectiveTo).
+ * `weekStart` and `calendar` are the user's preferences when the version was written (P3-03,
+ * ADR-0030): its weeks and months are counted in them, whatever the preferences are later.
+ */
 export interface HabitScheduleVersion {
   id: string;
   effectiveFrom: string;
@@ -47,6 +56,38 @@ export interface HabitScheduleVersion {
   schedule: HabitScheduleRule;
   target: HabitTarget | null;
   graceDays: number;
+  weekStart: HabitWeekStart;
+  calendar: HabitCalendar;
+  createdAt: string;
+}
+
+/** What a schedule change did (P3-03, ADR-0030). */
+export type HabitScheduleOperation = 'create' | 'split' | 'replace';
+
+/** A schedule version as an audit snapshot (no `createdAt`). */
+export type HabitScheduleVersionSnapshot = Omit<HabitScheduleVersion, 'createdAt'>;
+
+/**
+ * One entry of a habit's append-only schedule audit trail (P3-03, ADR-0030). A change that starts
+ * before the user's local "today" re-judges past days: it is a historical correction, carries a
+ * reason, and counts the recorded days it re-judged.
+ */
+export interface HabitScheduleChange {
+  id: string;
+  habitId: string;
+  /** The version created (create, split) or rewritten (replace). */
+  versionId: string;
+  operation: HabitScheduleOperation;
+  effectiveFrom: string;
+  /** The user's local date when the change was made. */
+  localToday: string;
+  isCorrection: boolean;
+  reason: string | null;
+  affectedRecordedDays: number;
+  /** The affected versions as they were (`null` for create). */
+  before: HabitScheduleVersionSnapshot[] | null;
+  /** The affected versions as written. */
+  after: HabitScheduleVersionSnapshot[];
   createdAt: string;
 }
 

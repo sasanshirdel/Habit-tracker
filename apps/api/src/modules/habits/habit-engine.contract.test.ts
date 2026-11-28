@@ -51,14 +51,13 @@ describe('habit engine ↔ habit domain model (ADR-0028/0029)', () => {
         schedule: habitScheduleRuleSchema.parse(examples[kind]),
         target: null,
         graceDays: HABIT_LIMITS.graceDaysMax,
-        createdAt: '2026-01-01T00:00:00.000Z',
-      };
-      // A stored version plus the calendar settings its periods count in is an engine version.
-      const version: ScheduleVersionInput = {
-        ...stored,
         weekStart: 'saturday',
         calendar: 'solar_hijri',
+        createdAt: '2026-01-01T00:00:00.000Z',
       };
+      // A stored version carries the calendar settings its periods count in (P3-03, ADR-0030),
+      // so it is an engine version as it is.
+      const version: ScheduleVersionInput = stored;
       const result = computeSchedule({
         startsOn: HABIT_DATE_MIN,
         endsOn: null,

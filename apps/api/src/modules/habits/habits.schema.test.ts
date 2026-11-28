@@ -14,6 +14,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import {
   HabitScheduleKind,
+  HabitScheduleOperation,
   HabitSchedulePeriod,
   HabitTargetComparison,
   HabitType,
@@ -166,5 +167,63 @@ describe('local dates and schedule columns (P3-01)', () => {
     expect(() =>
       scheduleRuleFromColumns({ ...scheduleColumns({ kind: 'daily' }), kind: 'interval' }),
     ).toThrow(/does not match/);
+  });
+});
+
+const versioningMigration = readdirSync(migrationsDir).find((d) =>
+  d.endsWith('_schedule_versioning'),
+);
+const versioningSql = readFileSync(
+  resolve(migrationsDir, versioningMigration ?? 'missing', 'migration.sql'),
+  'utf8',
+).replace(/--.*$/gm, '');
+
+describe('schedule versioning migration (P3-03, ADR-0030)', () => {
+  it('comes after the habit domain model', () => {
+    expect(versioningMigration).toBeDefined();
+    expect(versioningMigration! > habitMigration!).toBe(true);
+  });
+
+  it('is additive: new columns (backfilled, then NOT NULL), a new table, nothing dropped', () => {
+    expect(versioningSql).not.toMatch(/^\s*(DROP|TRUNCATE|DELETE)\b/im);
+    expect(versioningSql).not.toMatch(
+      /\b(DROP\s+(COLUMN|CONSTRAINT|TABLE|TYPE|INDEX|VALUE)|RENAME)\b/i,
+    );
+    // The only data change is the backfill of the two new columns.
+    for (const update of versioningSql.matchAll(
+      /^\s*UPDATE\s+"(\w+)"[^;]*SET\s+([^;]*?)(FROM|WHERE|;)/gim,
+    )) {
+      expect(update[1]).toBe('habit_schedule_versions');
+      expect(update[2]).toMatch(/^"(calendar|week_start)"/);
+    }
+    for (const altered of versioningSql.matchAll(/ALTER COLUMN "(\w+)" (\w+)/g)) {
+      expect([altered[1], altered[2]]).toEqual([
+        expect.stringMatching(/^(calendar|week_start)$/),
+        'SET',
+      ]);
+    }
+    for (const altered of versioningSql.matchAll(/ALTER TABLE "(\w+)"/g)) {
+      expect(altered[1]).toMatch(/^habit_schedule_(versions|changes)$/);
+    }
+  });
+
+  it('keeps the audit table append-only, owner-consistent and in step with the limits', () => {
+    expect(versioningSql).toContain(
+      `char_length("reason") BETWEEN 1 AND ${HABIT_LIMITS.scheduleChangeReasonMaxLength}`,
+    );
+    expect(versioningSql).toContain(
+      `BETWEEN DATE '${HABIT_DATE_MIN}' AND DATE '${HABIT_DATE_MAX}'`,
+    );
+    expect(versioningSql).toMatch(/BEFORE UPDATE ON "habit_schedule_changes"/);
+    expect(versioningSql).toMatch(
+      /FOREIGN KEY \("habit_id", "user_id"\) REFERENCES "habits"\("id", "user_id"\) ON DELETE CASCADE/,
+    );
+    expect(versioningSql).toMatch(
+      /FOREIGN KEY \("version_id", "habit_id"\) REFERENCES "habit_schedule_versions"\("id", "habit_id"\) ON DELETE CASCADE/,
+    );
+    expect(versioningSql).toMatch(
+      /"habit_schedule_changes_user_id_fkey" FOREIGN KEY \("user_id"\) REFERENCES "users"\("id"\) ON DELETE CASCADE/,
+    );
+    expect(Object.values(HabitScheduleOperation).sort()).toEqual(['create', 'replace', 'split']);
   });
 });

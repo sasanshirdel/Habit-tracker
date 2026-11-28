@@ -101,6 +101,8 @@ describe('habit data model (real PostgreSQL)', () => {
         habitId: habit.id,
         habitType: habit.type,
         effectiveFrom: toDbDate('2026-11-01'),
+        weekStart: 'monday',
+        calendar: 'gregorian',
         ...scheduleColumns(
           habit.type === 'frequency'
             ? { kind: 'times_per_period', period: 'week', timesPerPeriod: 3 }
@@ -145,12 +147,13 @@ describe('habit data model (real PostgreSQL)', () => {
       'habit_notes',
       'habit_occurrences',
       'habit_pauses',
+      'habit_schedule_changes',
       'habit_schedule_versions',
       'habits',
     ]);
     for (const r of rows) {
       if (r.column_name.endsWith('_at')) expect(r.udt_name, r.column_name).toBe('timestamptz');
-      if (/(_on|_date|_from|effective_to)$/.test(r.column_name)) {
+      if (/(_on|_date|_from|effective_to|local_today)$/.test(r.column_name)) {
         expect(r.udt_name, `${r.table_name}.${r.column_name}`).toBe('date');
       }
       if (r.column_name === 'user_id' || r.column_name === 'id') expect(r.udt_name).toBe('uuid');
@@ -195,6 +198,9 @@ describe('habit data model (real PostgreSQL)', () => {
           schedule: { kind: 'weekdays', daysOfWeek: [1, 3, 6] },
           target: { comparison: 'at_least', value: 8 },
           graceDays: 0,
+          // No preferences row: the user_preferences defaults are snapshotted (ADR-0030).
+          weekStart: 'monday',
+          calendar: 'gregorian',
         }),
       ]);
       expect(await repo.findHabit(user.id, created.habit.id)).toEqual(created);
@@ -595,6 +601,7 @@ describe('habit data model (real PostgreSQL)', () => {
           name: string;
           deletedAt: string | null;
           scheduleVersions: unknown[];
+          scheduleChanges: unknown[];
         }[];
         occurrences: {
           habitId: string;
@@ -612,7 +619,12 @@ describe('habit data model (real PostgreSQL)', () => {
         expect.objectContaining({
           effectiveFrom: '2026-11-01',
           target: { comparison: 'at_least', value: 600 },
+          weekStart: 'monday',
+          calendar: 'gregorian',
         }),
+      ]);
+      expect(section.habits.find((h) => h.id === habit.id)!.scheduleChanges).toEqual([
+        expect.objectContaining({ operation: 'create', effectiveFrom: '2026-11-01', before: null }),
       ]);
       expect(section.occurrences).toEqual([
         expect.objectContaining({
@@ -650,8 +662,9 @@ describe('habit data model (real PostgreSQL)', () => {
         db.habitOccurrence.count({ where }),
         db.habitNote.count({ where }),
         db.habitPause.count({ where }),
+        db.habitScheduleChange.count({ where }),
       ]);
-      expect(counts).toEqual([0, 0, 0, 0, 0, 0]);
+      expect(counts).toEqual([0, 0, 0, 0, 0, 0, 0]);
       expect(await db.habit.count({ where: { userId: keep.user.id } })).toBe(2);
     });
   });

@@ -181,6 +181,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@habit/habit-engine':
+        specifier: workspace:*
+        version: link:../../packages/habit-engine
       '@habit/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -224,9 +227,6 @@ importers:
       '@habit/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@habit/habit-engine':
-        specifier: workspace:*
-        version: link:../../packages/habit-engine
       '@habit/localization':
         specifier: workspace:*
         version: link:../../packages/localization

@@ -1,6 +1,6 @@
 # ADR-0028: Habit domain model — habits, categories, schedule versions, recorded occurrences
 
-- **Status:** Accepted (P3-01)
+- **Status:** Accepted (P3-01); amended by [ADR-0030](0030-schedule-versioning.md) (P3-03)
 - **Date:** 2026-11-28
 
 ## Context
@@ -191,3 +191,13 @@ altered — unit-tested). Applied from an empty database and on top of the previ
 - Every new habit-area table must carry `user_id` with `ON DELETE CASCADE` and be added to the
   `habits` export section (CI fails otherwise, ADR-0025).
 - Hand-written CHECKs must be repeated by hand in any later migration that recreates these tables.
+
+## Addendum (P3-03, ADR-0030)
+
+- `habit_schedule_versions` gained `week_start` and `calendar` (NOT NULL, snapshotted from the
+  user's preferences when a version is written) and a unique `(id, habit_id)`.
+- New user-owned table `habit_schedule_changes`: the append-only audit trail of schedule changes
+  (create / split / replace, effective date, the user's today, correction flag + reason, recorded
+  days re-judged, before/after snapshots); in the `habits` export section and purged by cascade.
+- Schedule changes go through `HabitScheduleService` (row lock + optimistic `habits.version`);
+  past versions are still never edited except by an audited historical correction.

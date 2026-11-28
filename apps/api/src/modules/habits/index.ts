@@ -5,6 +5,9 @@
  * occurrences, notes and pauses — owned by this module, the owner-scoped `HabitRepository`, the
  * row ↔ contract mappers and the module's data-export section. Account purge is covered by
  * `ON DELETE CASCADE` from `users` on every table.
+ *
+ * P3-03 (ADR-0030) adds schedule versioning: `HabitScheduleService.changeSchedule` (internal —
+ * P3-06 exposes it over HTTP), the pure planning rules and the append-only schedule audit trail.
  */
 export {
   HabitCategoryNotFoundError,
@@ -18,9 +21,23 @@ export {
   scheduleRuleFromColumns,
   toDbDate,
   toHabit,
+  toScheduleChange,
   toScheduleVersion,
   versionRuleColumns,
   type ScheduleColumns,
 } from './habit-mappers.js';
+export {
+  HabitNotFoundError,
+  HabitScheduleService,
+  readScheduleContext,
+  type HabitScheduleChangeResult,
+  type ScheduleContext,
+} from './habit-schedule.service.js';
+export {
+  HabitScheduleChangeError,
+  planScheduleChange,
+  type HabitScheduleChangeErrorCode,
+  type SchedulePlan,
+} from './schedule-versioning.js';
 export { HabitsDataExportContributor } from './habits-data-export.contributor.js';
 export { HabitsModule } from './habits.module.js';

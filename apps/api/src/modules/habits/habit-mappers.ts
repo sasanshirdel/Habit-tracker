@@ -1,12 +1,16 @@
 import type {
   Habit,
+  HabitCalendar,
   HabitCategory,
   HabitNote,
   HabitOccurrenceRecord,
   HabitPause,
+  HabitScheduleChange,
   HabitScheduleRule,
   HabitScheduleVersion,
+  HabitScheduleVersionSnapshot,
   HabitTarget,
+  HabitWeekStart,
 } from '@habit/shared-types';
 import { minutesToPreferredTime, type HabitRules } from '@habit/shared-validation';
 import { Prisma } from '../../generated/prisma/client.js';
@@ -16,6 +20,7 @@ import type {
   HabitNote as HabitNoteRow,
   HabitOccurrence as HabitOccurrenceRow,
   HabitPause as HabitPauseRow,
+  HabitScheduleChange as HabitScheduleChangeRow,
   HabitScheduleVersion as HabitScheduleVersionRow,
 } from '../../generated/prisma/client.js';
 
@@ -125,13 +130,21 @@ export function scheduleRuleFromColumns(
   throw new Error(`Schedule version row does not match its kind "${row.kind}"`);
 }
 
-/** The rule columns (schedule, target, grace) of a new version. */
-export function versionRuleColumns(rules: HabitRules) {
+/**
+ * The rule columns of a version: schedule, target, grace days, and the calendar settings its
+ * periods are counted in (snapshotted from the user's preferences when written, ADR-0030).
+ */
+export function versionRuleColumns(
+  rules: HabitRules,
+  settings: { weekStart: HabitWeekStart; calendar: HabitCalendar },
+) {
   return {
     ...scheduleColumns(rules.schedule),
     graceDays: rules.graceDays,
     targetValue: rules.target ? new Prisma.Decimal(rules.target.value) : null,
     targetComparison: rules.target?.comparison ?? null,
+    weekStart: settings.weekStart,
+    calendar: settings.calendar,
   };
 }
 
@@ -152,6 +165,26 @@ export function toScheduleVersion(row: HabitScheduleVersionRow): HabitScheduleVe
     schedule: scheduleRuleFromColumns(row),
     target: targetFromRow(row),
     graceDays: row.graceDays,
+    weekStart: row.weekStart,
+    calendar: row.calendar,
+    createdAt: iso(row.createdAt),
+  };
+}
+
+/** An audit row → contract. Snapshots are stored as written by the service (contract shape). */
+export function toScheduleChange(row: HabitScheduleChangeRow): HabitScheduleChange {
+  return {
+    id: row.id,
+    habitId: row.habitId,
+    versionId: row.versionId,
+    operation: row.operation,
+    effectiveFrom: fromDbDate(row.effectiveFrom),
+    localToday: fromDbDate(row.localToday),
+    isCorrection: row.isCorrection,
+    reason: row.reason,
+    affectedRecordedDays: row.affectedRecordedDays,
+    before: row.before === null ? null : (row.before as unknown as HabitScheduleVersionSnapshot[]),
+    after: row.after as unknown as HabitScheduleVersionSnapshot[],
     createdAt: iso(row.createdAt),
   };
 }

@@ -5,7 +5,12 @@ import type {
   HabitOccurrenceRecord,
   HabitScheduleVersion,
 } from '@habit/shared-types';
-import { preferredTimeToMinutes, type HabitDefinition } from '@habit/shared-validation';
+import {
+  preferredTimeToMinutes,
+  resolveScheduleRule,
+  type HabitDefinition,
+  type HabitScheduleRuleDraft,
+} from '@habit/shared-validation';
 import { PrismaService } from '../../database/index.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import {
@@ -16,10 +21,16 @@ import {
   toScheduleVersion,
   versionRuleColumns,
 } from './habit-mappers.js';
+import { readScheduleContext, recordScheduleChange } from './habit-schedule.service.js';
+import { snapshotOf } from './schedule-versioning.js';
 
 /** A new habit, already validated with the shared schemas (habitDefinitionSchema and friends). */
 export interface NewHabit {
-  definition: HabitDefinition;
+  /**
+   * Type, unit and rules. An interval schedule may leave out `anchorDate`: it then defaults to
+   * `startsOn`, the first version's start (ADR-0030).
+   */
+  definition: Omit<HabitDefinition, 'schedule'> & { schedule: HabitScheduleRuleDraft };
   name: string;
   description: string | null;
   icon: string | null;
@@ -53,8 +64,8 @@ const FOREIGN_KEY_VIOLATION = 'P2003';
  * Data access for the habit tables (backlog P3-01, ADR-0028). Every method takes the owner's
  * `userId` and filters by it, so a caller can never read or attach another user's rows; ids of
  * other users' rows behave like missing ones (callers answer 404, ADR-0019). Soft-deleted habits
- * are invisible here except to the data export. HTTP routes arrive with P3-06; schedule edits
- * (P3-03) and check-ins (P3-04) add their writes here.
+ * are invisible here except to the data export. HTTP routes arrive with P3-06; schedule changes
+ * are `HabitScheduleService` (P3-03); check-ins (P3-04) add their writes here.
  */
 @Injectable()
 export class HabitRepository {
@@ -63,12 +74,23 @@ export class HabitRepository {
   /**
    * Creates a habit and its first schedule version (effective from `startsOn`, open-ended) in one
    * transaction, so a habit never exists without rules — and its type is pinned by the version's
-   * foreign key from the first moment.
+   * foreign key from the first moment. The version snapshots the user's week start and calendar,
+   * and the audit trail gets its `create` entry (P3-03, ADR-0030).
    */
-  async createHabit(userId: string, input: NewHabit): Promise<HabitWithSchedule> {
-    const { definition } = input;
+  async createHabit(
+    userId: string,
+    input: NewHabit,
+    options: { now?: Date } = {},
+  ): Promise<HabitWithSchedule> {
+    const definition = {
+      ...input.definition,
+      schedule: resolveScheduleRule(input.definition.schedule, input.startsOn),
+    };
+    const now = options.now ?? new Date();
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // The first version snapshots the user's week start and calendar (ADR-0030).
+        const context = await readScheduleContext(tx, userId, now);
         const habit = await tx.habit.create({
           data: {
             userId,
@@ -92,10 +114,24 @@ export class HabitRepository {
             habitId: habit.id,
             habitType: habit.type,
             effectiveFrom: habit.startsOn,
-            ...versionRuleColumns(definition),
+            ...versionRuleColumns(definition, context),
           },
         });
-        return { habit: toHabit(habit), scheduleVersions: [toScheduleVersion(version)] };
+        const first = toScheduleVersion(version);
+        await recordScheduleChange(tx, {
+          userId,
+          habitId: habit.id,
+          versionId: first.id,
+          operation: 'create',
+          effectiveFrom: first.effectiveFrom,
+          localToday: context.today,
+          isCorrection: false,
+          reason: null,
+          affectedRecordedDays: 0,
+          before: null,
+          after: [snapshotOf(first)],
+        });
+        return { habit: toHabit(habit), scheduleVersions: [first] };
       });
     } catch (error) {
       if (

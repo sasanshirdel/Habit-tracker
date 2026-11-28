@@ -1,6 +1,6 @@
 # ADR-0029: Habit schedule engine — a pure package on local day numbers, with Solar Hijri months
 
-- **Status:** Accepted (P3-02)
+- **Status:** Accepted (P3-02); open decision 1 taken (interim) in [ADR-0030](0030-schedule-versioning.md)
 - **Date:** 2026-11-28
 
 ## Context
@@ -217,3 +217,13 @@ required, partial }`. Periods are the user's **week** (7 days from `weekStart`) 
 - Any change to the engine's bounds must change `@habit/shared-validation` and the database CHECKs
   together (the API contract test fails otherwise).
 - Habit logic that is pure belongs in this package; I/O stays in the API module.
+
+## Addendum (P3-03, ADR-0030)
+
+- Open decision 1 is taken as recommended (interim, reversible): every schedule version stores
+  the `week_start` and `calendar` it was written with; existing versions were backfilled from
+  their owner's preferences. A stored `HabitScheduleVersion` is now a `ScheduleVersionInput` as
+  it is — callers no longer pass the current preferences.
+- A new `interval` rule without `anchorDate` is anchored on the version's effective date.
+- `apps/api` uses the engine at runtime (`localDateAt` for "today", `versionIdOn` and
+  `computeSchedule` to check planned version sets), so it is a regular dependency now.
