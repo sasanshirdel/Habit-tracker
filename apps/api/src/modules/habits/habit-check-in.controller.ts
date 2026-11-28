@@ -51,7 +51,7 @@ function toApiError(error: unknown): unknown {
  * Check-ins and occurrence statuses of one habit (backlog P3-04, ADR-0031) under
  * `/api/v1/habits/{habitId}`. No `@Public`, so the global `AuthGuard` requires a session and, for
  * `POST`, the CSRF token; queries are owner-scoped (another user's habit → 404). Habit CRUD is
- * P3-06; the weekly matrix (P3-07) reads statuses here.
+ * `HabitsController` (P3-06); the weekly matrix (P3-07) reads statuses here.
  */
 @ApiTag('Habit check-ins', 'Record what you did on a day and read the computed day statuses.')
 @Controller('habits/:habitId')

@@ -84,7 +84,7 @@ describe('recurring jobs (real Redis + PostgreSQL + worker)', () => {
     }
   });
 
-  it('registers the identity schedules in UTC, once, even with two replicas syncing repeatedly', async () => {
+  it('registers the identity and habit schedules in UTC, once, even with two replicas syncing repeatedly', async () => {
     const before = Date.now();
     const [a, b] = await Promise.all([startWorker(), startWorker()]);
     await Promise.all([
@@ -100,9 +100,14 @@ describe('recurring jobs (real Redis + PostgreSQL + worker)', () => {
 
     const schedulers = await system().getJobSchedulers(0, -1);
     expect(schedulers.map((s) => s.key).sort()).toEqual([
+      'habits.deleted-purge-daily',
       'identity.account-purge-daily',
       'identity.retention-cleanup-daily',
     ]);
+    // P3-06 (ADR-0032): the daily purge of habits deleted more than 30 days ago.
+    const habitPurge = await system().getJobScheduler('habits.deleted-purge-daily');
+    expect(habitPurge).toMatchObject({ name: 'habits.deleted-purge', pattern: '55 23 * * *' });
+    expect(habitPurge?.next).toBe(nextUtc(before, 23, 55));
     const purge = await system().getJobScheduler('identity.account-purge-daily');
     expect(purge).toMatchObject({
       name: 'identity.account-purge',

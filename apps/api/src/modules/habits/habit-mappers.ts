@@ -208,6 +208,7 @@ export function toHabit(row: HabitRow): Habit {
     position: row.position,
     version: row.version,
     archivedAt: isoOrNull(row.archivedAt),
+    deletedAt: isoOrNull(row.deletedAt),
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };

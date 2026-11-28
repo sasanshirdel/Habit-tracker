@@ -134,3 +134,9 @@ only are logged.
 - Every worker replica touches Redis once an hour for the check (a few commands per schedule).
 - A schedule id is part of the Redis state: renaming one replaces the scheduler (the old pending
   run is dropped) on the next deploy.
+
+## Addendum (P3-06, ADR-0032)
+
+- The habits module declares `HABIT_SCHEDULES`: `habits.deleted-purge-daily` (job
+  `habits.deleted-purge`, queue `system`, `55 23 * * *` UTC = 03:25 Tehran) erases habits deleted
+  more than 30 days ago in batches. Registered by the worker next to `IDENTITY_SCHEDULES`.
