@@ -65,6 +65,10 @@ export default async function setup(project: TestProject): Promise<() => Promise
   process.env.QUEUE_PREFIX = `${redisKeyPrefix}q`;
   // Same for rate-limit counters (P1-08).
   process.env.RATE_LIMIT_PREFIX = `${redisKeyPrefix}rl`;
+  // Recurring jobs (ADR-0026) stay off by default: a registered scheduler keeps a delayed job in
+  // the `system` queue, which would make "wait until the queue is idle" helpers wait forever.
+  // test/job-scheduling.int.test.ts turns them on under its own queue prefix.
+  process.env.JOB_SCHEDULES_ENABLED = 'false';
 
   return async () => {
     try {

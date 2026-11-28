@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ACCOUNT_DELETION_GRACE_DAYS } from '@habit/shared-types';
 import { defineJob } from '../../queue/job-definition.js';
+import { defineSchedule } from '../../queue/job-schedule.js';
 
 /**
  * Account deletion policy (backlog P2-10, ADR-0025). Interim values, reversible — open decisions
@@ -40,12 +41,26 @@ export const ACCOUNT_DELETED_EMAIL_JOB = defineJob({
 /**
  * Worker job that erases every account whose grace period has passed (hard delete; cascades to
  * all user-owned rows). No payload. Idempotent: running it twice, or concurrently, erases each
- * account once. Not scheduled automatically yet — the platform has no repeatable-job scheduler
- * (ADR-0025 "Scheduling"); until then it is enqueued by an operator or a deployment's cron.
+ * account once. Runs daily through {@link ACCOUNT_PURGE_SCHEDULE} (ADR-0026); an operator may
+ * also enqueue it by hand.
  */
 export const ACCOUNT_PURGE_JOB = defineJob({
   name: 'identity.account-purge',
   queue: 'system',
   schema: z.strictObject({}),
   options: { attempts: 3, backoff: { type: 'exponential' as const, delay: 60_000 } },
+});
+
+/**
+ * Daily purge run (ADR-0026). 23:30 UTC is 03:00 in Tehran (no daylight saving) and the middle of
+ * the night in Europe — the quietest hour for most users. An account becomes erasable 30 days
+ * after deletion, so it is erased at most a day after its restore window closes (restore checks
+ * the deadline itself, so a late purge never extends the window).
+ */
+export const ACCOUNT_PURGE_SCHEDULE = defineSchedule({
+  id: 'identity.account-purge-daily',
+  job: ACCOUNT_PURGE_JOB,
+  cron: '30 23 * * *',
+  payload: {},
+  description: 'Erase accounts whose 30-day restore window has passed (ADR-0025).',
 });

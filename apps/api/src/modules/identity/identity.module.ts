@@ -7,6 +7,7 @@ import { AccountDeletedEmailHandler, AccountPurgeHandler } from './account-delet
 import { AccountDeletionService } from './account-deletion.service.js';
 import { AccountPurgeService } from './account-purge.service.js';
 import { AccountRestoreService } from './account-restore.service.js';
+import { IdentityRetentionHandler, IdentityRetentionService } from './identity-retention.js';
 import { IdentityDataExportContributor } from './identity-data-export.contributor.js';
 import { AccountRestoreController, PrivacyController } from './privacy.controller.js';
 import { AuthController } from './auth.controller.js';
@@ -91,8 +92,9 @@ export class IdentityModule {}
  * Worker-side part of the identity module: the email job handlers with what they need (token
  * issuing, the mailer) — `identity.verification-email` (P2-04), `identity.password-reset-email`
  * and `identity.password-changed-email` (P2-05), `identity.account-deleted-email` and
- * `identity.account-purge` (P2-10). Imported by `WorkerModule`, which registers the
- * handlers in `JOB_HANDLERS`. No controllers or guards.
+ * `identity.account-purge` (P2-10) and `identity.retention-cleanup` (ADR-0026). Imported by
+ * `WorkerModule`, which registers the handlers in `JOB_HANDLERS` and the module's
+ * `IDENTITY_SCHEDULES` in `JOB_SCHEDULES`. No controllers or guards.
  */
 @Module({
   imports: [MailModule],
@@ -107,6 +109,8 @@ export class IdentityModule {}
     AccountPurgeService,
     AccountDeletedEmailHandler,
     AccountPurgeHandler,
+    IdentityRetentionService,
+    IdentityRetentionHandler,
   ],
   exports: [
     VerificationEmailHandler,
@@ -114,6 +118,7 @@ export class IdentityModule {}
     PasswordChangedEmailHandler,
     AccountDeletedEmailHandler,
     AccountPurgeHandler,
+    IdentityRetentionHandler,
   ],
 })
 export class IdentityJobsModule {}

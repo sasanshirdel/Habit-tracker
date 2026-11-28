@@ -1,6 +1,7 @@
 import type { INestApplicationContext, LoggerService } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { createLogger } from '../common/logging/json-logger.js';
+import { JobScheduleRegistrar } from './job-schedules.service.js';
 import { WorkerHost, type DrainResult } from './worker-host.service.js';
 import { WorkerModule } from './worker.module.js';
 
@@ -13,10 +14,12 @@ export async function createWorkerContext(
 }
 
 /**
- * Graceful shutdown in the right order: drain the consumers first (in-flight jobs finish while the
+ * Graceful shutdown in the right order: stop schedule registration, drain the consumers first (in-flight jobs finish while the
  * database and queues are still open), then close the context (Prisma, producer queues, Redis).
  */
 export async function shutdownWorker(context: INestApplicationContext): Promise<DrainResult> {
+  // Stop registering schedules first (ADR-0026), so no Redis call is in flight while queues close.
+  await context.get(JobScheduleRegistrar).stop();
   const result = await context.get(WorkerHost).drain();
   await context.close();
   return result;

@@ -144,6 +144,50 @@ describe('worker process (real Redis)', () => {
     }
   });
 
+  it('registers the recurring jobs (ADR-0026) at startup, without blocking or repeating them', async () => {
+    const worker = startWorker({ JOB_SCHEDULES_ENABLED: 'true' });
+    try {
+      await waitFor(
+        () => (worker.output().includes('Job schedules synced:') ? true : undefined),
+        'schedule sync',
+      );
+      const system = producer.queue('system');
+      expect((await system.getJobSchedulers(0, -1)).map((s) => s.key).sort()).toEqual([
+        'identity.account-purge-daily',
+        'identity.retention-cleanup-daily',
+      ]);
+      expect(await system.getJobScheduler('identity.account-purge-daily')).toMatchObject({
+        pattern: '30 23 * * *',
+        tz: 'UTC',
+      });
+      const delayed = (await system.getDelayed(0, -1)).filter((j) => j.id?.startsWith('repeat:'));
+      expect(delayed).toHaveLength(2);
+      // Logged: schedule ids and cron only.
+      expect(worker.output()).toMatch(
+        /Job schedules synced: identity\.account-purge-daily \(30 23 \* \* \* UTC\), identity\.retention-cleanup-daily \(45 23 \* \* \* UTC\)/,
+      );
+      worker.child.kill('SIGTERM');
+      expect(await worker.exited).toBe(0);
+
+      // A second start (a redeploy, or another replica) leaves the registered runs alone.
+      const again = startWorker({ JOB_SCHEDULES_ENABLED: 'true' });
+      try {
+        await waitFor(
+          () => (again.output().includes('Job schedules synced:') ? true : undefined),
+          'schedule sync (second start)',
+        );
+        const after = (await system.getDelayed(0, -1)).filter((j) => j.id?.startsWith('repeat:'));
+        expect(after.map((j) => j.id).sort()).toEqual(delayed.map((j) => j.id).sort());
+        again.child.kill('SIGTERM');
+        expect(await again.exited).toBe(0);
+      } finally {
+        again.child.kill('SIGKILL');
+      }
+    } finally {
+      worker.child.kill('SIGKILL');
+    }
+  });
+
   it('never prints connection strings or credentials', async () => {
     const worker = startWorker();
     try {

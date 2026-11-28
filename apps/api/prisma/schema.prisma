@@ -246,6 +246,9 @@ model UserSession {
 
   @@index([userId])
   @@index([expiresAt])
+  /// For the daily retention clean-up of ended sessions (ADR-0026): revoked, expired or idle.
+  @@index([revokedAt])
+  @@index([lastUsedAt])
   @@map("user_sessions")
 }
 

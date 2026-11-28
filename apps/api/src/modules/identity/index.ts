@@ -8,7 +8,8 @@
  * P2-04 adds email verification and the worker-side `IdentityJobsModule` (ADR-0021); P2-05 adds
  * password recovery (ADR-0022); P2-08 adds session management and security events (ADR-0023);
  * P2-07 adds profile and preferences (ADR-0024); P2-10 adds data export, account deletion with a
- * restore window and the purge (ADR-0025).
+ * restore window and the purge (ADR-0025). The purge and the global retention clean-up run daily as
+ * scheduled worker jobs (`IDENTITY_SCHEDULES`, ADR-0026).
  * Route markers (`@Public()`, `@CurrentUser()`) are platform code in `common/auth`.
  */
 export {
@@ -23,8 +24,18 @@ export {
   ACCOUNT_DELETED_EMAIL_JOB,
   ACCOUNT_DELETION_POLICY,
   ACCOUNT_PURGE_JOB,
+  ACCOUNT_PURGE_SCHEDULE,
   purgeAfter,
 } from './account-deletion.policy.js';
+export {
+  IDENTITY_RETENTION_JOB,
+  IDENTITY_RETENTION_POLICY,
+  IDENTITY_RETENTION_SCHEDULE,
+  IDENTITY_SCHEDULES,
+  IdentityRetentionHandler,
+  IdentityRetentionService,
+  type RetentionCleanupResult,
+} from './identity-retention.js';
 export {
   AccountDeletedEmailHandler,
   AccountPurgeHandler,
@@ -101,6 +112,7 @@ export { RequestSessionResolver } from './request-session.resolver.js';
 export {
   ENDED_SESSION_RETENTION_MS,
   SessionService,
+  endedBefore,
   type ActiveSession,
 } from './session.service.js';
 export { ProfileService } from './profile.service.js';
