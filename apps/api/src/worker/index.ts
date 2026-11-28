@@ -3,6 +3,18 @@
 // codes); everything it runs lives here so it shares the API's modules and conventions.
 export { JOB_HANDLERS, type JobContext, type JobHandler } from './job-handler.js';
 export { JOB_REJECTION, createJobProcessor, indexHandlers } from './job-processor.js';
+export {
+  JOB_SCHEDULES,
+  JobScheduleRegistrar,
+  SCHEDULE_RESYNC_INTERVAL_MS,
+  scheduleRetryDelay,
+  schedulerMatches,
+  syncSchedules,
+  validateSchedules,
+  type ScheduleQueue,
+  type ScheduleSyncResult,
+  type StoredScheduler,
+} from './job-schedules.service.js';
 export { SystemNoopJobHandler } from './system-noop.handler.js';
 export { createWorkerContext, shutdownWorker } from './worker.factory.js';
 // The worker process creates the logger itself so startup failures are logged in the same format.
