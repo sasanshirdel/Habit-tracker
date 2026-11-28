@@ -61,6 +61,19 @@ export const RATE_LIMIT_CLASSES = {
     key: 'user-or-ip',
     onStoreFailure: 'allow',
   },
+  /**
+   * Account-wide data operations that need re-authentication or hand out all of a user's data:
+   * data export and account deletion (P2-10, ADR-0025). Per user; fails closed, because serving
+   * them without a limit (password guessing on deletion, bulk export by a stolen session) is the
+   * bigger risk than refusing for the length of a Redis outage.
+   */
+  sensitive: {
+    name: 'sensitive',
+    limit: 10,
+    windowSeconds: 3_600,
+    key: 'user-or-ip',
+    onStoreFailure: 'deny',
+  },
 } as const satisfies Record<string, RateLimitPolicy>;
 
 export type RateLimitClassName = keyof typeof RATE_LIMIT_CLASSES;

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { validateEnv } from './config/env.js';
+import { DataExportModule } from './data-export/index.js';
 import { DatabaseModule } from './database/index.js';
 import { HealthModule } from './health/health.module.js';
 import { IdentityModule } from './modules/identity/index.js';
@@ -23,6 +24,8 @@ import { RateLimitModule } from './rate-limit/rate-limit.module.js';
     // guards (P2-03): global guards run in registration order, and the limiter must run first.
     RateLimitModule,
     HealthModule,
+    // Global registry feature modules contribute their part of the user's data export to (P2-10).
+    DataExportModule,
     IdentityModule,
   ],
 })

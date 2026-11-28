@@ -29,5 +29,7 @@ new ADR that supersedes the old one (and mark the old one `Superseded by ADR-NNN
 | [0022](0022-password-recovery.md)                             | Password recovery                                                | Accepted          |
 | [0023](0023-session-management-and-security-events.md)        | Session management and customer security events                  | Accepted          |
 | [0024](0024-profile-and-preferences.md)                       | Profile and preferences (avatar deferred)                        | Accepted          |
+| [0025](0025-data-export-and-account-deletion.md)              | Data export and account deletion                                 | Accepted          |
+| [0026](0026-recurring-jobs.md)                                | Recurring jobs (BullMQ job schedulers) and identity retention    | Accepted          |
 
 New ADRs: copy [`TEMPLATE.md`](TEMPLATE.md), use the next number, open it in the same PR as the change.

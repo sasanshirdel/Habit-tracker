@@ -75,7 +75,9 @@ answer 404 `NOT_FOUND`.
   ended more than 30 days ago; reads never return rows outside the window.
 - Accounts that never sign in again keep their old rows until a global clean-up job exists — the
   platform has no scheduled (repeatable) jobs yet. Follow-up: a daily worker job deleting by the
-  `created_at` / `expires_at` indexes once scheduling is built.
+  `created_at` / `expires_at` indexes once scheduling is built. **Update (ADR-0026):** done —
+  `identity.retention-cleanup` runs daily at 23:45 UTC for every account (same predicates; also
+  deletes expired emailed-link tokens).
 
 ### Web
 
@@ -113,8 +115,8 @@ if unused).
 1. **Approximate location** of sessions: not stored or shown. Options: none (current); country
    from IP geolocation at sign-in (needs a GeoIP database/provider choice and a privacy-policy
    line); city-level.
-2. **Retention**: events 180 days, ended sessions 30 days, purged per account on write until a
-   global job exists.
+2. **Retention**: events 180 days, ended sessions 30 days, purged per account on write and, since
+   ADR-0026, daily for all accounts.
 3. **Failed sign-in events** per account: not recorded.
 
 ## Consequences
@@ -124,4 +126,4 @@ if unused).
 - Every new security-relevant action (password change from settings, email change, Google
   linking, MFA) must add an event type (enum migration + shared constant + messages) and record it
   in its transaction.
-- A global retention job is owed once scheduled jobs exist.
+- A global retention job is owed once scheduled jobs exist (delivered by ADR-0026).

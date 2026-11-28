@@ -140,11 +140,14 @@ describe('session metadata / security events migration (P2-08)', () => {
     expect(Object.values(enums.ClientOs)).toEqual([...CLIENT_OSES]);
     expect(Object.values(enums.ClientDevice)).toEqual([...CLIENT_DEVICES]);
     expect(Object.values(enums.SecurityEventType)).toEqual([...SECURITY_EVENT_TYPES]);
+    // P2-10 added values with ALTER TYPE … ADD VALUE (see privacy.test.ts); the P2-08 migration
+    // created the first seven.
+    const p208Types = SECURITY_EVENT_TYPES.slice(0, 7);
     const quoted = (values: readonly string[]) => values.map((v) => `'${v}'`).join(', ');
     expect(sql).toContain(`"client_browser" AS ENUM (${quoted(CLIENT_BROWSERS)})`);
     expect(sql).toContain(`"client_os" AS ENUM (${quoted(CLIENT_OSES)})`);
     expect(sql).toContain(`"client_device" AS ENUM (${quoted(CLIENT_DEVICES)})`);
-    expect(sql).toContain(`"security_event_type" AS ENUM (${quoted(SECURITY_EVENT_TYPES)})`);
+    expect(sql).toContain(`"security_event_type" AS ENUM (${quoted(p208Types)})`);
   });
 
   it('is additive only (no DROP, no data rewrite)', () => {

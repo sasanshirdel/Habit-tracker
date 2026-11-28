@@ -60,3 +60,15 @@ export type {
   UserProfile,
   WeekStartPreference,
 } from './profile.js';
+export {
+  ACCOUNT_DELETION_GRACE_DAYS,
+  USER_DATA_EXPORT_FORMAT,
+  USER_DATA_EXPORT_VERSION,
+} from './privacy.js';
+export type {
+  AccountDeletionRequest,
+  AccountDeletionResponse,
+  AccountRestoreRequest,
+  AccountRestoreResponse,
+  UserDataExport,
+} from './privacy.js';

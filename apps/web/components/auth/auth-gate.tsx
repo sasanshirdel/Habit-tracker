@@ -16,7 +16,8 @@ import { VerifyEmailBanner } from './verify-email-banner';
  * in the server HTML, where the session cannot be known (the cookie lives on the API's origin) —
  * a neutral placeholder is shown, so a signed-out visitor never sees app content flash. Signed
  * out → `router.replace` to the sign-in page with this page as `next` (validated there, never an
- * open redirect); after an explicit sign-out, without `next`. A failed check (offline, API down)
+ * open redirect); after an explicit sign-out, without `next`; right after deleting the account
+ * (P2-10), to the "account deleted" page. A failed check (offline, API down)
  * shows the error with a retry instead of a misleading redirect.
  *
  * UX only: page components never hold user data (it comes from the API, which authorizes every
@@ -31,6 +32,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (state?.status !== 'signed-out') return;
+    if (state.reason === 'account-deleted') {
+      router.replace('/auth/account-deleted');
+      return;
+    }
     const here = `${pathname}${window.location.search}`;
     router.replace(signInHref(state.reason === 'signed-out' ? null : here));
   }, [state, pathname, router]);

@@ -63,6 +63,9 @@ async function startWorker(withTestHandlers: boolean): Promise<TestingModule> {
         withTestHandlers ? [noop, ...testHandlers] : [noop],
       inject: [SystemNoopJobHandler],
     })
+    // Only test handlers here, so no recurring jobs (their handlers are not registered).
+    .overrideProvider(workerApi.JOB_SCHEDULES)
+    .useValue([])
     .compile();
   await moduleRef.init();
   return moduleRef;

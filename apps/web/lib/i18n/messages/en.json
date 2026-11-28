@@ -106,6 +106,7 @@
     "UNAUTHENTICATED": "Your session has ended. Sign in again to continue.",
     "INVALID_CREDENTIALS": "The email or password is incorrect.",
     "INVALID_TOKEN": "This link is invalid, has expired or was already used.",
+    "REAUTHENTICATION_FAILED": "That password is not correct.",
     "FORBIDDEN": "You don't have permission to do that.",
     "CSRF_FAILED": "This request couldn't be verified. Reload the page and try again.",
     "EMAIL_NOT_VERIFIED": "Confirm your email address to use this feature.",
@@ -242,10 +243,29 @@
       "invalidTitle": "This link doesn't work",
       "invalidBody": "It may have expired, been used already, or been replaced by a newer link. Ask for a new one.",
       "requestNew": "Ask for a new link"
+    },
+    "accountDeleted": {
+      "title": "Your account was deleted",
+      "description": "You have been signed out on every device.",
+      "body": "We emailed you a link to restore the account. It works for {days, plural, one {# day} other {# days}}; after that, the account and all of its data are permanently erased.",
+      "home": "Go to the home page"
+    },
+    "restoreAccount": {
+      "title": "Restore your account",
+      "description": "Press the button to undo the deletion of your account.",
+      "reading": "Reading your link…",
+      "confirm": "Restore my account",
+      "confirming": "Restoring…",
+      "restoredTitle": "Your account is back",
+      "restoredBody": "Your account and its data are restored. Sign in with your password to continue.",
+      "signIn": "Sign in",
+      "invalidTitle": "This link doesn't work",
+      "invalidBody": "It may have expired, been used already or been replaced by a newer link. An account can only be restored within {days, plural, one {# day} other {# days}} of its deletion.",
+      "home": "Go to the home page"
     }
   },
   "settings": {
-    "more": "Notification, privacy, billing, integration and accountability settings will be added here.",
+    "more": "Notification, billing, integration and accountability settings will be added here.",
     "profile": {
       "title": "Profile",
       "summary": "Your display name.",
@@ -353,8 +373,42 @@
           "signed_out_other_sessions": "Signed out all other devices",
           "session_revoked": "Signed out a device",
           "password_reset": "Password changed with a reset link",
-          "email_verified": "Email address verified"
+          "email_verified": "Email address verified",
+          "data_exported": "Copy of your data downloaded",
+          "account_deletion_requested": "Account deleted",
+          "account_restored": "Account restored"
         }
+      }
+    },
+    "privacy": {
+      "title": "Your data",
+      "summary": "Download a copy of your data or delete your account.",
+      "export": {
+        "title": "Download a copy of your data",
+        "description": "Get everything we store about you — account, profile, preferences, devices and security activity — as one JSON file. Data from habits, goals and other features will be included as they arrive.",
+        "warning": "The file contains personal information. Keep it somewhere safe and don't share it.",
+        "download": "Download my data",
+        "preparing": "Preparing your file…",
+        "done": "Your data was downloaded",
+        "failed": "Your data could not be downloaded. Try again."
+      },
+      "delete": {
+        "title": "Delete your account",
+        "description": "Deleting your account signs you out on every device and stops all access to it right away.",
+        "grace": "You can restore it for {days, plural, one {# day} other {# days}} with the link we email you. After that, the account and all of its data are permanently erased and cannot be recovered.",
+        "exportFirst": "Want to keep your data? Download a copy first.",
+        "open": "Delete account…",
+        "dialogTitle": "Delete your account?",
+        "dialogDescription": "You will be signed out everywhere. Your data is erased for good after {days, plural, one {# day} other {# days}} unless you restore the account with the emailed link.",
+        "password": "Your password",
+        "passwordHint": "Enter your password to confirm it's you.",
+        "passwordRequired": "Enter your password.",
+        "confirmLabel": "Type your email address to confirm",
+        "confirmHint": "Type {email}",
+        "confirmMismatch": "Type your email address exactly as shown.",
+        "cancel": "Cancel",
+        "confirm": "Delete my account",
+        "deleting": "Deleting…"
       }
     }
   }

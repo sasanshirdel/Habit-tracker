@@ -16,6 +16,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
   EmptyState,
   Skeleton,
   toast,
@@ -138,14 +139,11 @@ function SessionsSection() {
             </p>
           ) : (
             <Dialog open={confirmOthers} onOpenChange={setConfirmOthers}>
-              <Button
-                variant="outline"
-                className="self-start"
-                onClick={() => setConfirmOthers(true)}
-                data-revoke-others=""
-              >
-                {t('revokeOthers')}
-              </Button>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="self-start" data-revoke-others="">
+                  {t('revokeOthers')}
+                </Button>
+              </DialogTrigger>
               <DialogContent closeLabel={t('cancel')}>
                 <DialogHeader>
                   <DialogTitle>{t('revokeOthersTitle')}</DialogTitle>
@@ -235,15 +233,16 @@ function SessionItem({ session }: { session: AccountSession }) {
       </div>
       {session.current ? null : (
         <Dialog open={confirming} onOpenChange={setConfirming}>
-          <Button
-            variant="outline"
-            size="sm"
-            className="self-start sm:self-center"
-            aria-label={tSessions('revokeLabel', { client: label })}
-            onClick={() => setConfirming(true)}
-          >
-            {tSessions('revoke')}
-          </Button>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-start sm:self-center"
+              aria-label={tSessions('revokeLabel', { client: label })}
+            >
+              {tSessions('revoke')}
+            </Button>
+          </DialogTrigger>
           <DialogContent closeLabel={tSessions('cancel')}>
             <DialogHeader>
               <DialogTitle>{tSessions('revokeTitle')}</DialogTitle>

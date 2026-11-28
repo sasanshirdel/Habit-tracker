@@ -35,6 +35,13 @@ describe('rate-limit policies', () => {
         key: 'user-or-ip',
         onStoreFailure: 'allow',
       },
+      sensitive: {
+        name: 'sensitive',
+        limit: 10,
+        windowSeconds: 3600,
+        key: 'user-or-ip',
+        onStoreFailure: 'deny',
+      },
     });
   });
 

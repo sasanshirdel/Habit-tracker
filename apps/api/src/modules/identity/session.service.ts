@@ -47,6 +47,21 @@ function activeAt(now: Date) {
 }
 
 /**
+ * `where` for sessions that ended before `cutoff`: revoked, past their absolute expiry, or idle
+ * for longer than the idle timeout. Used by the per-account purge on sign-in and by the global
+ * retention clean-up (ADR-0023, ADR-0026), so both delete exactly the same rows.
+ */
+export function endedBefore(cutoff: Date) {
+  return {
+    OR: [
+      { revokedAt: { lt: cutoff } },
+      { expiresAt: { lt: cutoff } },
+      { lastUsedAt: { lt: new Date(cutoff.getTime() - SESSION_IDLE_TIMEOUT_MS) } },
+    ],
+  };
+}
+
+/**
  * Server-side customer sessions (backlog P2-02, ADR-0017/0018). The client holds a 256-bit random
  * token in the `__Host-session` cookie; the database holds only its SHA-256 hash. Malformed and
  * unknown tokens are indistinguishable (both resolve to `null`).
@@ -100,14 +115,7 @@ export class SessionService {
   private async purgeEnded(db: IdentityDb, userId: string, now: Date): Promise<void> {
     const cutoff = new Date(now.getTime() - ENDED_SESSION_RETENTION_MS);
     await db.userSession.deleteMany({
-      where: {
-        userId,
-        OR: [
-          { revokedAt: { lt: cutoff } },
-          { expiresAt: { lt: cutoff } },
-          { lastUsedAt: { lt: new Date(cutoff.getTime() - SESSION_IDLE_TIMEOUT_MS) } },
-        ],
-      },
+      where: { userId, ...endedBefore(cutoff) },
     });
   }
 

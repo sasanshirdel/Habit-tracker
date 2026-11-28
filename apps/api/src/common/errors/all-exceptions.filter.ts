@@ -21,6 +21,7 @@ const GENERIC_MESSAGES: Record<ApiErrorCode, string> = {
   UNAUTHENTICATED: 'Authentication required.',
   INVALID_CREDENTIALS: 'Invalid email or password.',
   INVALID_TOKEN: 'The link is invalid, expired or already used.',
+  REAUTHENTICATION_FAILED: 'The password does not match this account.',
   FORBIDDEN: 'Not allowed.',
   CSRF_FAILED: 'Request rejected: missing or invalid CSRF protection.',
   EMAIL_NOT_VERIFIED: 'Verify your email address first.',

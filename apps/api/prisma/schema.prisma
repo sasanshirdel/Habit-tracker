@@ -75,6 +75,8 @@ enum WeekStart {
 enum UserTokenPurpose {
   email_verification
   password_reset
+  /// Restores a deleted account during the grace period (P2-10, ADR-0025).
+  account_restore
 
   @@map("user_token_purpose")
 }
@@ -138,6 +140,12 @@ enum SecurityEventType {
   session_revoked
   password_reset
   email_verified
+  /// A copy of the account's data was downloaded (P2-10, ADR-0025).
+  data_exported
+  /// The account was deleted — soft delete, restorable during the grace period (P2-10).
+  account_deletion_requested
+  /// A deleted account was restored with the emailed link (P2-10).
+  account_restored
 
   @@map("security_event_type")
 }
@@ -150,8 +158,9 @@ model User {
   emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(3)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
-  /// Soft delete: set when the user deletes the account; hard deletion follows the retention
-  /// policy (P2-10). Rows with deletedAt set must be treated as non-existent by every query.
+  /// Soft delete (P2-10, ADR-0025): set when the user deletes the account. Rows with deletedAt set
+  /// must be treated as non-existent by every query except restore and purge; the purge job erases
+  /// the row (and, by cascade, everything owned by the user) once the grace period has passed.
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
 
   profile            UserProfile?
@@ -161,6 +170,8 @@ model User {
   tokens             UserToken[]
   securityEvents     UserSecurityEvent[]
 
+  /// The purge job finds accounts whose grace period has passed (P2-10).
+  @@index([deletedAt])
   @@map("users")
 }
 
@@ -235,6 +246,9 @@ model UserSession {
 
   @@index([userId])
   @@index([expiresAt])
+  /// For the daily retention clean-up of ended sessions (ADR-0026): revoked, expired or idle.
+  @@index([revokedAt])
+  @@index([lastUsedAt])
   @@map("user_sessions")
 }
 

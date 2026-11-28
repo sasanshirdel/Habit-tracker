@@ -2,6 +2,12 @@
 // the `@habit/api/queue` package export.
 export { InvalidJobIdError, InvalidJobPayloadError, QueueUnavailableError } from './errors.js';
 export { defineJob, type JobDefinition, type JobInput, type JobPayload } from './job-definition.js';
+export {
+  SCHEDULE_TIME_ZONE,
+  defineSchedule,
+  isSupportedCron,
+  type JobScheduleDefinition,
+} from './job-schedule.js';
 export { SYSTEM_NOOP_JOB } from './jobs/system-noop.job.js';
 export { createQueueProducerContext } from './producer.factory.js';
 export {

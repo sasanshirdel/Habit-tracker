@@ -114,6 +114,11 @@ export const workerEnvSchema = baseEnvSchema
     // How long a shutdown waits for in-flight jobs before disconnecting. Keep it below the
     // orchestrator's termination grace period; jobs cut off are recovered as stalled and retried.
     WORKER_SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(600_000).default(25_000),
+    // Recurring jobs (ADR-0026): every worker replica registers the declared schedules (BullMQ job
+    // schedulers, cron in UTC) in Redis at startup. `false` leaves Redis untouched — integration
+    // tests, or a deployment that triggers the jobs some other way. Never off in production
+    // without a replacement: the account purge and retention clean-up depend on it.
+    JOB_SCHEDULES_ENABLED: z.stringbool().default(true),
     ...mailEnvShape,
   })
   .superRefine((env, ctx) => {

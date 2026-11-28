@@ -68,6 +68,16 @@ security-settings.tsx` (devices with "This device", sign out one / all others be
   that locale's route; the shell's theme switcher (`syncWithAccount`) follows and saves the
   account theme. Playwright: `e2e/browser/profile-preferences.spec.ts`.
 
+- **Settings → Your data** (P2-10, ADR-0025): `/{locale}/settings/privacy` in
+  `components/settings/privacy-settings.tsx`, on `lib/account/privacy.ts` — "Download my data"
+  (`useExportData`: CSRF-protected `POST /account/export`, saved with an object URL, nothing
+  stored) and "Delete account" (dialog with the current password and the email address typed out,
+  `useDeleteAccount`; on success the session becomes `signed-out` with reason `account-deleted`
+  and `AuthGate` moves to `/{locale}/auth/account-deleted`). The emailed restore link opens
+  `/{locale}/auth/restore-account#token=…` (`components/auth/restore-account.tsx`, token read from
+  the fragment, restored on a button press, no automatic sign-in). Both auth pages are `noindex`.
+  Playwright: `e2e/browser/privacy.spec.ts`.
+
 - **Data layer** (P1-12, ADR-0014): `lib/api/client.ts` (`createApiClient`; the app's instance is
   `lib/api/api.ts`, base URL `NEXT_PUBLIC_API_BASE_URL`), `lib/api/errors.ts` (`ApiError`, client
   codes), `lib/api/query-client.ts` (TanStack Query defaults, `QueryProvider` in the locale layout),
