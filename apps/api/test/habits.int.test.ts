@@ -144,6 +144,7 @@ describe('habit data model (real PostgreSQL)', () => {
     const tables = new Set(rows.map((r) => r.table_name));
     expect([...tables].sort()).toEqual([
       'habit_categories',
+      'habit_check_ins',
       'habit_notes',
       'habit_occurrences',
       'habit_pauses',

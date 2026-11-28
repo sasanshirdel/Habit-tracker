@@ -1,6 +1,7 @@
 # ADR-0028: Habit domain model — habits, categories, schedule versions, recorded occurrences
 
-- **Status:** Accepted (P3-01); amended by [ADR-0030](0030-schedule-versioning.md) (P3-03)
+- **Status:** Accepted (P3-01); amended by [ADR-0030](0030-schedule-versioning.md) (P3-03) and
+  [ADR-0031](0031-occurrence-status-and-check-ins.md) (P3-04)
 - **Date:** 2026-11-28
 
 ## Context
@@ -201,3 +202,13 @@ altered — unit-tested). Applied from an empty database and on top of the previ
   days re-judged, before/after snapshots); in the `habits` export section and purged by cascade.
 - Schedule changes go through `HabitScheduleService` (row lock + optimistic `habits.version`);
   past versions are still never edited except by an audited historical correction.
+
+## Addendum (P3-04, ADR-0031)
+
+- Statuses are computed by `computeStatuses` in `@habit/habit-engine`; grace days now mean "days a
+  scheduled day stays Due before it is Missed" (open decision 3's "meaning defined in P3-05" is
+  taken for statuses; streaks still decide how open days count).
+- New user-owned table `habit_check_ins`: the append-only log of accepted check-in operations,
+  unique per user by the client's `operation_id` (idempotency), with the same type-specific value
+  CHECK as `habit_occurrences`; in the `habits` export section (`habits[].checkIns`) and purged by
+  cascade. `habit_occurrences` is written only by `HabitCheckInService` (habit row lock + log).

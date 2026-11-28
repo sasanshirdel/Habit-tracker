@@ -8,6 +8,10 @@
  *
  * P3-03 (ADR-0030) adds schedule versioning: `HabitScheduleService.changeSchedule` (internal —
  * P3-06 exposes it over HTTP), the pure planning rules and the append-only schedule audit trail.
+ *
+ * P3-04 (ADR-0031) adds check-ins and statuses: `HabitCheckInService` (idempotent by client
+ * operation id, append-only `habit_check_ins` log) and its routes
+ * `POST /habits/{habitId}/check-ins`, `GET /habits/{habitId}/statuses`.
  */
 export {
   HabitCategoryNotFoundError,
@@ -16,11 +20,17 @@ export {
   type NewHabit,
 } from './habit.repository.js';
 export {
+  HabitCheckInError,
+  HabitCheckInService,
+  type HabitCheckInErrorCode,
+} from './habit-check-in.service.js';
+export {
   fromDbDate,
   scheduleColumns,
   scheduleRuleFromColumns,
   toDbDate,
   toHabit,
+  toHabitCheckIn,
   toScheduleChange,
   toScheduleVersion,
   versionRuleColumns,

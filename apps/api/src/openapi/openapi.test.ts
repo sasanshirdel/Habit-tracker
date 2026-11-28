@@ -103,6 +103,8 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       '/auth/session',
       '/auth/verification/confirm',
       '/auth/verification/resend',
+      '/habits/{habitId}/check-ins',
+      '/habits/{habitId}/statuses',
       '/health',
       '/health/ready',
     ]);
@@ -111,6 +113,7 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     expect(doc.tags.map((t) => t.name)).toEqual([
       'Account',
       'Auth',
+      'Habit check-ins',
       'Health',
       'Privacy',
       'Profile',
@@ -122,6 +125,9 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     expect(op(doc, '/account/export', 'post').operationId).toBe('exportUserData');
     expect(op(doc, '/account/deletion', 'post').operationId).toBe('deleteAccount');
     expect(op(doc, '/auth/account-restore', 'post').operationId).toBe('restoreAccount');
+    // P3-04: check-ins are CSRF-protected POSTs, statuses a GET with a date range.
+    expect(op(doc, '/habits/{habitId}/check-ins', 'post').operationId).toBe('checkInHabit');
+    expect(op(doc, '/habits/{habitId}/statuses', 'get').operationId).toBe('getHabitStatuses');
   });
 
   it('references the response components and keeps only reachable ones', () => {
@@ -140,10 +146,20 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'ApiError',
       'ApiErrorCode',
       'AuthenticatedUser',
+      'CheckInConflictError',
+      'CheckInRefusedError',
       'ClientDescription',
       'CsrfFailedError',
       'DependencyStatus',
       'EmailVerifiedResponse',
+      'HabitCheckIn',
+      'HabitCheckInResult',
+      'HabitDayProgress',
+      'HabitDayStatus',
+      'HabitNotFoundError',
+      'HabitOccurrenceRecord',
+      'HabitPeriodStatus',
+      'HabitStatusRange',
       'HealthResponse',
       'InvalidCredentialsError',
       'InvalidTokenError',

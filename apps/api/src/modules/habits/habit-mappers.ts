@@ -2,6 +2,7 @@ import type {
   Habit,
   HabitCalendar,
   HabitCategory,
+  HabitCheckIn,
   HabitNote,
   HabitOccurrenceRecord,
   HabitPause,
@@ -17,6 +18,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import type {
   Habit as HabitRow,
   HabitCategory as HabitCategoryRow,
+  HabitCheckIn as HabitCheckInRow,
   HabitNote as HabitNoteRow,
   HabitOccurrence as HabitOccurrenceRow,
   HabitPause as HabitPauseRow,
@@ -256,5 +258,20 @@ export function toHabitPause(row: HabitPauseRow): HabitPause {
     endsOn: fromDbDateOrNull(row.endsOn),
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
+  };
+}
+
+export function toHabitCheckIn(row: HabitCheckInRow): HabitCheckIn {
+  return {
+    id: row.id,
+    habitId: row.habitId,
+    operationId: row.operationId,
+    localDate: fromDbDate(row.localDate),
+    action: row.action,
+    value: row.value === null ? null : toNumber(row.value),
+    changed: row.changed,
+    occurrenceVersion: row.occurrenceVersion,
+    localToday: fromDbDate(row.localToday),
+    createdAt: iso(row.createdAt),
   };
 }

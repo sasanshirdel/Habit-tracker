@@ -227,3 +227,53 @@ describe('schedule versioning migration (P3-03, ADR-0030)', () => {
     expect(Object.values(HabitScheduleOperation).sort()).toEqual(['create', 'replace', 'split']);
   });
 });
+
+const checkInMigration = readdirSync(migrationsDir).find((d) => d.endsWith('_habit_check_ins'));
+const checkInSql = readFileSync(
+  resolve(migrationsDir, checkInMigration ?? 'missing', 'migration.sql'),
+  'utf8',
+).replace(/--.*$/gm, '');
+
+describe('check-in migration (P3-04, ADR-0031)', () => {
+  it('comes after schedule versioning and is the newest migration', () => {
+    expect(checkInMigration).toBeDefined();
+    expect(checkInMigration! > versioningMigration!).toBe(true);
+    const all = readdirSync(migrationsDir)
+      .filter((d) => /^\d{14}_/.test(d))
+      .sort();
+    expect(all.at(-1)).toBe(checkInMigration);
+  });
+
+  it('is additive only: a new enum and table, nothing dropped, no existing table changed', () => {
+    expect(checkInSql).not.toMatch(/^\s*(DROP|TRUNCATE|DELETE|UPDATE)\b/im);
+    expect(checkInSql).not.toMatch(
+      /\b(DROP\s+(COLUMN|CONSTRAINT|TABLE|TYPE|INDEX|VALUE)|ALTER\s+COLUMN|RENAME)\b/i,
+    );
+    for (const altered of checkInSql.matchAll(/ALTER TABLE "(\w+)"/g)) {
+      expect(altered[1]).toBe('habit_check_ins');
+    }
+  });
+
+  it('keeps the log append-only, owner-consistent, idempotent and in step with the limits', () => {
+    expect(checkInSql).toMatch(
+      /CREATE UNIQUE INDEX "habit_check_ins_user_id_operation_id_key" ON "habit_check_ins"\("user_id", "operation_id"\)/,
+    );
+    expect(checkInSql).toMatch(/BEFORE UPDATE ON "habit_check_ins"/);
+    expect(checkInSql).toMatch(
+      /FOREIGN KEY \("habit_id", "user_id", "habit_type"\) REFERENCES "habits"\("id", "user_id", "type"\) ON DELETE CASCADE/,
+    );
+    expect(checkInSql).toMatch(
+      /"habit_check_ins_user_id_fkey" FOREIGN KEY \("user_id"\) REFERENCES "users"\("id"\) ON DELETE CASCADE/,
+    );
+    expect(checkInSql).toContain(`BETWEEN DATE '${HABIT_DATE_MIN}' AND DATE '${HABIT_DATE_MAX}'`);
+    expect(checkInSql).toContain(`"value" BETWEEN 0 AND ${HABIT_LIMITS.valueMax}`);
+    expect(checkInSql).toContain(`"value" <= ${HABIT_LIMITS.durationMaxSeconds}`);
+    // The value rule repeats the occurrence CHECK of the habit domain model word for word.
+    const typeRule = (text: string) =>
+      /CASE "habit_type"\s+WHEN 'binary' THEN "value"[\s\S]*?END/
+        .exec(text)?.[0]
+        .replace(/\s+/g, ' ');
+    expect(typeRule(checkInSql)).toBeDefined();
+    expect(typeRule(checkInSql)).toBe(typeRule(statements));
+  });
+});

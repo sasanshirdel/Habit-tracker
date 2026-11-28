@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 import * as engine from './index.js';
 
 describe('public surface', () => {
-  it('exports exactly the documented runtime API (README, ADR-0029)', () => {
+  it('exports exactly the documented runtime API (README, ADR-0029, ADR-0031)', () => {
     expect(Object.keys(engine).sort()).toEqual(
       [
         'addDays',
+        'checkInRefusal',
+        'computeStatuses',
+        'judgeValue',
+        'statusRecordRange',
         'computeSchedule',
         'dayToGregorian',
         'dayToSolarHijri',

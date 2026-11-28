@@ -167,3 +167,115 @@ export interface HabitPause {
   createdAt: string;
   updatedAt: string;
 }
+
+// ── Statuses and check-ins (P3-04, ADR-0031) ────────────────────────────────────────────────────
+
+/** Whether a day lies before, on or after the user's today (in the profile time zone). */
+export type HabitDayTiming = 'past' | 'today' | 'future';
+
+/** The schedule engine's state of a day (ADR-0029). */
+export type HabitScheduleDayState = 'due' | 'flexible' | 'off' | 'paused' | 'inactive';
+export type HabitScheduleRuleState = 'due' | 'flexible' | 'off';
+export type HabitInactiveReason = 'before_start' | 'after_end' | 'archived' | 'no_version';
+
+/** How a recorded value compares with the day's target. */
+export interface HabitDayProgress {
+  value: number;
+  /** The target of the version in effect (`null` for binary/frequency: done = 1). */
+  target: HabitTarget | null;
+  met: boolean;
+  /** `at_least` (or binary/frequency) only: some progress, not yet the target. */
+  partial: boolean;
+  /** 0..100 (see ADR-0031). */
+  percent: number;
+}
+
+/** The computed status of one habit on one local date (never stored, ADR-0028). */
+export interface HabitDayStatus {
+  date: string;
+  status: HabitOccurrenceStatus;
+  timing: HabitDayTiming;
+  scheduleState: HabitScheduleDayState;
+  inactiveReason: HabitInactiveReason | null;
+  pausedState: HabitScheduleRuleState | null;
+  /** The schedule version in effect that day (derived, ADR-0028). */
+  versionId: string | null;
+  graceDays: number | null;
+  record: { value: number | null; skipped: boolean } | null;
+  progress: HabitDayProgress | null;
+  /** Last local date a Due day can still be completed before it counts as Missed. */
+  openUntil: string | null;
+  /** Index into the response's `periods` (frequency habits), else `null`. */
+  period: number | null;
+}
+
+export type HabitPeriodStatusValue = 'met' | 'in_progress' | 'missed' | 'not_required';
+
+/** One week or month of a "N times per period" (frequency) habit, judged as a whole. */
+export interface HabitPeriodStatus {
+  versionId: string;
+  kind: HabitSchedulePeriod;
+  start: string;
+  end: string;
+  totalDays: number;
+  coveredDays: number;
+  pausedDays: number;
+  activeDays: number;
+  timesPerPeriod: number;
+  /** Prorated by the schedule (ADR-0029). */
+  required: number;
+  partial: boolean;
+  skippedDays: number;
+  /** Completions needed after skips (ADR-0031). */
+  target: number;
+  completed: number;
+  remaining: number;
+  graceDays: number;
+  openUntil: string;
+  status: HabitPeriodStatusValue;
+}
+
+/** Statuses of one habit over a date range. */
+export interface HabitStatusRange {
+  habitId: string;
+  /** The user's local date the statuses were computed for. */
+  today: string;
+  from: string;
+  to: string;
+  days: HabitDayStatus[];
+  periods: HabitPeriodStatus[];
+}
+
+export const HABIT_CHECK_IN_ACTIONS = ['set', 'skip', 'clear'] as const;
+/** What a check-in does to a day: record a value, excuse the day, or remove the record. */
+export type HabitCheckInAction = (typeof HABIT_CHECK_IN_ACTIONS)[number];
+
+/** One accepted check-in operation (append-only log; its `operationId` makes retries idempotent). */
+export interface HabitCheckIn {
+  id: string;
+  habitId: string;
+  /** The client-generated operation id (UUID). */
+  operationId: string;
+  localDate: string;
+  action: HabitCheckInAction;
+  /** Set exactly for `set`. */
+  value: number | null;
+  /** Whether the operation changed the stored record (a repeat of the same value does not). */
+  changed: boolean;
+  /** The record's `version` after the operation, `null` when no record remains. */
+  occurrenceVersion: number | null;
+  /** The user's local date when the operation was accepted. */
+  localToday: string;
+  createdAt: string;
+}
+
+/** Answer to a check-in: what was accepted, the day's record and its status now. */
+export interface HabitCheckInResult {
+  /** `true` when this operation id had already been accepted: nothing was written again. */
+  replayed: boolean;
+  checkIn: HabitCheckIn;
+  occurrence: HabitOccurrenceRecord | null;
+  day: HabitDayStatus;
+  /** The day's period (frequency habits), else `null`. */
+  period: HabitPeriodStatus | null;
+}
