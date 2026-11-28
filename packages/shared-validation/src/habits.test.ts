@@ -16,8 +16,12 @@ import {
   habitOccurrenceEntrySchema,
   habitPreferredTimeSchema,
   habitRuleIssues,
+  habitScheduleChangeSchema,
+  habitScheduleRuleDraftSchema,
   habitScheduleRuleSchema,
+  HABIT_LIMITS,
   minutesToPreferredTime,
+  resolveScheduleRule,
   occurrenceValueIssue,
   preferredTimeToMinutes,
   type HabitDefinitionInput,
@@ -302,5 +306,58 @@ describe('habitDefinitionSchema: type, unit, schedule and target together (P3-01
         Array.isArray(habitRuleIssues(type, { schedule: daily, target: null, graceDays: 0 })),
       ).toBe(true);
     }
+  });
+});
+
+describe('schedule changes (P3-03)', () => {
+  const base = { schedule: { kind: 'daily' }, target: null, graceDays: 0 };
+
+  it('drafts may leave out an interval anchor; the stored rule may not', () => {
+    const draft = { kind: 'interval', intervalDays: 3 };
+    expect(ok(habitScheduleRuleDraftSchema, draft)).toBe(true);
+    expect(ok(habitScheduleRuleSchema, draft)).toBe(false);
+    expect(ok(habitScheduleRuleDraftSchema, { ...draft, anchorDate: '2026-02-30' })).toBe(false);
+    expect(ok(habitScheduleRuleDraftSchema, { ...draft, extra: 1 })).toBe(false);
+  });
+
+  it('resolveScheduleRule anchors an interval on the effective date and keeps the others', () => {
+    const interval = habitScheduleRuleDraftSchema.parse({ kind: 'interval', intervalDays: 3 });
+    expect(resolveScheduleRule(interval, '2026-11-28')).toEqual({
+      kind: 'interval',
+      intervalDays: 3,
+      anchorDate: '2026-11-28',
+    });
+    const anchored = habitScheduleRuleDraftSchema.parse({
+      kind: 'interval',
+      intervalDays: 3,
+      anchorDate: '2026-01-01',
+    });
+    expect(resolveScheduleRule(anchored, '2026-11-28')).toMatchObject({ anchorDate: '2026-01-01' });
+    const weekdays = habitScheduleRuleDraftSchema.parse({ kind: 'weekdays', daysOfWeek: [5, 1] });
+    expect(resolveScheduleRule(weekdays, '2026-11-28')).toEqual({
+      kind: 'weekdays',
+      daysOfWeek: [1, 5],
+    });
+  });
+
+  it('accepts the rules with an optional date, expected version and reason', () => {
+    expect(habitScheduleChangeSchema.parse(base)).toEqual(base);
+    expect(
+      habitScheduleChangeSchema.parse({
+        ...base,
+        effectiveFrom: '2026-11-20',
+        expectedHabitVersion: 3,
+        reason: '  Set up with the wrong days\u200b ',
+      }),
+    ).toMatchObject({ effectiveFrom: '2026-11-20', expectedHabitVersion: 3 });
+    expect(ok(habitScheduleChangeSchema, { ...base, effectiveFrom: '1999-12-31' })).toBe(false);
+    expect(ok(habitScheduleChangeSchema, { ...base, expectedHabitVersion: 0 })).toBe(false);
+    expect(ok(habitScheduleChangeSchema, { ...base, reason: '   ' })).toBe(false);
+    expect(ok(habitScheduleChangeSchema, { ...base, reason: 'a\u202Eb' })).toBe(false);
+    const max = HABIT_LIMITS.scheduleChangeReasonMaxLength;
+    expect(ok(habitScheduleChangeSchema, { ...base, reason: 'x'.repeat(max) })).toBe(true);
+    expect(ok(habitScheduleChangeSchema, { ...base, reason: 'x'.repeat(max + 1) })).toBe(false);
+    expect(ok(habitScheduleChangeSchema, { ...base, graceDays: 8 })).toBe(false);
+    expect(ok(habitScheduleChangeSchema, { ...base, unknown: true })).toBe(false);
   });
 });

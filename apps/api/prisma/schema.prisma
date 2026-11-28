@@ -163,18 +163,19 @@ model User {
   /// the row (and, by cascade, everything owned by the user) once the grace period has passed.
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
 
-  profile            UserProfile?
-  preference         UserPreference?
-  passwordCredential UserPasswordCredential?
-  sessions           UserSession[]
-  tokens             UserToken[]
-  securityEvents     UserSecurityEvent[]
-  habitCategories    HabitCategory[]
-  habits             Habit[]
-  habitSchedules     HabitScheduleVersion[]
-  habitOccurrences   HabitOccurrence[]
-  habitNotes         HabitNote[]
-  habitPauses        HabitPause[]
+  profile              UserProfile?
+  preference           UserPreference?
+  passwordCredential   UserPasswordCredential?
+  sessions             UserSession[]
+  tokens               UserToken[]
+  securityEvents       UserSecurityEvent[]
+  habitCategories      HabitCategory[]
+  habits               Habit[]
+  habitSchedules       HabitScheduleVersion[]
+  habitScheduleChanges HabitScheduleChange[]
+  habitOccurrences     HabitOccurrence[]
+  habitNotes           HabitNote[]
+  habitPauses          HabitPause[]
 
   /// The purge job finds accounts whose grace period has passed (P2-10).
   @@index([deletedAt])
@@ -432,6 +433,7 @@ model Habit {
   occurrences      HabitOccurrence[]
   notes            HabitNote[]
   pauses           HabitPause[]
+  scheduleChanges  HabitScheduleChange[]
 
   /// Targets of the children's composite foreign keys (owner, and owner + type).
   @@unique([id, userId])
@@ -471,14 +473,72 @@ model HabitScheduleVersion {
   /// Daily target for numeric, duration (seconds), negative and custom habits; null otherwise.
   targetValue      Decimal?               @map("target_value") @db.Decimal(12, 3)
   targetComparison HabitTargetComparison? @map("target_comparison")
+  /// The user's week start when this version was written (P3-03, ADR-0030): weekly periods of
+  /// this version are counted from it, so a later preference change never re-buckets history.
+  weekStart        WeekStart              @map("week_start")
+  /// The user's calendar when this version was written (P3-03, ADR-0030): months of this
+  /// version (monthly days, times per month) are Gregorian or Solar Hijri months.
+  calendar         CalendarSystem
   createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  habit Habit @relation(fields: [habitId, userId, habitType], references: [id, userId, type], onDelete: Cascade, onUpdate: NoAction)
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit   Habit                 @relation(fields: [habitId, userId, habitType], references: [id, userId, type], onDelete: Cascade, onUpdate: NoAction)
+  changes HabitScheduleChange[]
 
   @@unique([habitId, effectiveFrom])
+  /// Target of habit_schedule_changes' composite key (a change names a version of its own habit).
+  @@unique([id, habitId])
   @@index([userId])
   @@map("habit_schedule_versions")
+}
+
+/// What a schedule change did (P3-03, ADR-0030).
+enum HabitScheduleOperation {
+  /// The habit's first version (written with the habit).
+  create
+  /// The version in effect on the effective date was closed the day before and a new one opened.
+  split
+  /// A version starting on the effective date had its rules replaced in place.
+  replace
+
+  @@map("habit_schedule_operation")
+}
+
+/// Append-only audit trail of schedule changes (P3-03, ADR-0030): who changed which habit's rules,
+/// from which local date, what the versions looked like before and after, and whether the change
+/// reached back before the user's "today" (a historical correction, which needs a reason).
+/// Written in the same transaction as the change; never updated.
+model HabitScheduleChange {
+  id                   String                 @id @default(uuid(7)) @db.Uuid
+  userId               String                 @map("user_id") @db.Uuid
+  habitId              String                 @map("habit_id") @db.Uuid
+  /// The version created (create, split) or rewritten (replace).
+  versionId            String                 @map("version_id") @db.Uuid
+  operation            HabitScheduleOperation
+  /// First local date the change applies to.
+  effectiveFrom        DateTime               @map("effective_from") @db.Date
+  /// The user's local date when the change was made (in their profile time zone).
+  localToday           DateTime               @map("local_today") @db.Date
+  /// True when `effective_from` is before `local_today`: past days are judged by new rules.
+  isCorrection         Boolean                @map("is_correction")
+  /// Why (required for corrections; 1..500 characters).
+  reason               String?
+  /// Recorded days (habit_occurrences) on dates the change re-judged (before `local_today`).
+  affectedRecordedDays Int                    @default(0) @map("affected_recorded_days")
+  /// The affected versions as they were (null for create).
+  before               Json?
+  /// The affected versions as written.
+  after                Json
+  createdAt            DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user    User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit   Habit                @relation(fields: [habitId, userId], references: [id, userId], onDelete: Cascade, onUpdate: NoAction)
+  version HabitScheduleVersion @relation(fields: [versionId, habitId], references: [id, habitId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([habitId, createdAt])
+  @@index([userId])
+  @@index([versionId, habitId])
+  @@map("habit_schedule_changes")
 }
 
 /// What the user recorded for one habit on one local date: a value or a skip. At most one row per

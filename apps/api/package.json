@@ -31,6 +31,7 @@
     "db:migrate:status": "prisma migrate status"
   },
   "dependencies": {
+    "@habit/habit-engine": "workspace:*",
     "@habit/shared-types": "workspace:*",
     "@habit/shared-validation": "workspace:*",
     "@nestjs/common": "12.6.0",
@@ -47,7 +48,6 @@
   },
   "devDependencies": {
     "@habit/config": "workspace:*",
-    "@habit/habit-engine": "workspace:*",
     "@habit/localization": "workspace:*",
     "@nestjs/cli": "12.0.15",
     "@nestjs/testing": "12.6.0",

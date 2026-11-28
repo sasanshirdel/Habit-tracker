@@ -41,5 +41,8 @@ const { days, periods } = computeSchedule({
   Hijri month; target prorated to active days in partial periods).
 - **Solar Hijri** conversion (Borkowski's algorithm) is tested against `Intl`'s `persian`
   calendar for every day of the window.
+- **Calendar settings per version:** `weekStart` and `calendar` come with each version — the
+  API stores them on every schedule version (P3-03, ADR-0030), so a stored version is an engine
+  version as it is and a later preference change never re-buckets history.
 - **Errors:** `ScheduleInputError` with a `code`; input is never repaired.
 - Tests: table-driven + seeded property tests (`src/test-support/random.ts`).

@@ -34,5 +34,6 @@ new ADR that supersedes the old one (and mark the old one `Superseded by ADR-NNN
 | [0027](0027-form-server-errors-and-session-expiry.md)         | Server validation errors on form fields; session expiry (web)    | Accepted          |
 | [0028](0028-habit-domain-model.md)                            | Habit domain model (habits, schedule versions, occurrences)      | Accepted          |
 | [0029](0029-habit-schedule-engine.md)                         | Habit schedule engine (pure package, Solar Hijri months)         | Accepted          |
+| [0030](0030-schedule-versioning.md)                           | Schedule versioning (effective dates, audited corrections)       | Accepted          |
 
 New ADRs: copy [`TEMPLATE.md`](TEMPLATE.md), use the next number, open it in the same PR as the change.

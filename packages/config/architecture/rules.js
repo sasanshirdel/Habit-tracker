@@ -29,6 +29,7 @@ const rules = {
     /** Pure habit logic (ADR-0029): contract types and calendar settings only, no zod, no I/O. */
     '@habit/habit-engine': ['@habit/shared-types', '@habit/localization'],
     '@habit/ui': [],
+    /** The API uses the habit engine at runtime since P3-03 (ADR-0030: today, version checks). */
     '@habit/api': [
       '@habit/shared-types',
       '@habit/shared-validation',
