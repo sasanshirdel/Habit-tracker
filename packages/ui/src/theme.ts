@@ -2,7 +2,8 @@
  * Theme preference (backlog P1-09). The user's choice lives in a cookie so the server renders
  * `<html data-theme>` correctly on the first byte — no flash, and no inline script (which the
  * nonce CSP would have to allow). `system` follows `prefers-color-scheme` in CSS (`tokens.css`).
- * Phase 2 moves the preference to the user profile; the cookie stays as the anonymous fallback.
+ * Since P2-07 a signed-in user's theme is also stored in their preferences (the API); the web app
+ * keeps the cookie in step with it, and the cookie stays the anonymous fallback (ADR-0024).
  */
 export const themePreferences = ['dark', 'light', 'system'] as const;
 export type ThemePreference = (typeof themePreferences)[number];

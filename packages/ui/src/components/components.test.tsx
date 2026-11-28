@@ -20,7 +20,11 @@ import {
   DropdownMenuTrigger,
 } from './dropdown-menu.js';
 import { EmptyState } from './empty-state.js';
+import { Alert } from './alert.js';
 import { Input } from './input.js';
+import { Label } from './label.js';
+import { NativeSelect } from './native-select.js';
+import { PasswordInput } from './password-input.js';
 import { Skeleton } from './skeleton.js';
 import { Toaster, dismissToast, toast } from './toast.js';
 import { UiProvider } from './ui-provider.js';
@@ -86,6 +90,27 @@ describe('Input and Skeleton', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.className).toContain('aria-invalid:border-danger');
     expect(input.getAttribute('dir')).toBe('auto');
+  });
+
+  it('native select: labelled, keyboard-native, invalid state, chevron hidden (P2-07)', async () => {
+    const onChange = vi.fn();
+    render(
+      <>
+        <Label htmlFor="week">Week starts on</Label>
+        <NativeSelect id="week" aria-invalid defaultValue="monday" onChange={onChange}>
+          <option value="saturday">Saturday</option>
+          <option value="monday">Monday</option>
+        </NativeSelect>
+      </>,
+    );
+    const select = screen.getByRole('combobox', { name: 'Week starts on' }) as HTMLSelectElement;
+    expect(select.value).toBe('monday');
+    expect(select.className).toContain('aria-invalid:border-danger');
+    expect(select.className).toContain('pe-9');
+    await userEvent.selectOptions(select, 'saturday');
+    expect(select.value).toBe('saturday');
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(select.parentElement?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('hides the skeleton from assistive technology', () => {
@@ -243,5 +268,55 @@ describe('Toaster', () => {
     expect(screen.queryByText('Toast 1')).toBeNull();
     expect(screen.getByText('Toast 4')).toBeTruthy();
     expect(document.querySelectorAll('[data-slot="toast"]').length).toBe(3);
+  });
+});
+
+describe('form primitives (P2-09)', () => {
+  it('Label names its control', () => {
+    render(
+      <>
+        <Label htmlFor="email">Email</Label>
+        <Input id="email" type="email" />
+      </>,
+    );
+    expect(screen.getByLabelText('Email')).toHaveProperty('id', 'email');
+  });
+
+  it('PasswordInput toggles visibility with a pressed-state button and keeps value and focus', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <Label htmlFor="pw">Password</Label>
+        <PasswordInput id="pw" autoComplete="current-password" toggleLabel="Show password" />
+      </>,
+    );
+    const field = screen.getByLabelText('Password') as HTMLInputElement;
+    expect(field.type).toBe('password');
+    expect(field.getAttribute('autocomplete')).toBe('current-password');
+    expect(field.getAttribute('dir')).toBe('ltr');
+    // The wrapper is LTR too, so the toggle and the reserved padding are on the same side in RTL.
+    expect(field.closest('[data-slot="password-input"]')?.getAttribute('dir')).toBe('ltr');
+    await user.type(field, 's3cret');
+    const toggle = screen.getByRole('button', { name: 'Show password' });
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(toggle.getAttribute('aria-controls')).toBe('pw');
+    expect(toggle.getAttribute('type')).toBe('button');
+    await user.click(toggle);
+    expect(field.type).toBe('text');
+    expect(field.value).toBe('s3cret');
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    await user.click(toggle);
+    expect(field.type).toBe('password');
+  });
+
+  it('Alert uses role=alert for errors and role=status otherwise', () => {
+    render(
+      <>
+        <Alert tone="danger">Wrong</Alert>
+        <Alert tone="success">Done</Alert>
+      </>,
+    );
+    expect(screen.getByRole('alert').textContent).toBe('Wrong');
+    expect(screen.getByRole('status').textContent).toBe('Done');
   });
 });

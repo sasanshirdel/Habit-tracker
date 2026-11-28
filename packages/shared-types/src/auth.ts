@@ -15,8 +15,8 @@ export interface RegisterRequest {
   locale: 'en' | 'fa';
   /** IANA time zone, e.g. `Asia/Tehran` (habit days are computed in it). */
   timezone: string;
-  /** Optional, 1..100 characters. */
-  displayName?: string;
+  /** Optional, up to 100 characters after normalisation; blank or `null` means none (P2-07). */
+  displayName?: string | null;
 }
 
 /**
@@ -47,4 +47,83 @@ export interface AuthenticatedUser {
  */
 export interface LoginResponse {
   user: AuthenticatedUser;
+  /**
+   * CSRF token of the new session (P2-03, ADR-0019). Keep it in memory only and send it in the
+   * `X-CSRF-Token` header on every state-changing request (`POST`, `PUT`, `PATCH`, `DELETE`).
+   */
+  csrfToken: string;
+}
+
+/**
+ * `GET /api/v1/auth/session` — 200 while signed in (401 `UNAUTHENTICATED` otherwise). How the
+ * web app learns, after a reload, who is signed in and the session's CSRF token.
+ */
+export interface SessionResponse {
+  user: AuthenticatedUser;
+  /** Same token as {@link LoginResponse.csrfToken} for this session. */
+  csrfToken: string;
+}
+
+/** Request header that carries the CSRF token on state-changing requests (ADR-0019). */
+export const CSRF_HEADER_NAME = 'X-CSRF-Token';
+
+/**
+ * `POST /api/v1/auth/verification/confirm` request body (backlog P2-04, ADR-0021). `token` is the
+ * secret from the emailed link (`…/auth/verify-email#token=…`); the link keeps it in the URL
+ * fragment, so it never reaches a server log or a `Referer` header.
+ */
+export interface ConfirmEmailRequest {
+  token: string;
+}
+
+/**
+ * `POST /api/v1/auth/verification/confirm` — 200 once the address is verified. An unknown,
+ * expired, already used or superseded token gets 400 `INVALID_TOKEN` — the same for every cause.
+ */
+export interface EmailVerifiedResponse {
+  status: 'verified';
+}
+
+/**
+ * `POST /api/v1/auth/verification/resend` — 202 (signed in). A new link is emailed unless the
+ * address is already verified; earlier links stop working. Too soon or too often → 429
+ * `RATE_LIMITED` with `details.policy` `verification-email`.
+ */
+export interface VerificationEmailAcceptedResponse {
+  status: 'accepted';
+}
+
+/** `POST /api/v1/auth/password-reset/request` request body (backlog P2-05, ADR-0022). */
+export interface PasswordResetRequest {
+  email: string;
+}
+
+/**
+ * `POST /api/v1/auth/password-reset/request` — 202, identical for every well-formed address
+ * (registered, unknown, deleted, or asked for too often), and answered before any lookup, so
+ * neither the body nor the timing says whether an account exists. A registered address gets a
+ * reset link at most once a minute and 5 times an hour.
+ */
+export interface PasswordResetAcceptedResponse {
+  status: 'accepted';
+}
+
+/**
+ * `POST /api/v1/auth/password-reset/confirm` request body (P2-05). `token` is the secret from the
+ * emailed link (`…/auth/reset-password#token=…`, in the URL fragment); `password` must meet the
+ * same policy as registration.
+ */
+export interface PasswordResetConfirmRequest {
+  token: string;
+  password: string;
+}
+
+/**
+ * `POST /api/v1/auth/password-reset/confirm` — 200 once the new password is set. Every session of
+ * the account has been ended (sign in again with the new password; this response does not sign
+ * in) and the address counts as verified. A dead link → 400 `INVALID_TOKEN`; a password that
+ * breaks the policy → 400 `VALIDATION_FAILED` (the link stays usable).
+ */
+export interface PasswordResetResponse {
+  status: 'password-reset';
 }

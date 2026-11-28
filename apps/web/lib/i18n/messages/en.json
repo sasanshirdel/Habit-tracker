@@ -7,7 +7,8 @@
     "heading": "Build better habits.",
     "subheading": "Foundation build — product features arrive in later phases.",
     "today": "Today is {date, date, long}.",
-    "openApp": "Open the app",
+    "signUp": "Create an account",
+    "signIn": "Sign in",
     "status": "System status"
   },
   "language": {
@@ -104,7 +105,10 @@
     "MALFORMED_REQUEST_BODY": "The request could not be read. Try again.",
     "UNAUTHENTICATED": "Your session has ended. Sign in again to continue.",
     "INVALID_CREDENTIALS": "The email or password is incorrect.",
+    "INVALID_TOKEN": "This link is invalid, has expired or was already used.",
     "FORBIDDEN": "You don't have permission to do that.",
+    "CSRF_FAILED": "This request couldn't be verified. Reload the page and try again.",
+    "EMAIL_NOT_VERIFIED": "Confirm your email address to use this feature.",
     "NOT_FOUND": "We couldn't find what you were looking for.",
     "METHOD_NOT_ALLOWED": "That action isn't available here.",
     "CONFLICT": "This was changed elsewhere in the meantime. Reload and try again.",
@@ -138,5 +142,220 @@
     "down": "Unavailable",
     "allReady": "All dependencies are operational.",
     "notReady": "Some dependencies are unavailable."
+  },
+  "auth": {
+    "signIn": {
+      "title": "Sign in",
+      "description": "Welcome back. Sign in with your email and password.",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "noAccount": "New here?",
+      "createAccount": "Create an account",
+      "forgotPassword": "Forgot your password?"
+    },
+    "signUp": {
+      "title": "Create your account",
+      "description": "Start building better habits. It takes less than a minute.",
+      "submit": "Create account",
+      "submitting": "Creating account…",
+      "passwordHint": "At least {min, number} characters. A long phrase is easier to remember than a complex word.",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "acceptedTitle": "Check your email",
+      "acceptedBody": "We've sent a message to {email} with the next step. If it doesn't arrive within a few minutes, check your spam folder. You can sign in now and confirm your address later.",
+      "acceptedAction": "Continue to sign in"
+    },
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "showPassword": "Show password",
+      "newPassword": "New password",
+      "confirmPassword": "Repeat new password"
+    },
+    "validation": {
+      "emailRequired": "Enter your email address.",
+      "emailInvalid": "Enter a valid email address, like name@example.com.",
+      "passwordRequired": "Enter your password.",
+      "passwordTooShort": "Use at least {min, number} characters.",
+      "passwordTooLong": "Use at most {max, number} characters.",
+      "summary": "{count, plural, one {Fix # field to continue.} other {Fix # fields to continue.}}",
+      "passwordsDontMatch": "The passwords don't match.",
+      "confirmRequired": "Repeat your new password."
+    },
+    "errors": {
+      "invalidCredentials": "The email or password is incorrect.",
+      "locked": "Too many unsuccessful sign-in attempts. For your security, wait {minutes, plural, one {# minute} other {# minutes}} and try again.",
+      "tooManyAttempts": "Too many attempts from this device. Wait {minutes, plural, one {# minute} other {# minutes}} and try again.",
+      "invalidInput": "Some of the information you entered is not valid. Check it and try again.",
+      "resendTooSoon": "You've asked for a new link recently. Wait {minutes, plural, one {# minute} other {# minutes}} before asking again."
+    },
+    "session": {
+      "checking": "Checking your session…",
+      "account": "Account",
+      "signedInAs": "Signed in as {email}",
+      "signOut": "Sign out",
+      "signingOut": "Signing out…",
+      "signedOut": "You've signed out.",
+      "signOutFailed": "We couldn't sign you out. Check your connection and try again.",
+      "checkFailed": "We couldn't check whether you're signed in."
+    },
+    "verifyEmail": {
+      "title": "Confirm your email address",
+      "description": "Press the button to confirm that this email address is yours.",
+      "reading": "Reading your link…",
+      "confirm": "Confirm email address",
+      "confirming": "Confirming…",
+      "verifiedTitle": "Email address confirmed",
+      "verifiedBody": "Thank you. Your email address is verified.",
+      "continue": "Continue",
+      "invalidTitle": "This link doesn't work",
+      "invalidBody": "It may have expired, been used already, or been replaced by a newer link. Sign in and ask for a new one.",
+      "signIn": "Sign in"
+    },
+    "verifyBanner": {
+      "title": "Confirm your email address",
+      "body": "We sent a confirmation link to {email}. Open it to verify your address.",
+      "resend": "Send a new link",
+      "resending": "Sending…",
+      "sent": "We've sent a new link. It can take a few minutes to arrive."
+    },
+    "forgotPassword": {
+      "title": "Reset your password",
+      "description": "Enter the email address of your account and we'll send you a link to choose a new password.",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "sentTitle": "Check your email",
+      "sentBody": "If {email} belongs to an account, we've sent it a link to choose a new password. The link works for {minutes, number} minutes. If nothing arrives within a few minutes, check your spam folder and that the address is spelled correctly.",
+      "backToSignIn": "Back to sign in",
+      "rememberIt": "Remembered your password?",
+      "signIn": "Sign in"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "description": "Choose a new password for your account. Changing it signs you out on every device.",
+      "reading": "Reading your link…",
+      "submit": "Change password",
+      "submitting": "Changing password…",
+      "doneTitle": "Password changed",
+      "doneBody": "Your new password is set and every device has been signed out. Sign in with your new password.",
+      "signIn": "Sign in",
+      "invalidTitle": "This link doesn't work",
+      "invalidBody": "It may have expired, been used already, or been replaced by a newer link. Ask for a new one.",
+      "requestNew": "Ask for a new link"
+    }
+  },
+  "settings": {
+    "more": "Notification, privacy, billing, integration and accountability settings will be added here.",
+    "profile": {
+      "title": "Profile",
+      "summary": "Your display name.",
+      "description": "How your name appears in the app. Profile photos will come later.",
+      "loading": "Loading your profile…",
+      "displayName": "Display name",
+      "displayNameHint": "Optional, up to {max} characters. Leave it empty to remove it.",
+      "tooLong": "Use at most {max} characters.",
+      "invalidCharacters": "Remove line breaks and invisible formatting characters.",
+      "save": "Save profile",
+      "saving": "Saving…",
+      "saved": "Profile saved"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "summary": "Language, time zone, calendar, week start and theme.",
+      "description": "These apply on every device you sign in on.",
+      "loading": "Loading your preferences…",
+      "language": "Language",
+      "languageHint": "Used for the app and for emails we send you.",
+      "timeZone": "Time zone",
+      "timeZoneHint": "Times are shown, and your days are counted, in this time zone.",
+      "calendar": "Calendar",
+      "calendarHint": "How dates are shown. Your data is the same in either calendar.",
+      "calendars": {
+        "gregorian": "Gregorian",
+        "solar_hijri": "Solar Hijri (Persian)"
+      },
+      "weekStart": "Week starts on",
+      "weekdays": {
+        "saturday": "Saturday",
+        "sunday": "Sunday",
+        "monday": "Monday"
+      },
+      "invalidChoice": "Choose one of the options.",
+      "invalidTimeZone": "Choose a time zone from the list.",
+      "save": "Save preferences",
+      "saving": "Saving…",
+      "saved": "Preferences saved"
+    },
+    "security": {
+      "title": "Sessions and security",
+      "summary": "See where you're signed in, sign out other devices and review recent security activity.",
+      "client": "{browser} on {os}",
+      "browsers": {
+        "chrome": "Chrome",
+        "edge": "Edge",
+        "firefox": "Firefox",
+        "safari": "Safari",
+        "opera": "Opera",
+        "samsung_internet": "Samsung Internet",
+        "unknown": "Unknown browser"
+      },
+      "oses": {
+        "windows": "Windows",
+        "macos": "macOS",
+        "ios": "iOS",
+        "android": "Android",
+        "linux": "Linux",
+        "chromeos": "ChromeOS",
+        "unknown": "an unknown system"
+      },
+      "devices": {
+        "desktop": "computer",
+        "mobile": "phone",
+        "tablet": "tablet",
+        "unknown": "device"
+      },
+      "sessions": {
+        "title": "Where you're signed in",
+        "description": "Browsers and devices signed in to your account. Sign out any you don't recognise, then change your password.",
+        "loading": "Loading your sessions…",
+        "thisDevice": "This device",
+        "activeNow": "Active now",
+        "lastActive": "Last active {ago}",
+        "signedIn": "Signed in {when}",
+        "revoke": "Sign out",
+        "revokeLabel": "Sign out {client}",
+        "revokeTitle": "Sign out this device?",
+        "revokeDescription": "{client} will be signed out the next time it connects. Signing in there again needs your password.",
+        "revokeConfirm": "Sign out device",
+        "revoking": "Signing out…",
+        "revoked": "The device was signed out.",
+        "revokeFailed": "We couldn't sign out. Check your connection and try again.",
+        "revokeOthers": "Sign out of all other devices",
+        "revokeOthersTitle": "Sign out of all other devices?",
+        "revokeOthersDescription": "Every other browser and device will be signed out. You stay signed in here.",
+        "revokeOthersConfirm": "Sign out other devices",
+        "revokedOthers": "{count, plural, =0 {No other devices were signed in.} one {# device was signed out.} other {# devices were signed out.}}",
+        "onlyThisDevice": "You're only signed in on this device.",
+        "cancel": "Cancel",
+        "showMore": "Show more",
+        "privacy": "For each sign-in we keep only the browser, operating system and device type — never your IP address or location."
+      },
+      "activity": {
+        "title": "Recent security activity",
+        "description": "Sign-ins and security changes to your account from the last {days, number} days.",
+        "loading": "Loading your security activity…",
+        "empty": "No security activity yet.",
+        "showMore": "Show more",
+        "events": {
+          "sign_in": "Signed in",
+          "sign_out": "Signed out",
+          "signed_out_everywhere": "Signed out everywhere",
+          "signed_out_other_sessions": "Signed out all other devices",
+          "session_revoked": "Signed out a device",
+          "password_reset": "Password changed with a reset link",
+          "email_verified": "Email address verified"
+        }
+      }
+    }
   }
 }

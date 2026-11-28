@@ -54,6 +54,23 @@ enum ThemePreference {
   @@map("theme_preference")
 }
 
+/// Calendar dates are shown in (P2-07, ADR-0024). Display only: storage stays UTC / ISO dates.
+enum CalendarSystem {
+  gregorian
+  solar_hijri
+
+  @@map("calendar_system")
+}
+
+/// First day of the week in weekly views (P2-07, ADR-0024).
+enum WeekStart {
+  saturday
+  sunday
+  monday
+
+  @@map("week_start")
+}
+
 /// What a single-use emailed token may be used for.
 enum UserTokenPurpose {
   email_verification
@@ -69,8 +86,60 @@ enum SessionRevocationReason {
   rotated
   password_changed
   account_deleted
+  /// Ended from another session's device list (P2-08): one session, or "all other devices".
+  revoked_by_user
 
   @@map("session_revocation_reason")
+}
+
+/// Coarse browser family derived from the User-Agent at sign-in (P2-08, ADR-0023). Never the raw
+/// header or a version.
+enum ClientBrowser {
+  chrome
+  edge
+  firefox
+  safari
+  opera
+  samsung_internet
+  unknown
+
+  @@map("client_browser")
+}
+
+/// Coarse operating-system family (P2-08, ADR-0023).
+enum ClientOs {
+  windows
+  macos
+  ios
+  android
+  linux
+  chromeos
+  unknown
+
+  @@map("client_os")
+}
+
+/// Coarse device class (P2-08, ADR-0023).
+enum ClientDevice {
+  desktop
+  mobile
+  tablet
+  unknown
+
+  @@map("client_device")
+}
+
+/// What a security event records (P2-08, ADR-0023).
+enum SecurityEventType {
+  sign_in
+  sign_out
+  signed_out_everywhere
+  signed_out_other_sessions
+  session_revoked
+  password_reset
+  email_verified
+
+  @@map("security_event_type")
 }
 
 /// A customer account (ADR-0005: never an administrator; staff use a separate identity table).
@@ -90,11 +159,13 @@ model User {
   passwordCredential UserPasswordCredential?
   sessions           UserSession[]
   tokens             UserToken[]
+  securityEvents     UserSecurityEvent[]
 
   @@map("users")
 }
 
-/// Public-facing profile details (avatar arrives with P2-07).
+/// Public-facing profile details, edited at `PATCH /account/profile` (P2-07). Avatar upload is a
+/// follow-up of P2-07 that waits for the object-storage decision (ROADMAP "Outstanding decisions" #3).
 model UserProfile {
   userId      String   @id @map("user_id") @db.Uuid
   /// 1..100 characters when set.
@@ -115,6 +186,11 @@ model UserPreference {
   /// IANA time zone name (validated by the application; 1..64 characters).
   timezone  String
   theme     ThemePreference @default(dark)
+  /// Set from the registration locale (fa → solar_hijri, en → gregorian); the default only
+  /// covers rows written before P2-07, which the migration backfilled the same way.
+  calendar  CalendarSystem  @default(gregorian)
+  /// Set from the registration locale (fa → saturday, en → monday), like `calendar`.
+  weekStart WeekStart       @default(monday) @map("week_start")
   createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -149,12 +225,36 @@ model UserSession {
   expiresAt     DateTime                 @map("expires_at") @db.Timestamptz(3)
   revokedAt     DateTime?                @map("revoked_at") @db.Timestamptz(3)
   revokedReason SessionRevocationReason? @map("revoked_reason")
+  /// Coarse client description from the User-Agent at sign-in (P2-08, ADR-0023). No raw user
+  /// agent and no IP address are stored.
+  clientBrowser ClientBrowser            @default(unknown) @map("client_browser")
+  clientOs      ClientOs                 @default(unknown) @map("client_os")
+  clientDevice  ClientDevice             @default(unknown) @map("client_device")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
   @@map("user_sessions")
+}
+
+/// A security-relevant event of a customer account, shown to the user (P2-08, ADR-0023). Written in
+/// the same transaction as the change it records; kept for the retention window only. Holds no IP
+/// address, user agent, email or token.
+model UserSecurityEvent {
+  id            String            @id @default(uuid(7)) @db.Uuid
+  userId        String            @map("user_id") @db.Uuid
+  type          SecurityEventType
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  clientBrowser ClientBrowser     @default(unknown) @map("client_browser")
+  clientOs      ClientOs          @default(unknown) @map("client_os")
+  clientDevice  ClientDevice      @default(unknown) @map("client_device")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("user_security_events")
 }
 
 /// Single-use emailed token for email verification (P2-04) or password reset (P2-05). Only the

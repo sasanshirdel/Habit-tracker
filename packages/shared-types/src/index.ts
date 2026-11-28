@@ -14,10 +14,49 @@ export type {
   ReadinessResponse,
 } from './health.js';
 export type { PageInfo, Paginated } from './pagination.js';
+export { CSRF_HEADER_NAME } from './auth.js';
 export type {
   AuthenticatedUser,
+  ConfirmEmailRequest,
+  EmailVerifiedResponse,
   LoginRequest,
   LoginResponse,
+  PasswordResetAcceptedResponse,
+  PasswordResetConfirmRequest,
+  PasswordResetRequest,
+  PasswordResetResponse,
   RegisterRequest,
   RegistrationAcceptedResponse,
+  SessionResponse,
+  VerificationEmailAcceptedResponse,
 } from './auth.js';
+export {
+  CLIENT_BROWSERS,
+  CLIENT_DEVICES,
+  CLIENT_OSES,
+  ENDED_SESSION_RETENTION_DAYS,
+  SECURITY_EVENT_RETENTION_DAYS,
+  SECURITY_EVENT_TYPES,
+} from './account.js';
+export type {
+  AccountSession,
+  AccountSessionList,
+  ClientBrowser,
+  ClientDescription,
+  ClientDevice,
+  ClientOs,
+  RevokeOtherSessionsResponse,
+  SecurityEvent,
+  SecurityEventList,
+  SecurityEventType,
+} from './account.js';
+export type {
+  CalendarPreference,
+  LocalePreference,
+  ThemePreferenceValue,
+  UpdatePreferencesRequest,
+  UpdateProfileRequest,
+  UserPreferences,
+  UserProfile,
+  WeekStartPreference,
+} from './profile.js';

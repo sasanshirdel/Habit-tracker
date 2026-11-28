@@ -36,6 +36,11 @@ const SENSITIVE_KEY_PARTS = [
   'databaseurl',
   'redisurl',
   'connectionstring',
+  // Personal details a user typed (P2-07): `displayName`, `display_name`, `firstName`…
+  'displayname',
+  'fullname',
+  'firstname',
+  'lastname',
 ] as const;
 
 /** Normalised keys that are sensitive only as a whole word (too short or too common as parts). */

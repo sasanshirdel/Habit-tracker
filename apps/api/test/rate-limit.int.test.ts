@@ -42,7 +42,9 @@ describe('rate limiting with Redis (real Redis)', () => {
     const { AppModule } = await import('../src/app.module.js');
     const { createApp } = await import('../src/app.factory.js');
     const { RateLimit } = api;
+    const { Public } = await import('../src/common/auth/index.js');
 
+    @Public()
     @Controller('rl-int')
     class RateLimitIntController {
       @RateLimit({

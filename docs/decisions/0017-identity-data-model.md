@@ -105,7 +105,9 @@ tables and four enum types.
 2. **No default locale** — the API must store the language the user registered in; the theme
    defaults to `dark` (ADR-0013).
 3. **No IP/user-agent on sessions** until P2-08 decides what the session list shows and how long
-   such personal data is retained.
+   such personal data is retained. _Resolved by ADR-0023 (P2-08):_ only coarse browser/OS/device
+   families are stored, never the raw user agent or an IP address; ended sessions are deleted 30
+   days after they end.
 
 ## Consequences
 

@@ -1,5 +1,5 @@
 import { viewports } from './env';
-import { cspViolations, expect, messages, test } from './fixtures';
+import { cspViolations, expect, messages, openApp, test } from './fixtures';
 
 /**
  * The Content-Security-Policy enforced by a real browser (P1-08: "in-browser CSP violation check →
@@ -31,7 +31,7 @@ test.describe('the "More" sheet', () => {
   test.use({ viewport: viewports.phone });
 
   test("opens (scroll lock injects a nonce'd style) with no violation", async ({ page }) => {
-    await page.goto('/fa/overview');
+    await openApp(page, '/fa/overview');
     await page.getByRole('button', { name: messages('fa').nav!.more! }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.keyboard.press('Escape');
@@ -58,6 +58,7 @@ test.describe('injected content is blocked', () => {
       await route.fulfill({ response, body: html });
     });
     await page.goto('/en/overview');
+    // The server HTML is enough here (the injected markup can break hydration on purpose).
     await expect(page.getByRole('main')).toBeVisible();
 
     await expect.poll(async () => (await cspViolations(page)).length).toBeGreaterThanOrEqual(2);

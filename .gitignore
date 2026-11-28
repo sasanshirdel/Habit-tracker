@@ -31,3 +31,10 @@ pnpm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Playwright signed-in state of the e2e suite (P2-09)
+.auth/
+
+# Emails written by the dev/e2e worker (P2-04, MAIL_TRANSPORT=outbox)
+.outbox/
+.mail-outbox/

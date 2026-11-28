@@ -138,14 +138,16 @@ describe('auth routes (no database)', () => {
     await http().post('/api/v1/auth/logout').set('Cookie', '__Host-session=garbage').expect(204);
   });
 
-  it('logout-everywhere without a session: 401 UNAUTHENTICATED and the cookie is cleared', async () => {
-    for (const cookie of [undefined, '__Host-session=garbage']) {
-      const req = http().post('/api/v1/auth/logout-everywhere');
-      if (cookie) req.set('Cookie', cookie);
-      const res = await req.expect(401);
-      expect(res.body.error.code).toBe('UNAUTHENTICATED');
-      expect(res.headers['set-cookie']?.[0]).toMatch(/^__Host-session=; Path=\/; Max-Age=0;/);
-    }
+  it('logout-everywhere without a session: 401 UNAUTHENTICATED (guard); a dead cookie is cleared', async () => {
+    const none = await http().post('/api/v1/auth/logout-everywhere').expect(401);
+    expect(none.body.error.code).toBe('UNAUTHENTICATED');
+    expect(none.headers['set-cookie']).toBeUndefined();
+    const dead = await http()
+      .post('/api/v1/auth/logout-everywhere')
+      .set('Cookie', '__Host-session=garbage')
+      .expect(401);
+    expect(dead.body.error.code).toBe('UNAUTHENTICATED');
+    expect(dead.headers['set-cookie']?.[0]).toMatch(/^__Host-session=; Path=\/; Max-Age=0;/);
   });
 
   it('never logs submitted credentials', async () => {
@@ -159,5 +161,133 @@ describe('auth routes (no database)', () => {
     expect(lines.length).toBeGreaterThan(0); // access lines were written
     expect(text).not.toContain(SECRET_EMAIL);
     expect(text).not.toContain('short');
+  });
+  describe('email verification (P2-04)', () => {
+    const GARBAGE_TOKEN = 'not-a-real-token-but-secret-looking-value';
+
+    it('confirm: a malformed token is the same 400 INVALID_TOKEN as any other, never echoed or logged', async () => {
+      const res = await http()
+        .post('/api/v1/auth/verification/confirm')
+        .send({ token: GARBAGE_TOKEN })
+        .expect(400);
+      expect(res.body.error).toMatchObject({ code: 'INVALID_TOKEN' });
+      expect(JSON.stringify(res.body)).not.toContain(GARBAGE_TOKEN);
+      await new Promise((r) => setTimeout(r, 20));
+      expect(lines.join('\n')).not.toContain(GARBAGE_TOKEN);
+    });
+
+    it('confirm: validates the body (strict, bounded)', async () => {
+      for (const body of [
+        {},
+        { token: '' },
+        { token: 'x'.repeat(129) },
+        { token: 'a', extra: 1 },
+      ]) {
+        const res = await http().post('/api/v1/auth/verification/confirm').send(body).expect(400);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+      }
+    });
+
+    it('confirm: public but origin-checked; counts against the auth class', async () => {
+      const foreign = await http()
+        .post('/api/v1/auth/verification/confirm')
+        .set('Origin', 'https://attacker.example')
+        .send({ token: GARBAGE_TOKEN })
+        .expect(403);
+      expect(foreign.body.error.code).toBe('CSRF_FAILED');
+      for (let i = 0; i < 10; i++) {
+        await http().post('/api/v1/auth/verification/confirm').send({ token: 'x' });
+      }
+      const limited = await http()
+        .post('/api/v1/auth/verification/confirm')
+        .send({ token: 'x' })
+        .expect(429);
+      expect(limited.body.error.details.policy).toBe('auth');
+    });
+
+    it('resend: signed-in only (401 without a session)', async () => {
+      const res = await http().post('/api/v1/auth/verification/resend').expect(401);
+      expect(res.body.error.code).toBe('UNAUTHENTICATED');
+    });
+  });
+
+  describe('password recovery (P2-05)', () => {
+    const GARBAGE_TOKEN = 'not-a-real-reset-token-but-secret-looking';
+    const NEW_PASSWORD = 'Brand-New-Secret-Passw0rd';
+
+    it('request: 202 with the same body for any well-formed address; validates the body', async () => {
+      for (const email of [SECRET_EMAIL, 'Nobody.Here@Example.com']) {
+        const res = await http()
+          .post('/api/v1/auth/password-reset/request')
+          .send({ email })
+          .expect(202);
+        expect(res.body).toEqual({ status: 'accepted' });
+      }
+      for (const body of [{}, { email: 'not-an-email' }, { email: SECRET_EMAIL, extra: 1 }]) {
+        const res = await http().post('/api/v1/auth/password-reset/request').send(body).expect(400);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+        expect(JSON.stringify(res.body)).not.toContain(SECRET_EMAIL);
+      }
+    });
+
+    it('request: public but origin-checked; counts against the auth class', async () => {
+      const foreign = await http()
+        .post('/api/v1/auth/password-reset/request')
+        .set('Origin', 'https://attacker.example')
+        .send({ email: SECRET_EMAIL })
+        .expect(403);
+      expect(foreign.body.error.code).toBe('CSRF_FAILED');
+      for (let i = 0; i < 10; i++) {
+        await http().post('/api/v1/auth/password-reset/request').send({ email: SECRET_EMAIL });
+      }
+      const limited = await http()
+        .post('/api/v1/auth/password-reset/request')
+        .send({ email: SECRET_EMAIL })
+        .expect(429);
+      expect(limited.body.error.details.policy).toBe('auth');
+    });
+
+    it('confirm: a malformed token is 400 INVALID_TOKEN; the password policy is checked first', async () => {
+      const bad = await http()
+        .post('/api/v1/auth/password-reset/confirm')
+        .send({ token: GARBAGE_TOKEN, password: NEW_PASSWORD })
+        .expect(400);
+      expect(bad.body.error.code).toBe('INVALID_TOKEN');
+      const short = await http()
+        .post('/api/v1/auth/password-reset/confirm')
+        .send({ token: GARBAGE_TOKEN, password: 'short' })
+        .expect(400);
+      expect(short.body.error).toMatchObject({ code: 'VALIDATION_FAILED' });
+      expect(short.body.error.details.issues).toEqual([
+        { field: 'body.password', code: 'too_small', message: expect.any(String) },
+      ]);
+      for (const body of [
+        { token: GARBAGE_TOKEN },
+        { password: NEW_PASSWORD },
+        { token: '', password: NEW_PASSWORD },
+        { token: GARBAGE_TOKEN, password: NEW_PASSWORD, email: SECRET_EMAIL },
+      ]) {
+        const res = await http().post('/api/v1/auth/password-reset/confirm').send(body).expect(400);
+        expect(res.body.error.code).toBe('VALIDATION_FAILED');
+      }
+    });
+
+    it('confirm: origin-checked; never echoes or logs the token, password or address', async () => {
+      const foreign = await http()
+        .post('/api/v1/auth/password-reset/confirm')
+        .set('Origin', 'https://attacker.example')
+        .send({ token: GARBAGE_TOKEN, password: NEW_PASSWORD })
+        .expect(403);
+      expect(foreign.body.error.code).toBe('CSRF_FAILED');
+      await http()
+        .post('/api/v1/auth/password-reset/confirm')
+        .send({ token: GARBAGE_TOKEN, password: 'short' });
+      await http().post('/api/v1/auth/password-reset/request').send({ email: SECRET_EMAIL });
+      await new Promise((r) => setTimeout(r, 50));
+      const text = lines.join('\n');
+      for (const secret of [GARBAGE_TOKEN, NEW_PASSWORD, SECRET_EMAIL]) {
+        expect(text).not.toContain(secret);
+      }
+    });
   });
 });

@@ -7,6 +7,7 @@ import type {
   RegistrationAcceptedResponse,
 } from '@habit/shared-types';
 import type { Locale } from '@habit/localization';
+import { signInCredentialsSchema, signUpCredentialsSchema } from '@habit/shared-validation';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { z } from 'zod';
 import { ApiException } from '../../common/errors/api-exception.js';
@@ -347,6 +348,11 @@ describe('auth request schemas', () => {
     });
   });
 
+  it('treats a blank display name as none (same rule as PATCH /account/profile, P2-07)', () => {
+    expect(registerBodySchema.parse({ ...valid, displayName: '   ' }).displayName).toBeNull();
+    expect(registerBodySchema.parse(valid).displayName).toBeUndefined();
+  });
+
   it.each([
     ['unknown field', { ...valid, isAdmin: true }],
     ['short password', { ...valid, password: 'short' }],
@@ -354,11 +360,29 @@ describe('auth request schemas', () => {
     ['bad email', { ...valid, email: 'not-an-email' }],
     ['unsupported locale', { ...valid, locale: 'de' }],
     ['offset time zone', { ...valid, timezone: '+03:30' }],
-    ['empty display name', { ...valid, displayName: '   ' }],
+    ['display name with a line break', { ...valid, displayName: 'Sara\nAhmadi' }],
     ['long display name', { ...valid, displayName: 'x'.repeat(101) }],
     ['missing locale', { email: valid.email, password: valid.password, timezone: valid.timezone }],
   ])('rejects registration with %s', (_name, body) => {
     expect(registerBodySchema.safeParse(body).success).toBe(false);
+  });
+
+  it('accepts exactly what the shared form schemas accept (web forms, P2-09)', () => {
+    const cases = [
+      { email: 'a@example.com', password: 'x' },
+      { email: 'a@example.com', password: '' },
+      { email: ' A@Example.com ', password: 'correct horse' },
+      { email: 'nope', password: 'correct horse' },
+      { email: 'a@example.com', password: 'x'.repeat(129) },
+    ];
+    for (const credentials of cases) {
+      expect(loginBodySchema.safeParse(credentials).success).toBe(
+        signInCredentialsSchema.safeParse(credentials).success,
+      );
+      expect(
+        registerBodySchema.safeParse({ ...credentials, locale: 'en', timezone: 'UTC' }).success,
+      ).toBe(signUpCredentialsSchema.safeParse(credentials).success);
+    }
   });
 
   it('bounds but does not policy-check the sign-in password', () => {
@@ -397,7 +421,12 @@ describe('AuthService enumeration resistance (no database)', () => {
     const prisma = {
       user: { findFirst: vi.fn(async () => user) },
     } as unknown as PrismaService;
-    return { service: new AuthService(prisma, hasher, throttle, sessions), verify, sessions };
+    const unused = {} as never; // queue, verification and resend throttle: not used by sign-in
+    return {
+      service: new AuthService(prisma, hasher, throttle, sessions, unused, unused, unused),
+      verify,
+      sessions,
+    };
   }
   const account = {
     id: '0190d7a0-0000-7000-8000-000000000001',
@@ -443,7 +472,11 @@ describe('AuthService enumeration resistance (no database)', () => {
       user: { id: account.id, email: account.email, emailVerified: false },
     });
     expect(sessions.revokeToken).toHaveBeenCalledWith('previous-token', 'rotated');
-    expect(sessions.create).toHaveBeenCalledWith(account.id);
+    expect(sessions.create).toHaveBeenCalledWith(account.id, {
+      browser: 'unknown',
+      os: 'unknown',
+      device: 'unknown',
+    });
   });
 
   it('locks unknown and known addresses alike after repeated failures', async () => {

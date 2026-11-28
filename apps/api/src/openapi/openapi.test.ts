@@ -85,16 +85,30 @@ describe('OpenAPI document of the real app (AppModule)', () => {
     expect(doc.openapi).toBe('3.1.1');
     expect(doc.servers).toEqual([{ url: '/api/v1', description: expect.any(String) }]);
     expect(Object.keys(doc.paths)).toEqual([
+      '/account/preferences',
+      '/account/profile',
+      '/account/security-events',
+      '/account/sessions',
+      '/account/sessions/{id}',
+      '/account/sessions/revoke-others',
       '/auth/login',
       '/auth/logout',
       '/auth/logout-everywhere',
+      '/auth/password-reset/confirm',
+      '/auth/password-reset/request',
       '/auth/register',
+      '/auth/session',
+      '/auth/verification/confirm',
+      '/auth/verification/resend',
       '/health',
       '/health/ready',
     ]);
     expect(op(doc, '/health', 'get').operationId).toBe('getLiveness');
     expect(op(doc, '/health/ready', 'get').operationId).toBe('getReadiness');
-    expect(doc.tags.map((t) => t.name)).toEqual(['Auth', 'Health']);
+    expect(doc.tags.map((t) => t.name)).toEqual(['Account', 'Auth', 'Health', 'Profile']);
+    // P2-07: profile and preferences are read with GET and changed with PATCH.
+    expect(op(doc, '/account/profile', 'patch').operationId).toBe('updateProfile');
+    expect(op(doc, '/account/preferences', 'patch').operationId).toBe('updatePreferences');
   });
 
   it('references the response components and keeps only reachable ones', () => {
@@ -106,27 +120,88 @@ describe('OpenAPI document of the real app (AppModule)', () => {
       'application/json': { schema: { $ref: '#/components/schemas/NotReadyError' } },
     });
     expect(Object.keys(doc.components.schemas)).toEqual([
+      'AccountSession',
+      'AccountSessionList',
       'ApiError',
       'ApiErrorCode',
       'AuthenticatedUser',
+      'ClientDescription',
+      'CsrfFailedError',
       'DependencyStatus',
+      'EmailVerifiedResponse',
       'HealthResponse',
       'InvalidCredentialsError',
+      'InvalidTokenError',
       'LoginResponse',
+      'NotFoundError',
       'NotReadyError',
+      'PageInfo',
+      'PasswordResetAcceptedResponse',
+      'PasswordResetResponse',
       'RateLimitErrorDetails',
       'RateLimitedError',
       'ReadinessChecks',
       'ReadinessErrorDetails',
       'ReadinessResponse',
       'RegistrationAcceptedResponse',
+      'RevokeOtherSessionsResponse',
+      'SecurityEvent',
+      'SecurityEventList',
+      'SessionResponse',
       'UnauthenticatedError',
+      'UserPreferences',
+      'UserProfile',
       'ValidationErrorDetails',
       'ValidationFailedError',
       'ValidationIssue',
+      'VerificationEmailAcceptedResponse',
     ]);
-    // Unused components (PageInfo) are pruned.
-    expect(doc.components.schemas.PageInfo).toBeUndefined();
+    // Unused components are pruned; PageInfo is reachable since the P2-08 lists.
+    expect(doc.components.schemas.PageInfo).toBeDefined();
+  });
+
+  it('declares the session cookie and CSRF header and states security on every operation (P2-03)', () => {
+    expect(doc.components.securitySchemes).toEqual({
+      sessionCookie: expect.objectContaining({
+        type: 'apiKey',
+        in: 'cookie',
+        name: '__Host-session',
+      }),
+      csrfToken: expect.objectContaining({ type: 'apiKey', in: 'header', name: 'X-CSRF-Token' }),
+    });
+    // Public: explicitly no security; unsafe public routes still document the origin check.
+    for (const [path, method] of [
+      ['/health', 'get'],
+      ['/health/ready', 'get'],
+      ['/auth/register', 'post'],
+      ['/auth/login', 'post'],
+    ] as const) {
+      expect(op(doc, path, method).security).toEqual([]);
+    }
+    expect(op(doc, '/health', 'get').responses['401']).toBeUndefined();
+    expect(op(doc, '/auth/login', 'post').responses['403']!.content).toEqual({
+      'application/json': { schema: { $ref: '#/components/schemas/CsrfFailedError' } },
+    });
+    expect(op(doc, '/health', 'get').responses['403']).toBeUndefined();
+    // Optional session: anonymous or cookie + CSRF header.
+    expect(op(doc, '/auth/logout', 'post').security).toEqual([
+      {},
+      { sessionCookie: [], csrfToken: [] },
+    ]);
+    // Protected: cookie (+ CSRF header on unsafe methods), 401 documented.
+    expect(op(doc, '/auth/session', 'get').security).toEqual([{ sessionCookie: [] }]);
+    expect(op(doc, '/auth/session', 'get').responses['403']).toBeUndefined();
+    expect(op(doc, '/auth/logout-everywhere', 'post').security).toEqual([
+      { sessionCookie: [], csrfToken: [] },
+    ]);
+    for (const [path, method] of [
+      ['/auth/session', 'get'],
+      ['/auth/logout-everywhere', 'post'],
+    ] as const) {
+      expect(op(doc, path, method).responses['401']!.content).toEqual({
+        'application/json': { schema: { $ref: '#/components/schemas/UnauthenticatedError' } },
+      });
+    }
   });
 
   it('documents probes as exempt from rate limiting (no 429, no rate-limit headers)', () => {

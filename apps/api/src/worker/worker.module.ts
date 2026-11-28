@@ -2,6 +2,12 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { validateWorkerEnv } from '../config/env.js';
 import { DatabaseModule } from '../database/index.js';
+import {
+  IdentityJobsModule,
+  PasswordChangedEmailHandler,
+  PasswordResetEmailHandler,
+  VerificationEmailHandler,
+} from '../modules/identity/index.js';
 import { QueueModule } from '../queue/queue.module.js';
 import { JOB_HANDLERS, type JobHandler } from './job-handler.js';
 import { SystemNoopJobHandler } from './system-noop.handler.js';
@@ -22,13 +28,25 @@ import { WorkerHost } from './worker-host.service.js';
     }),
     DatabaseModule,
     QueueModule,
+    // Feature modules' job handlers (P2-04 verification/registration, P2-05 password emails).
+    IdentityJobsModule,
   ],
   providers: [
     SystemNoopJobHandler,
     {
       provide: JOB_HANDLERS,
-      useFactory: (noop: SystemNoopJobHandler): JobHandler[] => [noop],
-      inject: [SystemNoopJobHandler],
+      useFactory: (
+        noop: SystemNoopJobHandler,
+        verificationEmail: VerificationEmailHandler,
+        passwordResetEmail: PasswordResetEmailHandler,
+        passwordChangedEmail: PasswordChangedEmailHandler,
+      ): JobHandler[] => [noop, verificationEmail, passwordResetEmail, passwordChangedEmail],
+      inject: [
+        SystemNoopJobHandler,
+        VerificationEmailHandler,
+        PasswordResetEmailHandler,
+        PasswordChangedEmailHandler,
+      ],
     },
     WorkerHost,
   ],

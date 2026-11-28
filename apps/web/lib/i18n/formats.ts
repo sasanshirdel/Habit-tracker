@@ -4,9 +4,10 @@
  * Messages reference these by name (`{date, date, long}`), and components use the same names
  * with next-intl's `format.dateTime(d, 'long')`. Digits, separators and the calendar follow the
  * locale through `Intl`: Persian (`fa`) gets Persian digits (۱۲۳) and, by CLDR default, the
- * Solar Hijri calendar; English gets Latin digits and the Gregorian calendar. Whether Persian
- * users see Solar Hijri or Gregorian dates by default is an open owner decision (ROADMAP
- * "Outstanding decisions" #8); change it here with a `calendar` option.
+ * Solar Hijri calendar; English gets Latin digits and the Gregorian calendar. Signed-in pages
+ * pass the user's own calendar and time zone (P2-07, `useDateDisplay` in
+ * `lib/account/preferences.ts`); the per-locale default for new accounts is interim (ROADMAP
+ * "Outstanding decisions" #8).
  */
 import type { Formats } from 'next-intl';
 
@@ -26,8 +27,9 @@ export const formats = {
 } satisfies Formats;
 
 /**
- * Time zone for server and client formatting until users have a profile time zone (Phase 2):
- * the same value on both sides avoids hydration mismatches. Storage is always UTC + the user's
- * IANA zone (ADR-0006); the per-user zone replaces this default when it exists.
+ * Time zone of the next-intl provider on server and client (the same value on both sides avoids
+ * hydration mismatches). Server HTML holds no user dates (ADR-0020); signed-in components format
+ * in the user's profile zone with `useDateDisplay` (P2-07). Storage is always UTC + the user's
+ * IANA zone (ADR-0006).
  */
 export const DEFAULT_TIME_ZONE = 'UTC';

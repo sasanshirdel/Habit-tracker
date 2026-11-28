@@ -60,7 +60,16 @@ const SAMPLE_VALUES = {
   seconds: 5,
   hours: 2,
   minutes: 7,
+  min: 8,
+  max: 128,
+  email: 'sara@example.com',
   requestId: 'req-1',
+  browser: 'Firefox',
+  os: 'Android',
+  client: 'Firefox on Android',
+  days: 180,
+  ago: '5 minutes ago',
+  when: 'Mar 21, 2026, 3:30 PM',
 };
 
 describe('locale config', () => {
