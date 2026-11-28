@@ -224,6 +224,9 @@ importers:
       '@habit/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@habit/habit-engine':
+        specifier: workspace:*
+        version: link:../../packages/habit-engine
       '@habit/localization':
         specifier: workspace:*
         version: link:../../packages/localization
@@ -392,6 +395,31 @@ importers:
         specifier: 8.73.0
         version: 8.73.0(eslint@10.15.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)
     devDependencies:
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      eslint:
+        specifier: 10.15.0
+        version: 10.15.0(jiti@2.7.0)(supports-color@7.2.0)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.1.1
+        version: 5.1.1(@types/node@24.19.2)(jsdom@31.0.1(@noble/hashes@1.8.0))(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0))
+
+  packages/habit-engine:
+    dependencies:
+      '@habit/localization':
+        specifier: workspace:*
+        version: link:../localization
+      '@habit/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
+    devDependencies:
+      '@habit/config':
+        specifier: workspace:*
+        version: link:../config
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2

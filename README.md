@@ -42,6 +42,7 @@ packages/
   shared-types/   API contract types shared by web and api
   shared-validation/  zod 4 input schemas shared by web and api
   localization/   locale metadata (locales, RTL/LTR direction, Intl tags)
+  habit-engine/   pure habit logic — schedule engine, local-date + Solar Hijri arithmetic (ADR-0029)
 docs/             PRD, architecture, roadmap, security, workflow, ADRs, backlog
 .github/          CI workflow, PR + issue templates, Copilot pointer
 docker-compose.yml  Postgres + Redis for local development only
